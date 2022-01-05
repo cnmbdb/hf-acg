@@ -35,6 +35,9 @@ class Order extends Manage
         $queryTemplateEntity->setPaginate(true);
         $queryTemplateEntity->setWhere($map);
         $queryTemplateEntity->setWith([
+            'coupon' => function (Relation $relation) {
+                $relation->select(["id", "code"]);
+            },
             'owner' => function (Relation $relation) {
                 $relation->select(["id", "username", "avatar"]);
             },
@@ -46,6 +49,9 @@ class Order extends Manage
             },
             'pay' => function (Relation $relation) {
                 $relation->select(["id", "name", "icon"]);
+            },
+            'promote' => function (Relation $relation) {
+                $relation->select(["id", "username", "avatar"]);
             }
         ]);
 
