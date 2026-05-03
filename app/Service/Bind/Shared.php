@@ -10,7 +10,6 @@ use App\Util\Ini;
 use App\Util\Str;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use Illuminate\Database\Query\Builder;
 use Kernel\Annotation\Inject;
 use Kernel\Container\Di;
 use Kernel\Exception\JSONException;
@@ -103,6 +102,8 @@ class Shared implements \App\Service\Shared
         if ($type == 1) {
             $data = $this->mcyRequest($domain . "/plugin/open-api/connect", $appId, $appKey);
             return ["shopName" => $data['username'], "balance" => $data['balance']];
+        } elseif ($type == 2) {
+            return $this->post($domain . "/plugin/SharedStock/api/connect", $appId, $appKey);
         }
         return $this->post($domain . "/shared/authentication/connect", $appId, $appKey);
     }
@@ -197,19 +198,8 @@ class Shared implements \App\Service\Shared
 
             return array_values($category);
         } elseif ($shared->type == 2) {
-            $a = $this->post($shared->domain . "/shared/commodity/items", $shared->app_id, $shared->app_key);
-
-            foreach ($a as &$a1) {
-                if (is_array($a1['children'])) {
-                    foreach ($a1['children'] as &$a2) {
-                        $a2['stock'] = '10000000';
-                    }
-                }
-            }
-
-            return $a;
+            return $this->post($shared->domain . "/plugin/SharedStock/api/items", $shared->app_id, $shared->app_key);
         }
-
 
         return $this->post($shared->domain . "/shared/commodity/items", $shared->app_id, $shared->app_key);
     }
@@ -235,9 +225,10 @@ class Shared implements \App\Service\Shared
 
             return $a;
         } elseif ($shared->type == 2) {
-            $a = $this->post($shared->domain . "/shared/commodity/item", $shared->app_id, $shared->app_key, [
-                "sharedCode" => $code
+            $a = $this->post($shared->domain . "/plugin/SharedStock/api/item", $shared->app_id, $shared->app_key, [
+                "code" => $code
             ]);
+
             if (!isset($a[0]['children'][0])) {
                 throw new JSONException("商品不存在#{$code}");
             }
@@ -247,8 +238,6 @@ class Shared implements \App\Service\Shared
             if (!is_array($b['config'])) {
                 $b['config'] = Ini::toArray((string)$b['config']);
             }
-
-            $b['stock'] = '10000000';
 
             return $b;
         }
@@ -465,7 +454,11 @@ class Shared implements \App\Service\Shared
             $result = $this->inventory($shared, $commodity, $race);
             return isset($result['count']) ? (string)$result['count'] : "0";
         } elseif ($shared->type == 2) {
-            return "999";
+            $stock = $this->post($shared->domain . "/plugin/SharedStock/api/stock", $shared->app_id, $shared->app_key, [
+                "code" => $code,
+                "race" => $race
+            ]);
+            return $stock['stock'] ?? "0";
         }
 
         $stock = $this->post($shared->domain . "/shared/commodity/stock", $shared->app_id, $shared->app_key, [
@@ -497,7 +490,13 @@ class Shared implements \App\Service\Shared
                 ]);
                 return $data['amount'] ?? 0;
             } elseif ($shared->type == 2) {
-                return 0;
+                $data = $this->post($shared->domain . "/plugin/SharedStock/api/valuation", $shared->app_id, $shared->app_key, [
+                    'code' => $code,
+                    'num' => $num,
+                    'race' => $race,
+                    'card_id' => $cardId
+                ]);
+                return $data['price'] ?? 0;
             }
 
             $data = $this->post($shared->domain . "/shared/commodity/valuation", $shared->app_id, $shared->app_key, [

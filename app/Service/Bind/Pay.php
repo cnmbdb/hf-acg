@@ -65,7 +65,7 @@ class Pay implements \App\Service\Pay
     {
         $plugPath = BASE_PATH . '/app/Pay/' . $name;
         //判断插件信息是否存在
-        if (file_exists($plugPath . '/Config/Info.php') && file_exists($plugPath . '/Config/Submit.php')) {
+        if (file_exists($plugPath . '/Config/Info.php')) {
             $infoPath = $plugPath . '/Config/Info.php';
             $submitPath = $plugPath . '/Config/Submit.php';
             $submitJsPath = $plugPath . '/Config/Submit.js';
