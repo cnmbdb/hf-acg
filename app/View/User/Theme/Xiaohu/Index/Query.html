@@ -1,0 +1,45 @@
+#{include file="./Header.html"}
+<main class="xh-shell xh-query-page">
+    <section class="xh-query-hero" aria-labelledby="xh-query-title">
+        <span class="xh-eyebrow" data-i18n="orderLookupEyebrow">Order Lookup</span>
+        <h1 id="xh-query-title" data-i18n="orderLookupTitle">订单查询</h1>
+        <p data-i18n="orderLookupDesc">输入订单号或联系方式，查看你的购买记录。</p>
+    </section>
+
+    <section class="xh-panel xh-query-card" aria-label="订单查询">
+        <div class="xh-query-card-head">
+            <span class="xh-eyebrow" data-i18n="querySearch">Search</span>
+        </div>
+        <form class="order-query-form xh-query-form">
+            <input type="text" name="keywords" value="#{$tradeNo}" placeholder="请输入订单号或联系方式" aria-label="请输入订单号或联系方式" data-i18n-placeholder="queryPlaceholder" data-i18n-aria-label="queryPlaceholder">
+            <button type="submit" class="xh-query-submit btn-search-query">
+                <i class="fa-duotone fa-regular fa-magnifying-glass"></i>
+                <span data-i18n="querySubmit">查询订单</span>
+            </button>
+        </form>
+    </section>
+
+    <section class="loading-state xh-state-card" style="display: none;">
+        <i class="fa-duotone fa-regular fa-spinner-third icon-spin"></i>
+        <span data-i18n="queryLoading">正在查询订单信息...</span>
+    </section>
+
+    <section class="no-results xh-state-card" style="display: none;">
+        <i class="fa-duotone fa-regular fa-magnifying-glass"></i>
+        <div>
+            <h2 data-i18n="noResults">未找到相关订单</h2>
+            <p data-i18n="noResultsDesc">请检查输入信息是否正确，或联系客服协助查询。</p>
+        </div>
+    </section>
+
+    <section class="order-results xh-panel xh-results-card" style="display: none;">
+        <div class="xh-query-card-head">
+            <span class="xh-eyebrow">Results</span>
+            <h2 data-i18n="results">查询结果</h2>
+        </div>
+        <div class="order-list xh-order-list"></div>
+    </section>
+</main>
+#{ready("#{$static}/assets/index.js?xh=20260620-4")}
+#{ready("/assets/user/controller/index/query.js")}
+#{include file="./Footer.html"}

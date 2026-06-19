@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-xh-lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="#{$config.keywords}"/>
+    <meta name="description" content="#{$config.description}"/>
+    <link href="#{$favicon}?v=#{$app.version}" rel="icon">
+    <title>#{$title} - #{$config.shop_name}</title>
+    #{css(
+    [
+    "/assets/common/css/bootstrap.min.css",
+    "/assets/common/css/_.css",
+    "/assets/user/css/index.css",
+    "#{$static}/assets/index.css"
+    ],
+    [
+    "/assets/common/css/font.min.css",
+    "/assets/common/js/layui/css/layui.css",
+    "/assets/common/css/select2.min.css",
+    "/assets/common/css/component.css",
+    "/assets/common/js/table/bootstrap-table.css",
+    "/assets/common/js/layer/theme/default/layer.css",
+    "/assets/common/css/bootstrap.min.css",
+    "/assets/common/css/toastr.min.css",
+    "/assets/user/css/index.css",
+    "#{$static}/assets/index.css"
+    ])}
+    #{js("/assets/common/js/ready.js")}
+    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260620-9">
+    #{index_var()}
+    <!--start::HOOK-->
+    #{hook(\App\Consts\Hook::USER_GLOBAL_VIEW_HEADER)}
+    #{hook(\App\Consts\Hook::USER_VIEW_INDEX_HEADER)}
+    <!--end::HOOK-->
+</head>
+<body class="xh-page">
+<nav class="xh-shell xh-navbar" aria-label="主导航">
+    <a class="xh-brand" href="/">
+        <img src="#{$favicon}" alt="#{$config.shop_name}" class="xh-logo">
+        <span>#{$config.shop_name}</span>
+    </a>
+
+    <button class="xh-menu-button" type="button" aria-label="打开导航" aria-expanded="false" data-mobile-menu-toggle data-i18n-aria-label="openNav">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <div class="xh-navlinks">
+        <a class="xh-navlink #{if $title != "订单查询"}is-active#{/if}" href="/">
+            <i class="fa-duotone fa-regular fa-cart-shopping"></i>
+            <span data-i18n="shopping">购物</span>
+        </a>
+        <a class="xh-navlink #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
+            <i class="fa-duotone fa-regular fa-folders"></i>
+            <span data-i18n="orderLookup">订单查询</span>
+        </a>
+        <a class="xh-navlink xh-notice-trigger" href="javascript:void(0);" data-notice-trigger>
+            <i class="fa-duotone fa-regular fa-bullhorn"></i>
+            <span data-i18n="notice">公告</span>
+        </a>
+    </div>
+
+    <div class="xh-actions">
+        <div class="xh-lang">
+            <button class="xh-lang-button" type="button" aria-label="切换语言" aria-expanded="false" data-lang-toggle data-i18n-aria-label="switchLanguage">
+                <i class="fa-duotone fa-regular fa-globe"></i>
+                <span data-i18n="languageSelect">语言选择</span>
+            </button>
+            <div class="xh-lang-menu" data-lang-menu aria-hidden="true">
+                <button type="button" data-lang-option="en">English</button>
+                <button type="button" data-lang-option="zh-CN">简体中文</button>
+                <button type="button" data-lang-option="zh-TW">繁體中文</button>
+                <button type="button" data-lang-option="ja">日本語</button>
+                <button type="button" data-lang-option="ru">Русский</button>
+                <button type="button" data-lang-option="ko">한국어</button>
+            </div>
+        </div>
+        #{if $user}
+            <a class="xh-account" href="/user/dashboard/index">
+                <img src="#{$user.avatar}" alt="#{$user.username}" class="xh-avatar">
+                <span>#{$user.username}</span>
+            </a>
+        #{else}
+            <a class="xh-btn xh-btn-light" href="/user/authentication/login">
+                <i class="fa-duotone fa-regular fa-right-to-bracket"></i>
+                <span data-i18n="login">登录</span>
+            </a>
+            <a class="xh-btn xh-btn-dark" href="/user/authentication/register">
+                <i class="fa-duotone fa-regular fa-user-plus"></i>
+                <span data-i18n="createAccount">创建账号</span>
+            </a>
+        #{/if}
+    </div>
+</nav>
+<div class="xh-mobile-menu" data-mobile-menu aria-hidden="true">
+    <div class="xh-mobile-menu-backdrop" data-mobile-menu-close></div>
+    <section class="xh-mobile-menu-panel">
+        <div class="xh-mobile-menu-head">
+            <span data-i18n="navigation">导航</span>
+            <button type="button" aria-label="关闭导航" data-mobile-menu-close data-i18n-aria-label="closeNav">
+                <i class="fa-duotone fa-regular fa-xmark"></i>
+            </button>
+        </div>
+        <div class="xh-mobile-lang">
+            <button type="button" data-lang-option="en">English</button>
+            <button type="button" data-lang-option="zh-CN">简体中文</button>
+            <button type="button" data-lang-option="zh-TW">繁體中文</button>
+            <button type="button" data-lang-option="ja">日本語</button>
+            <button type="button" data-lang-option="ru">Русский</button>
+            <button type="button" data-lang-option="ko">한국어</button>
+        </div>
+        <a class="xh-mobile-link #{if $title != "订单查询"}is-active#{/if}" href="/">
+            <i class="fa-duotone fa-regular fa-cart-shopping"></i>
+            <span data-i18n="shopping">购物</span>
+        </a>
+        <a class="xh-mobile-link #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
+            <i class="fa-duotone fa-regular fa-folders"></i>
+            <span data-i18n="orderLookup">订单查询</span>
+        </a>
+        <a class="xh-mobile-link" href="javascript:void(0);" data-notice-trigger>
+            <i class="fa-duotone fa-regular fa-bullhorn"></i>
+            <span data-i18n="notice">公告</span>
+        </a>
+        <div class="xh-mobile-auth">
+            #{if $user}
+                <a class="xh-mobile-link" href="/user/dashboard/index">
+                    <img src="#{$user.avatar}" alt="#{$user.username}">
+                    <span>#{$user.username}</span>
+                </a>
+            #{else}
+                <a class="xh-mobile-link" href="/user/authentication/login">
+                    <i class="fa-duotone fa-regular fa-right-to-bracket"></i>
+                    <span data-i18n="login">登录</span>
+                </a>
+                <a class="xh-mobile-link xh-mobile-link-dark" href="/user/authentication/register">
+                    <i class="fa-duotone fa-regular fa-user-plus"></i>
+                    <span data-i18n="createAccount">创建账号</span>
+                </a>
+            #{/if}
+        </div>
+    </section>
+</div>
+<div class="xh-modal" data-notice-modal aria-hidden="true">
+    <div class="xh-modal-backdrop" data-notice-close></div>
+    <section class="xh-modal-card" role="dialog" aria-modal="true" aria-labelledby="xh-notice-title">
+        <header class="xh-modal-head">
+            <span class="xh-eyebrow" data-i18n="noticeEyebrow">Notice</span>
+            <h2 id="xh-notice-title">
+                <i class="fa-duotone fa-regular fa-bullhorn"></i>
+                <span data-i18n="notice">公告</span>
+            </h2>
+        </header>
+        <div class="xh-modal-body">
+            #{$config.notice}
+        </div>
+        <footer class="xh-modal-foot">
+            <button class="xh-modal-btn xh-modal-btn-light" type="button" data-notice-close>
+                <i class="fa-duotone fa-regular fa-xmark"></i>
+                <span data-i18n="cancel">取消</span>
+            </button>
+            <button class="xh-modal-btn xh-modal-btn-dark" type="button" data-notice-read>
+                <i class="fa-duotone fa-regular fa-check"></i>
+                <span data-i18n="read">我已阅读</span>
+            </button>
+            <p data-i18n="noticeTip">点击“我已阅读”后，1 小时内不再弹出。</p>
+        </footer>
+    </section>
+</div>
+<div id="pjax-container">
+<script>
+!function () {
+    function ready(callback) {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", callback);
+        } else {
+            callback();
+        }
+    }
+
+    ready(function () {
+        var noticeModal = document.querySelector("[data-notice-modal]");
+        var mobileMenu = document.querySelector("[data-mobile-menu]");
+        var mobileToggle = document.querySelector("[data-mobile-menu-toggle]");
+
+        function closeMobileMenu() {
+            if (!mobileMenu) return;
+            mobileMenu.classList.remove("is-open");
+            mobileMenu.setAttribute("aria-hidden", "true");
+            if (mobileToggle) mobileToggle.setAttribute("aria-expanded", "false");
+            document.body.classList.remove("xh-modal-open");
+        }
+
+        function openNotice() {
+            closeMobileMenu();
+            if (!noticeModal) return;
+            noticeModal.classList.add("is-open");
+            noticeModal.setAttribute("aria-hidden", "false");
+            document.body.classList.add("xh-modal-open");
+        }
+
+        function closeNotice() {
+            if (!noticeModal) return;
+            noticeModal.classList.remove("is-open");
+            noticeModal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("xh-modal-open");
+        }
+
+        function toggleMobileMenu() {
+            if (!mobileMenu) return;
+            if (mobileMenu.classList.contains("is-open")) {
+                closeMobileMenu();
+                return;
+            }
+            mobileMenu.classList.add("is-open");
+            mobileMenu.setAttribute("aria-hidden", "false");
+            if (mobileToggle) mobileToggle.setAttribute("aria-expanded", "true");
+            document.body.classList.add("xh-modal-open");
+        }
+
+        document.addEventListener("click", function (event) {
+            if (event.target.closest("[data-notice-trigger]")) {
+                event.preventDefault();
+                openNotice();
+                return;
+            }
+
+            if (event.target.closest("[data-notice-close]")) {
+                event.preventDefault();
+                closeNotice();
+                return;
+            }
+
+            if (event.target.closest("[data-notice-read]")) {
+                event.preventDefault();
+                try {
+                    localStorage.setItem("xiaohu_notice_read_until", String(Date.now() + 60 * 60 * 1000));
+                } catch (e) {}
+                closeNotice();
+                return;
+            }
+
+            if (event.target.closest("[data-mobile-menu-toggle]")) {
+                event.preventDefault();
+                toggleMobileMenu();
+                return;
+            }
+
+            if (event.target.closest("[data-mobile-menu-close]")) {
+                event.preventDefault();
+                closeMobileMenu();
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key !== "Escape") return;
+            closeNotice();
+            closeMobileMenu();
+        });
+    });
+}();
+</script>

@@ -31,7 +31,7 @@ if [ ! -f assets/cache/favicon.ico ]; then
     fi
 fi
 
-if [ ! -L favicon.ico ]; then
+if [ "$ACG_DEV_MODE" != "1" ] && [ ! -L favicon.ico ]; then
     rm -f favicon.ico
     ln -s assets/cache/favicon.ico favicon.ico
 fi
