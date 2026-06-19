@@ -1,5 +1,10 @@
 services:
   app:
+    environment:
+      ACG_DEV_MODE: "1"
+    entrypoint:
+      - sh
+      - /usr/local/bin/acg-faka-entrypoint
     command:
       - sh
       - -c
@@ -10,3 +15,5 @@ services:
     volumes:
       - .:/var/www/html
       - ./docker/php.ini:/usr/local/etc/php/conf.d/acg-faka.ini:ro
+      - ./docker/entrypoint.sh:/usr/local/bin/acg-faka-entrypoint:ro
+      - ./app/View/User/Theme:/var/www/html/app/View/User/Theme
