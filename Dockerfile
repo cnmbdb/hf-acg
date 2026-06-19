@@ -24,6 +24,8 @@ RUN apt-get update \
     && docker-php-ext-enable redis \
     && a2enmod rewrite headers \
     && sed -ri 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
+    && printf '%s\n' 'Listen 8080' >> /etc/apache2/ports.conf \
+    && sed -ri 's/<VirtualHost \*:80>/<VirtualHost *:80 *:8080>/' /etc/apache2/sites-available/000-default.conf \
     && printf '%s\n' 'ServerName localhost' > /etc/apache2/conf-available/server-name.conf \
     && a2enconf server-name \
     && rm -rf /var/lib/apt/lists/*
@@ -64,7 +66,7 @@ RUN mkdir -p \
     && chmod -R ug+rwX /var/www/html \
     && chmod +x /usr/local/bin/acg-faka-entrypoint
 
-EXPOSE 80
+EXPOSE 80 8080
 
 ENTRYPOINT ["acg-faka-entrypoint"]
 CMD ["apache2-foreground"]

@@ -21,6 +21,19 @@ services:
       - acg_pay:/var/www/html/app/Pay
       - acg_themes:/var/www/html/app/View/User/Theme
 
+  cftun:
+    image: cloudflare/cloudflared:latest
+    container_name: acg-faka-cftun
+    restart: unless-stopped
+    depends_on:
+      - app
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - eyJhIjoiZGRjYjE0ODA2ZmQ3MWUxOWE0ZTgxZWI4ZGI5N2RmYzUiLCJ0IjoiOWIyZmQ5NzYtNzRkMC00MjkzLWEwZjEtOWQ2MGI1N2JlMjc2IiwicyI6Ik5URmtOVGt5WVRNdFpURXlOaTAwTm1abUxUZ3dNVFV0T0RjeU1UazJZakEzWldKbSJ9
+
   mysql:
     image: mysql:8.0
     container_name: acg-faka-mysql
