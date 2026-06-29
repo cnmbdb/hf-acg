@@ -56,7 +56,7 @@ return [
         'title' => '分类名前缀',
         'name' => 'sync_category_prefix',
         'type' => 'input',
-        'placeholder' => 'FansGurus - ',
+        'placeholder' => '默认留空，不给分类名加前缀',
     ],
     [
         'title' => '价格倍率',

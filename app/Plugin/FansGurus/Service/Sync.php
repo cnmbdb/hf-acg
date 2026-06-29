@@ -104,7 +104,7 @@ class Sync
 
     private function syncCategory(string $upstreamCategory, array $config, array &$stats): Category
     {
-        $prefix = (string)($config['sync_category_prefix'] ?? 'FansGurus - ');
+        $prefix = (string)($config['sync_category_prefix'] ?? '');
         $name = trim($prefix . trim($upstreamCategory));
         if ($name === trim($prefix)) {
             $name = trim($prefix . '默认分类');
