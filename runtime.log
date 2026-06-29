@@ -68,3 +68,5 @@
 [2026-06-20 00:29:43]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
 [2026-06-20 00:29:45]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
 [2026-06-20 00:42:47]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-06-20 02:31:43]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-06-20 04:31:19]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
