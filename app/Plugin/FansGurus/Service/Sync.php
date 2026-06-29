@@ -6,6 +6,7 @@ namespace App\Plugin\FansGurus\Service;
 use App\Model\Category;
 use App\Model\Commodity;
 use App\Util\Plugin;
+use App\Util\Ini;
 use Illuminate\Database\Capsule\Manager as Db;
 use Kernel\Exception\JSONException;
 
@@ -332,7 +333,7 @@ class Sync
         $commodity->shared_config_sync = 0;
         $commodity->hide = 0;
         $commodity->stock = (int)($config['stock_value'] ?? 999999);
-        $commodity->config = '';
+        $commodity->config = $this->serviceConfig($service);
         $commodity->save();
 
         $stats[$created ? 'products_created' : 'products_updated']++;
@@ -364,16 +365,45 @@ class Sync
 
     private function description(array $service): string
     {
+        $rate = htmlspecialchars($this->formatRate((string)($service['rate'] ?? '0')), ENT_QUOTES, 'UTF-8');
+        $min = (int)($service['min'] ?? 0);
+        $max = (int)($service['max'] ?? 0);
         $rows = [
             '<p>FansGurus 上游自动同步商品。</p>',
+            '<table style="width:100%;border-collapse:collapse;margin:10px 0;">',
+            '<tr><td style="border:1px solid #eee;padding:8px;">每 1000 人的费用</td><td style="border:1px solid #eee;padding:8px;">' . $rate . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">最低订购</td><td style="border:1px solid #eee;padding:8px;">' . $min . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">最高订购</td><td style="border:1px solid #eee;padding:8px;">' . $max . '</td></tr>',
+            '</table>',
             '<p>上游服务ID：' . htmlspecialchars((string)($service['service'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
             '<p>上游分类：' . htmlspecialchars((string)($service['category'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
             '<p>类型：' . htmlspecialchars((string)($service['type'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
-            '<p>上游价格：' . htmlspecialchars((string)($service['rate'] ?? '0'), ENT_QUOTES, 'UTF-8') . ' / 1000</p>',
-            '<p>购买范围：' . (int)($service['min'] ?? 0) . ' - ' . (int)($service['max'] ?? 0) . '</p>',
         ];
 
         return implode('', $rows);
+    }
+
+    private function serviceConfig(array $service): string
+    {
+        return Ini::toConfig([
+            'fansgurus_specs' => [
+                'service_id' => (string)($service['service'] ?? ''),
+                'rate_per_1000' => $this->formatRate((string)($service['rate'] ?? '0'), false),
+                'minimum_order' => (string)max(0, (int)($service['min'] ?? 0)),
+                'maximum_order' => (string)max(0, (int)($service['max'] ?? 0)),
+            ],
+        ]);
+    }
+
+    private function formatRate(string $rate, bool $withCurrency = true): string
+    {
+        $value = trim($rate);
+        if ($value === '' || !is_numeric($value)) {
+            $value = '0';
+        }
+
+        $formatted = rtrim(rtrim(number_format((float)$value, 6, '.', ''), '0'), '.');
+        return $withCurrency ? '$' . $formatted . ' / 1000' : $formatted;
     }
 
     private function parseMapping(string $raw): array
