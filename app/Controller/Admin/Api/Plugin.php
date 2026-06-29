@@ -126,6 +126,19 @@ class Plugin extends Manage
         \Kernel\Util\Plugin::runHookState($id, \Kernel\Annotation\Plugin::SAVE_CONFIG, $id, $map);//2022/01/12新增插件保存配置逻辑，无需启用插件也可以hook
 
         $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
+        if (is_file($configFile)) {
+            \Kernel\Util\Opcache::invalidate($configFile);
+            $hookConfig = require $configFile;
+            if (is_array($hookConfig)) {
+                $config = array_replace($hookConfig, $config);
+                foreach ($map as $k => $v) {
+                    $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
+                }
+                if ($id === 'FansGurus' && array_key_exists('sync_action', $hookConfig)) {
+                    $config['sync_action'] = $hookConfig['sync_action'];
+                }
+            }
+        }
         setConfig($config, $configFile);
         return $this->json(200, '配置已生效');
     }

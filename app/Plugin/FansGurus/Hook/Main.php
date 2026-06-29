@@ -8,6 +8,7 @@ use App\Model\Commodity;
 use App\Model\Order;
 use App\Model\Pay;
 use App\Plugin\FansGurus\Service\Client;
+use App\Plugin\FansGurus\Service\Sync;
 use App\Util\Plugin;
 use Kernel\Annotation\Hook as HookPoint;
 use Kernel\Annotation\Plugin as PluginState;
@@ -39,6 +40,11 @@ class Main
 
         if (isset($map['mapping'])) {
             $this->parseMapping((string)$map['mapping']);
+        }
+
+        $config = array_replace($this->config(), $map);
+        if ((int)($config['auto_sync_on_save'] ?? 0) === 1) {
+            (new Sync())->run($config);
         }
     }
 

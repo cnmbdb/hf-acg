@@ -63,6 +63,16 @@
         });
     }
 
+    const fansGurusSync = (row, action, label) => {
+        util.post('/admin/api/plugin/setConfig?id=' + row.id, {
+            auto_sync_on_save: 1,
+            sync_action: action
+        }, res => {
+            table.refresh();
+            layer.msg(label + '已执行：' + res.msg);
+        });
+    }
+
     table = new Table("/admin/api/plugin/getPlugins", "#plugin-table");
     table.setColumns([
         {checkbox: true},
@@ -114,6 +124,42 @@
                     show: item => item.hasOwnProperty('PLUGIN_SUBMIT') && item.PLUGIN_SUBMIT.length > 0,
                     click: (event, value, row, index) => {
                         modal(util.icon("fa-duotone fa-regular fa-gear") + row.NAME, row);
+                    }
+                },
+                {
+                    icon: 'fa-duotone fa-regular fa-folder-tree',
+                    class: 'text-info',
+                    title: '更新上游商品分类',
+                    show: item => item.id === 'FansGurus',
+                    click: (event, value, row, index) => {
+                        fansGurusSync(row, 1, '更新上游商品分类');
+                    }
+                },
+                {
+                    icon: 'fa-duotone fa-regular fa-boxes-stacked',
+                    class: 'text-success',
+                    title: '更新上游商品',
+                    show: item => item.id === 'FansGurus',
+                    click: (event, value, row, index) => {
+                        fansGurusSync(row, 2, '更新上游商品');
+                    }
+                },
+                {
+                    icon: 'fa-duotone fa-regular fa-tags',
+                    class: 'text-warning',
+                    title: '更新上游商品价格',
+                    show: item => item.id === 'FansGurus',
+                    click: (event, value, row, index) => {
+                        fansGurusSync(row, 3, '更新上游商品价格');
+                    }
+                },
+                {
+                    icon: 'fa-duotone fa-regular fa-percent',
+                    class: 'text-danger',
+                    title: '批量设置价格浮动',
+                    show: item => item.id === 'FansGurus',
+                    click: (event, value, row, index) => {
+                        fansGurusSync(row, 4, '批量设置价格浮动');
                     }
                 },
                 {

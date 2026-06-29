@@ -53,6 +53,16 @@ class Client
     /**
      * @throws JSONException
      */
+    public function services(): array
+    {
+        return $this->request([
+            'action' => 'services',
+        ]);
+    }
+
+    /**
+     * @throws JSONException
+     */
     private function request(array $data): array
     {
         if ($this->apiKey === '') {
