@@ -368,16 +368,23 @@ class Sync
         $rate = htmlspecialchars($this->formatRate((string)($service['rate'] ?? '0')), ENT_QUOTES, 'UTF-8');
         $min = (int)($service['min'] ?? 0);
         $max = (int)($service['max'] ?? 0);
+        $name = htmlspecialchars((string)($service['name'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $category = htmlspecialchars((string)($service['category'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $type = htmlspecialchars((string)($service['type'] ?? ''), ENT_QUOTES, 'UTF-8');
         $rows = [
             '<p>FansGurus 上游自动同步商品。</p>',
             '<table style="width:100%;border-collapse:collapse;margin:10px 0;">',
+            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品名称</td><td style="border:1px solid #eee;padding:8px;">' . $name . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品分类</td><td style="border:1px solid #eee;padding:8px;">' . $category . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品类型</td><td style="border:1px solid #eee;padding:8px;">' . $type . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">每 1000 人的费用</td><td style="border:1px solid #eee;padding:8px;">' . $rate . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">最低订购</td><td style="border:1px solid #eee;padding:8px;">' . $min . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">最高订购</td><td style="border:1px solid #eee;padding:8px;">' . $max . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">支持滴灌</td><td style="border:1px solid #eee;padding:8px;">' . $this->boolText($service['dripfeed'] ?? false) . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">支持补单</td><td style="border:1px solid #eee;padding:8px;">' . $this->boolText($service['refill'] ?? false) . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">支持取消</td><td style="border:1px solid #eee;padding:8px;">' . $this->boolText($service['cancel'] ?? false) . '</td></tr>',
             '</table>',
             '<p>上游服务ID：' . htmlspecialchars((string)($service['service'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
-            '<p>上游分类：' . htmlspecialchars((string)($service['category'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
-            '<p>类型：' . htmlspecialchars((string)($service['type'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
         ];
 
         return implode('', $rows);
@@ -391,8 +398,28 @@ class Sync
                 'rate_per_1000' => $this->formatRate((string)($service['rate'] ?? '0'), false),
                 'minimum_order' => (string)max(0, (int)($service['min'] ?? 0)),
                 'maximum_order' => (string)max(0, (int)($service['max'] ?? 0)),
+                'type' => $this->configValue((string)($service['type'] ?? '')),
+                'category' => $this->configValue((string)($service['category'] ?? '')),
+                'dripfeed' => $this->boolValue($service['dripfeed'] ?? false),
+                'refill' => $this->boolValue($service['refill'] ?? false),
+                'cancel' => $this->boolValue($service['cancel'] ?? false),
             ],
         ]);
+    }
+
+    private function boolText(mixed $value): string
+    {
+        return $this->boolValue($value) === '1' ? '支持' : '不支持';
+    }
+
+    private function boolValue(mixed $value): string
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+    }
+
+    private function configValue(string $value): string
+    {
+        return str_replace(["\r", "\n", '='], [' ', ' ', '-'], trim($value));
     }
 
     private function formatRate(string $rate, bool $withCurrency = true): string
