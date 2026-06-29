@@ -44,7 +44,7 @@ class Sync
 
         $categories = [];
         Db::connection()->transaction(function () use ($services, $config, $action, &$mapping, &$stats, &$categories): void {
-            foreach ($services as $service) {
+            foreach ($services as $index => $service) {
                 if (!is_array($service)) {
                     $stats['products_skipped']++;
                     continue;
@@ -63,12 +63,14 @@ class Sync
                     $categories[$categoryKey] = $this->syncCategory($upstreamCategory, $config, $stats);
                 }
                 $category = $categories[$categoryKey];
+                $category->sort = $this->categorySort($categoryKey);
+                $category->save();
 
                 if ($action === 1) {
                     continue;
                 }
 
-                $commodity = $this->syncCommodity($category, $service, $config, $action, $stats);
+                $commodity = $this->syncCommodity($category, $service, $config, $action, $stats, $index + 1);
                 if (!$commodity) {
                     continue;
                 }
@@ -217,7 +219,42 @@ class Sync
         return '/app/Plugin/' . self::PLUGIN . '/Assets/icons/' . $file . '.svg';
     }
 
-    private function syncCommodity(Category $category, array $service, array $config, int $action, array &$stats): ?Commodity
+    private function categorySort(string $category): int
+    {
+        $order = [
+            'Instagram',
+            'TikTok',
+            'X/Twitter',
+            'YouTube',
+            'Telegram',
+            'Facebook',
+            'VK',
+            'Spotify',
+            'Discord',
+            'Twitch',
+            'Reddit',
+            'LinkedIn',
+            'Crypto',
+            'GitHub',
+            'Quora',
+            'WhatsApp',
+            'LINE',
+            'Google/Maps',
+            'Trustpilot',
+            'Website Traffic',
+            'Apple/App Store',
+            'Android/Google Play',
+            'SoundCloud',
+            'Pinterest',
+            'Snapchat',
+            '其他服务',
+        ];
+
+        $position = array_search($category, $order, true);
+        return $position === false ? 9999 : ($position + 1) * 10;
+    }
+
+    private function syncCommodity(Category $category, array $service, array $config, int $action, array &$stats, int $sort): ?Commodity
     {
         $serviceId = trim((string)$service['service']);
         $code = 'FG_' . preg_replace('/[^A-Za-z0-9_]/', '_', $serviceId);
@@ -244,6 +281,7 @@ class Sync
             $commodity->factory_price = $cost;
             $commodity->price = $price;
             $commodity->user_price = $price;
+            $commodity->sort = $sort;
             $commodity->save();
             $stats['products_price_updated']++;
             return $commodity;
@@ -269,7 +307,7 @@ class Sync
         $commodity->delivery_message = 'FansGurus 上游订单处理中，请稍后查看订单状态。';
         $commodity->contact_type = 0;
         $commodity->password_status = 0;
-        $commodity->sort = 0;
+        $commodity->sort = $sort;
         $commodity->coupon = 0;
         $commodity->shared_id = null;
         $commodity->shared_code = '';
