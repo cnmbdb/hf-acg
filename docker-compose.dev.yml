@@ -1,5 +1,9 @@
 services:
   app:
+    networks:
+      default:
+        aliases:
+          - acg-faka-app
     environment:
       ACG_DEV_MODE: "1"
     entrypoint:
