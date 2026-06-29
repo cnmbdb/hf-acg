@@ -271,7 +271,7 @@ class Sync
             $created = true;
         }
 
-        $cost = $this->costPerUnit((float)($service['rate'] ?? 0));
+        $cost = $this->costPerUnit((float)($service['rate'] ?? 0), $config);
         $price = $this->price($cost, $config);
 
         if ($action === 4) {
@@ -350,9 +350,10 @@ class Sync
         ];
     }
 
-    private function costPerUnit(float $rate): float
+    private function costPerUnit(float $rate, array $config): float
     {
-        return round(max(0, $rate) / 1000, 2);
+        $usdToCny = max(0, (float)($config['usd_to_cny'] ?? 7.3));
+        return round((max(0, $rate) * $usdToCny) / 1000, 2);
     }
 
     private function price(float $cost, array $config): float

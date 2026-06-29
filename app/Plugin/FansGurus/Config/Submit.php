@@ -65,6 +65,12 @@ return [
         'placeholder' => '例如 1.2 表示成本上浮 20%',
     ],
     [
+        'title' => '美元兑人民币汇率',
+        'name' => 'usd_to_cny',
+        'type' => 'number',
+        'placeholder' => 'FansGurus 为美元价格，默认 7.30',
+    ],
+    [
         'title' => '固定加价',
         'name' => 'price_plus',
         'type' => 'number',
