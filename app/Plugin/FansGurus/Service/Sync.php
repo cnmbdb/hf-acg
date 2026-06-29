@@ -124,6 +124,7 @@ class Sync
             $created = true;
         }
 
+        $category->icon = $this->categoryIcon($name);
         $category->status = (int)($config['default_category_status'] ?? 1);
         $category->save();
 
@@ -181,6 +182,41 @@ class Sync
         return '其他服务';
     }
 
+    private function categoryIcon(string $category): string
+    {
+        $icons = [
+            'Instagram' => 'instagram',
+            'TikTok' => 'tiktok',
+            'X/Twitter' => 'twitter',
+            'YouTube' => 'youtube',
+            'Telegram' => 'telegram',
+            'Facebook' => 'facebook',
+            'VK' => 'vk',
+            'Spotify' => 'spotify',
+            'Discord' => 'discord',
+            'Twitch' => 'twitch',
+            'Reddit' => 'reddit',
+            'LinkedIn' => 'linkedin',
+            'Crypto' => 'crypto',
+            'GitHub' => 'github',
+            'Quora' => 'quora',
+            'WhatsApp' => 'whatsapp',
+            'LINE' => 'line',
+            'Google/Maps' => 'google-maps',
+            'Trustpilot' => 'trustpilot',
+            'Website Traffic' => 'website-traffic',
+            'Apple/App Store' => 'apple',
+            'Android/Google Play' => 'android',
+            'SoundCloud' => 'soundcloud',
+            'Pinterest' => 'pinterest',
+            'Snapchat' => 'snapchat',
+            '其他服务' => 'other',
+        ];
+
+        $file = $icons[$category] ?? 'other';
+        return '/app/Plugin/' . self::PLUGIN . '/Assets/icons/' . $file . '.svg';
+    }
+
     private function syncCommodity(Category $category, array $service, array $config, int $action, array &$stats): ?Commodity
     {
         $serviceId = trim((string)$service['service']);
@@ -225,7 +261,7 @@ class Sync
         $commodity->category_id = $category->id;
         $commodity->name = mb_substr(trim((string)$service['name']), 0, 255);
         $commodity->description = $this->description($service);
-        $commodity->cover = (string)($config['default_cover'] ?? '/favicon.ico');
+        $commodity->cover = $category->icon ?: (string)($config['default_cover'] ?? '/favicon.ico');
         $commodity->status = (int)($config['default_product_status'] ?? 1);
         $commodity->api_status = 1;
         $commodity->delivery_way = 1;
