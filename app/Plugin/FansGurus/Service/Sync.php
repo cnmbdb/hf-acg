@@ -368,15 +368,14 @@ class Sync
         $rate = htmlspecialchars($this->formatRate((string)($service['rate'] ?? '0')), ENT_QUOTES, 'UTF-8');
         $min = (int)($service['min'] ?? 0);
         $max = (int)($service['max'] ?? 0);
-        $name = htmlspecialchars((string)($service['name'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $name = htmlspecialchars($this->displayName((string)($service['name'] ?? '')), ENT_QUOTES, 'UTF-8');
         $category = htmlspecialchars((string)($service['category'] ?? ''), ENT_QUOTES, 'UTF-8');
         $type = htmlspecialchars((string)($service['type'] ?? ''), ENT_QUOTES, 'UTF-8');
         $rows = [
-            '<p>FansGurus 上游自动同步商品。</p>',
             '<table style="width:100%;border-collapse:collapse;margin:10px 0;">',
-            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品名称</td><td style="border:1px solid #eee;padding:8px;">' . $name . '</td></tr>',
-            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品分类</td><td style="border:1px solid #eee;padding:8px;">' . $category . '</td></tr>',
-            '<tr><td style="border:1px solid #eee;padding:8px;">上游商品类型</td><td style="border:1px solid #eee;padding:8px;">' . $type . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">商品名称</td><td style="border:1px solid #eee;padding:8px;">' . $name . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">商品分类</td><td style="border:1px solid #eee;padding:8px;">' . $category . '</td></tr>',
+            '<tr><td style="border:1px solid #eee;padding:8px;">商品类型</td><td style="border:1px solid #eee;padding:8px;">' . $type . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">每 1000 人的费用</td><td style="border:1px solid #eee;padding:8px;">' . $rate . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">最低订购</td><td style="border:1px solid #eee;padding:8px;">' . $min . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">最高订购</td><td style="border:1px solid #eee;padding:8px;">' . $max . '</td></tr>',
@@ -384,10 +383,14 @@ class Sync
             '<tr><td style="border:1px solid #eee;padding:8px;">支持补单</td><td style="border:1px solid #eee;padding:8px;">' . $this->boolText($service['refill'] ?? false) . '</td></tr>',
             '<tr><td style="border:1px solid #eee;padding:8px;">支持取消</td><td style="border:1px solid #eee;padding:8px;">' . $this->boolText($service['cancel'] ?? false) . '</td></tr>',
             '</table>',
-            '<p>上游服务ID：' . htmlspecialchars((string)($service['service'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
         ];
 
         return implode('', $rows);
+    }
+
+    private function displayName(string $name): string
+    {
+        return trim((string)preg_replace('/^FreshCoins\s*/iu', '', $name));
     }
 
     private function serviceConfig(array $service): string
