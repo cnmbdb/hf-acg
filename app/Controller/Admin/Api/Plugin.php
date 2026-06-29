@@ -107,9 +107,13 @@ class Plugin extends Manage
         if (isset($map['STATUS'])) {
             if ((int)$config['STATUS'] == 0 && $map['STATUS'] == 1) {
                 _plugin_start($id);
+                $config['STATUS'] = 1;
+                setConfig($config, BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php');
                 return $this->json(200, "插件已启动");
             } else if ((int)$config['STATUS'] == 1 && $map['STATUS'] == 0) {
                 _plugin_stop($id);
+                $config['STATUS'] = 0;
+                setConfig($config, BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php');
                 return $this->json(200, "插件已停止");
             }
         }

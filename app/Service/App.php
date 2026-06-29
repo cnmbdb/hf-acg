@@ -15,7 +15,7 @@ interface App
     /**
      * 应用商店地址
      */
-    const APP_URL = BASE_APP_SERVER;
+    const APP_URL = \BASE_APP_SERVER;
     const MAIN_SERVER = "https://tencent.3rd.mcycdn.com";
     const STANDBY_SERVER1 = "https://byte.3rd.mcycdn.com";
     const STANDBY_SERVER2 = "https://standby.acgshe.com";
