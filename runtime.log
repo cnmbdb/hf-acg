@@ -70,3 +70,11 @@
 [2026-06-20 00:42:47]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
 [2026-06-20 02:31:43]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
 [2026-06-20 04:31:19]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-06-30 01:51:28]:/var/www/html/app/Controller/Admin/Api/Plugin.php:130<br>Class "Kernel\Util\Opcache" not found
+[2026-06-30 01:52:27]:/var/www/html/kernel/Context/Request.php:11<br>strtoupper(): Argument #1 ($string) must be of type string, null given
+[2026-06-30 01:52:37]:/var/www/html/kernel/Context/Request.php:11<br>strtoupper(): Argument #1 ($string) must be of type string, null given
+[2026-06-30 02:01:16]:/var/www/html/app/Controller/Admin/Api/Plugin.php:130<br>Class "Kernel\Util\Opcache" not found
+[2026-06-30 02:04:03]:/var/www/html/app/Controller/Admin/Api/Plugin.php:130<br>Class "Kernel\Util\Opcache" not found
+[2026-06-30 02:13:45]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-06-30 02:16:07]:/var/www/html/vendor/illuminate/database/Connection.php:671<br>SQLSTATE[22003]: Numeric value out of range: 1264 Out of range value for column 'sort' at row 1 (SQL: update `acg_category` set `sort` = -1 where `id` = 491)
+[2026-06-30 02:21:09]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
