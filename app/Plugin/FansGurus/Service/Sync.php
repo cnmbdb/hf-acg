@@ -57,8 +57,8 @@ class Sync
                     continue;
                 }
 
-                $upstreamCategory = (string)($service['category'] ?? 'FansGurus');
-                $categoryKey = trim($upstreamCategory) !== '' ? trim($upstreamCategory) : 'FansGurus';
+                $upstreamCategory = $this->categoryName($service);
+                $categoryKey = trim($upstreamCategory) !== '' ? trim($upstreamCategory) : '其他服务';
                 if (!isset($categories[$categoryKey])) {
                     $categories[$categoryKey] = $this->syncCategory($upstreamCategory, $config, $stats);
                 }
@@ -129,6 +129,56 @@ class Sync
 
         $stats[$created ? 'categories_created' : 'categories_updated']++;
         return $category;
+    }
+
+    private function categoryName(array $service): string
+    {
+        $text = mb_strtolower(
+            html_entity_decode(
+                trim((string)($service['category'] ?? '') . ' ' . (string)($service['name'] ?? '')),
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8'
+            ),
+            'UTF-8'
+        );
+
+        $matches = [
+            'Instagram' => ['instagram', 'ig ', 'ig-', 'ins ', 'ins-', 'threads'],
+            'TikTok' => ['tiktok', 'tik tok', '抖音'],
+            'X/Twitter' => ['twitter', 'tweet', 'retweet', 'x ', 'x-', '𝕏'],
+            'YouTube' => ['youtube', 'youtu.be', 'yt ', 'yt-', '视频/短片', '视频喜欢', '观看次数'],
+            'Telegram' => ['telegram', '电报'],
+            'Facebook' => ['facebook', 'fb ', 'fb-'],
+            'VK' => ['vk ', 'vk-', 'vkontakte'],
+            'Spotify' => ['spotify'],
+            'Discord' => ['discord'],
+            'Twitch' => ['twitch'],
+            'Reddit' => ['reddit'],
+            'LinkedIn' => ['linkedin'],
+            'Crypto' => ['bitcoin', 'crypto', 'binance', '币安', 'btc', '加密'],
+            'GitHub' => ['github'],
+            'Quora' => ['quora'],
+            'WhatsApp' => ['whatsapp'],
+            'LINE' => ['line '],
+            'Google/Maps' => ['google', 'maps', '谷歌', '地图'],
+            'Trustpilot' => ['trustpilot'],
+            'Website Traffic' => ['website', 'traffic', 'site ', '网站', '流量', '访问量'],
+            'Apple/App Store' => ['apple', 'app store', 'ios', 'iphone'],
+            'Android/Google Play' => ['android', 'google play'],
+            'SoundCloud' => ['soundcloud'],
+            'Pinterest' => ['pinterest'],
+            'Snapchat' => ['snapchat'],
+        ];
+
+        foreach ($matches as $category => $needles) {
+            foreach ($needles as $needle) {
+                if (str_contains($text, mb_strtolower($needle, 'UTF-8'))) {
+                    return $category;
+                }
+            }
+        }
+
+        return '其他服务';
     }
 
     private function syncCommodity(Category $category, array $service, array $config, int $action, array &$stats): ?Commodity
@@ -243,6 +293,7 @@ class Sync
         $rows = [
             '<p>FansGurus 上游自动同步商品。</p>',
             '<p>上游服务ID：' . htmlspecialchars((string)($service['service'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
+            '<p>上游分类：' . htmlspecialchars((string)($service['category'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
             '<p>类型：' . htmlspecialchars((string)($service['type'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>',
             '<p>上游价格：' . htmlspecialchars((string)($service['rate'] ?? '0'), ENT_QUOTES, 'UTF-8') . ' / 1000</p>',
             '<p>购买范围：' . (int)($service['min'] ?? 0) . ' - ' . (int)($service['max'] ?? 0) . '</p>',
