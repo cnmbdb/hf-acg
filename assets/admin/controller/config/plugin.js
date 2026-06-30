@@ -73,6 +73,29 @@
         });
     }
 
+    const fansGurusSyncMenu = row => {
+        const pid = util.generateRandStr(10);
+        layer.open({
+            type: 1,
+            shade: 0.35,
+            shadeClose: true,
+            title: '<i class="fa-duotone fa-regular fa-arrows-rotate"></i> FansGurus 同步',
+            area: util.isPc() ? ['360px', 'auto'] : ['92%', 'auto'],
+            content: `<div id="${pid}" class="p-4">
+                <button type="button" data-action="1" data-label="更新上游商品分类" class="btn btn-light-info w-100 mb-3"><i class="fa-duotone fa-regular fa-folder-tree"></i> 更新上游商品分类</button>
+                <button type="button" data-action="2" data-label="更新上游商品" class="btn btn-light-success w-100 mb-3"><i class="fa-duotone fa-regular fa-boxes-stacked"></i> 更新上游商品</button>
+                <button type="button" data-action="3" data-label="更新上游商品价格" class="btn btn-light-warning w-100 mb-3"><i class="fa-duotone fa-regular fa-tags"></i> 更新上游商品价格</button>
+                <button type="button" data-action="4" data-label="批量设置价格浮动" class="btn btn-light-danger w-100"><i class="fa-duotone fa-regular fa-percent"></i> 批量设置价格浮动</button>
+            </div>`,
+            success: (layero, index) => {
+                layero.find(`#${pid} button`).click(function () {
+                    layer.close(index);
+                    fansGurusSync(row, $(this).data('action'), $(this).data('label'));
+                });
+            }
+        });
+    }
+
     table = new Table("/admin/api/plugin/getPlugins", "#plugin-table");
     table.setColumns([
         {checkbox: true},
@@ -127,39 +150,12 @@
                     }
                 },
                 {
-                    icon: 'fa-duotone fa-regular fa-folder-tree',
+                    icon: 'fa-duotone fa-regular fa-arrows-rotate',
                     class: 'text-info',
-                    title: '更新上游商品分类',
+                    title: '同步上游',
                     show: item => item.id === 'FansGurus',
                     click: (event, value, row, index) => {
-                        fansGurusSync(row, 1, '更新上游商品分类');
-                    }
-                },
-                {
-                    icon: 'fa-duotone fa-regular fa-boxes-stacked',
-                    class: 'text-success',
-                    title: '更新上游商品',
-                    show: item => item.id === 'FansGurus',
-                    click: (event, value, row, index) => {
-                        fansGurusSync(row, 2, '更新上游商品');
-                    }
-                },
-                {
-                    icon: 'fa-duotone fa-regular fa-tags',
-                    class: 'text-warning',
-                    title: '更新上游商品价格',
-                    show: item => item.id === 'FansGurus',
-                    click: (event, value, row, index) => {
-                        fansGurusSync(row, 3, '更新上游商品价格');
-                    }
-                },
-                {
-                    icon: 'fa-duotone fa-regular fa-percent',
-                    class: 'text-danger',
-                    title: '批量设置价格浮动',
-                    show: item => item.id === 'FansGurus',
-                    click: (event, value, row, index) => {
-                        fansGurusSync(row, 4, '批量设置价格浮动');
+                        fansGurusSyncMenu(row);
                     }
                 },
                 {

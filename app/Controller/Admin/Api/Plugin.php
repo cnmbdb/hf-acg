@@ -127,7 +127,7 @@ class Plugin extends Manage
 
         $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
         if (is_file($configFile)) {
-            \Kernel\Util\Opcache::invalidate($configFile);
+            \App\Util\Opcache::invalidate($configFile);
             $hookConfig = require $configFile;
             if (is_array($hookConfig)) {
                 $config = array_replace($hookConfig, $config);
