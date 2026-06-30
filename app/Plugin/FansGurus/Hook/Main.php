@@ -22,13 +22,15 @@ class Main
     #[PluginState(state: PluginState::START)]
     public function start(): void
     {
-        $this->log('插件已启动');
+        $changed = $this->setSyncedGoodsStatus(1);
+        $this->log("插件已启动，已上架同步商品{$changed['commodities']}个、分类{$changed['categories']}个");
     }
 
     #[PluginState(state: PluginState::STOP)]
     public function stop(): void
     {
-        $this->log('插件已停止');
+        $changed = $this->setSyncedGoodsStatus(0);
+        $this->log("插件已停止，已下架同步商品{$changed['commodities']}个、分类{$changed['categories']}个");
     }
 
     #[PluginState(state: PluginState::SAVE_CONFIG)]
@@ -121,6 +123,31 @@ class Main
     private function config(): array
     {
         return Plugin::getConfig(self::PLUGIN, false);
+    }
+
+    private function setSyncedGoodsStatus(int $status): array
+    {
+        $categoryIds = Commodity::query()
+            ->where('code', 'like', 'FG_%')
+            ->whereNotNull('category_id')
+            ->distinct()
+            ->pluck('category_id')
+            ->filter()
+            ->values()
+            ->all();
+
+        $commodities = Commodity::query()
+            ->where('code', 'like', 'FG_%')
+            ->update(['status' => $status]);
+
+        $categories = 0;
+        if ($categoryIds) {
+            $categories = \App\Model\Category::query()
+                ->whereIn('id', $categoryIds)
+                ->update(['status' => $status]);
+        }
+
+        return ['commodities' => $commodities, 'categories' => $categories];
     }
 
     /**
