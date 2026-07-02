@@ -55,6 +55,22 @@ class Config extends Manage
             @unlink(BASE_PATH . $file);
         }
         try {
+            $currentUserTheme = (string)CFG::get('user_theme');
+            if ($currentUserTheme === 'Xiaohu' && ($post['user_theme'] ?? '') !== 'Xiaohu' && empty($post['user_theme_changed'])) {
+                $post['user_theme'] = $currentUserTheme;
+            }
+
+            if (($post['user_center_theme'] ?? '') === 'Xiaohu') {
+                if (($post['user_theme'] ?? '') === 'Cartoon') {
+                    $post['user_theme'] = 'Xiaohu';
+                }
+                $post['user_center_theme'] = 'Cartoon';
+            }
+
+            if (($post['user_mobile_theme'] ?? '') === 'Xiaohu') {
+                $post['user_mobile_theme'] = '0';
+            }
+
             if (isset($post['ip_get_mode'])) {
                 Client::setClientMode((int)$post['ip_get_mode']);
             }
@@ -71,7 +87,9 @@ class Config extends Manage
             throw new JSONException("保存失败，请检查原因");
         }
 
-        _plugin_start($post['user_theme'], true);
+        if (($post['user_theme'] ?? '') !== 'Xiaohu') {
+            _plugin_start($post['user_theme'], true);
+        }
         ManageLog::log($this->getManage(), "修改了网站设置");
         return $this->json(200, '保存成功');
     }

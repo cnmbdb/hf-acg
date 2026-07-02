@@ -119,6 +119,10 @@
             themes[item.info.KEY] = item;
         });
 
+        $('select[name=user_theme]').one('change', function () {
+            $('#data-form').append('<input type="hidden" name="user_theme_changed" value="1">');
+        });
+
         function modal(values = {}) {
             let submit = [];
             if (typeof values.submit === "object") {

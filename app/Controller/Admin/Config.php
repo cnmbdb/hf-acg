@@ -5,6 +5,7 @@ namespace App\Controller\Admin;
 
 use App\Controller\Base\View\Manage;
 use App\Interceptor\ManageSession;
+use App\Model\Config as CFG;
 use App\Util\Client;
 use App\Util\Theme;
 use Kernel\Annotation\Interceptor;
@@ -38,6 +39,13 @@ class Config extends Manage
      */
     public function index(): string
     {
+        if (CFG::get("user_center_theme") === "Xiaohu") {
+            CFG::put("user_center_theme", "Cartoon");
+        }
+
+        if (CFG::get("user_mobile_theme") === "Xiaohu") {
+            CFG::put("user_mobile_theme", "0");
+        }
 
         $modes = [
             'REMOTE_ADDR',

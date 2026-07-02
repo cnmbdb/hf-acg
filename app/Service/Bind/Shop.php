@@ -102,6 +102,10 @@ class Shop implements \App\Service\Shop
                 }
             }
 
+            if (isset($category[$index]['name'])) {
+                $category[$index]['name'] = $this->cleanCategoryName((string)$category[$index]['name']);
+            }
+
             if (!$item->icon) {
                 $category[$index]['icon'] = '/favicon.ico';
             }
@@ -127,6 +131,13 @@ class Shop implements \App\Service\Shop
         }
 
         return $array;
+    }
+
+    private function cleanCategoryName(string $name): string
+    {
+        $name = trim(html_entity_decode(strip_tags($name), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $name = preg_replace('/^(?:HStockPlus|HStock\s*Plus)\s*[-_：:|]*\s*/iu', '', $name) ?? $name;
+        return trim($name);
     }
 
     /**

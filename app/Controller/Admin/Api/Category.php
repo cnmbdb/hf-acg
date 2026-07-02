@@ -40,8 +40,9 @@ class Category extends Manage
      */
     public function data(): array
     {
-        $map = $_POST;
+        $map = $this->normalizeHStockPlusSearch($_POST);
         $get = new Get(\App\Model\Category::class);
+        $get->setPaginate((int)$this->request->post("page"), (int)$this->request->post("limit"));
         $get->setWhere($map);
         $get->setOrderBy(...$this->query->getOrderBy($map, "sort", "asc"));
         $data = $this->query->get($get, function (Builder $builder) use ($map) {
@@ -57,10 +58,46 @@ class Category extends Manage
         });
 
         foreach ($data['list'] as &$item) {
+            if (isset($item['name']) && is_scalar($item['name'])) {
+                $item['name'] = $this->cleanHStockPlusTitle((string)$item['name']);
+            }
             $item['share_url'] = Client::getUrl() . "/cat/{$item['id']}";
         }
 
         return $this->json(data: $data);
+    }
+
+    private function cleanHStockPlusTitle(string $value): string
+    {
+        $value = trim(html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $value = preg_replace('/^(?:HStockPlus|HStock\s*Plus)\s*[-_：:|]*\s*/iu', '', $value) ?? $value;
+        return trim($value);
+    }
+
+    private function normalizeHStockPlusSearch(array $map): array
+    {
+        foreach (['search-name', 'search·name'] as $key) {
+            if (!isset($map[$key]) || !is_scalar($map[$key])) {
+                continue;
+            }
+
+            $raw = trim(urldecode((string)$map[$key]));
+            if ($raw === '') {
+                continue;
+            }
+
+            $clean = $this->cleanHStockPlusTitle($raw);
+            if ($clean === '' || preg_match('/^(?:HStockPlus|HStock\s*Plus)\s*[-_：:|]*$/iu', $raw)) {
+                unset($map[$key]);
+                continue;
+            }
+
+            if ($clean !== $raw) {
+                $map[$key] = $clean;
+            }
+        }
+
+        return $map;
     }
 
 

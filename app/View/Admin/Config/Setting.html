@@ -143,12 +143,14 @@
                                         <option value="0" #{if "0" == $config.user_mobile_theme}selected #{/if}>跟随PC模板
                                         </option>
                                         #{foreach $themes as $theme}
-                                            <option value="#{$theme.info.KEY}" #{if $theme.info.KEY== $config.user_mobile_theme}
-                                            selected #{/if}>#{$theme.info.NAME} (v#{$theme.info.VERSION})
-                                                #{if $theme.have_update === true}
-                                                    -> 有更新(v#{$theme.update_version}) ‹ 请前往应用商店更新 ›
-                                                #{/if}
-                                            </option>
+                                            #{if $theme.info.KEY != "Xiaohu"}
+                                                <option value="#{$theme.info.KEY}" #{if $theme.info.KEY== $config.user_mobile_theme}
+                                                selected #{/if}>#{$theme.info.NAME} (v#{$theme.info.VERSION})
+                                                    #{if $theme.have_update === true}
+                                                        -> 有更新(v#{$theme.update_version}) ‹ 请前往应用商店更新 ›
+                                                    #{/if}
+                                                </option>
+                                            #{/if}
                                         #{/foreach}
                                     </select>
                                     <!--end::Input-->
@@ -174,12 +176,14 @@
                                     <select name="user_center_theme" class="form-select form-select-solid form-select-lg"
                                             data-control="select2" data-hide-search="true">
                                         #{foreach $themes as $theme}
-                                            <option value="#{$theme.info.KEY}" #{if $theme.info.KEY== $config.user_center_theme} selected #{/if}>
-                                                #{$theme.info.NAME} (v#{$theme.info.VERSION})
-                                                #{if $theme.have_update === true}
-                                                    -> 有更新(v#{$theme.update_version}) ‹ 请前往应用商店更新 ›
+                                            #{if $theme.info.KEY != "Xiaohu"}
+                                                <option value="#{$theme.info.KEY}" #{if $theme.info.KEY== $config.user_center_theme} selected #{/if}>
+                                                    #{$theme.info.NAME} (v#{$theme.info.VERSION})
+                                                    #{if $theme.have_update === true}
+                                                        -> 有更新(v#{$theme.update_version}) ‹ 请前往应用商店更新 ›
+                                                    #{/if}
+                                                </option>
                                                 #{/if}
-                                            </option>
                                         #{/foreach}
                                     </select>
                                     <!--end::Input-->
@@ -563,5 +567,5 @@
 </div>
 <!--end::Content-->
 
-#{ready("/assets/admin/controller/config/index.js")}
+#{ready("/assets/admin/controller/config/index.js?v=2026063001")}
 #{include file="../Footer.html"}

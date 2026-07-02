@@ -31,6 +31,7 @@ class Plugin extends Manage
         foreach ($plugins as $key => $plugin) {
 
             $plugins[$key]["id"] = $plugin[\App\Consts\Plugin::PLUGIN_NAME];
+            $plugins[$key]["HAS_CONFIG"] = isset($plugin[\App\Consts\Plugin::PLUGIN_SUBMIT]) && !empty($plugin[\App\Consts\Plugin::PLUGIN_SUBMIT]);
             if (!array_key_exists($plugins[$key]["id"], $appStore)) {
                 $plugins[$key]['icon'] = "/favicon.ico";
             } else {
@@ -73,7 +74,37 @@ class Plugin extends Manage
             return ($b['HAVE_UPDATE'] ?? false) <=> ($a['HAVE_UPDATE'] ?? false);
         });
 
+        foreach ($plugins as &$plugin) {
+            $plugin[\App\Consts\Plugin::PLUGIN_SUBMIT] = [];
+            $plugin[\App\Consts\Plugin::PLUGIN_CONFIG] = [
+                'STATUS' => (int)($plugin[\App\Consts\Plugin::PLUGIN_CONFIG]['STATUS'] ?? 0),
+                'top' => (int)($plugin[\App\Consts\Plugin::PLUGIN_CONFIG]['top'] ?? 0),
+            ];
+        }
+        unset($plugin);
+
         return $this->json(200, 'success', ["list" => $plugins]);
+    }
+
+    /**
+     * @return array
+     * @throws JSONException
+     */
+    public function getConfig(): array
+    {
+        $id = $this->request->get("id") ?: $this->request->post("id");
+
+        if (!$id) {
+            throw new JSONException("插件不存在");
+        }
+
+        $plugin = \Kernel\Util\Plugin::getPlugin($id, false);
+        if (!$plugin) {
+            throw new JSONException("插件不存在");
+        }
+
+        $plugin["id"] = $id;
+        return $this->json(200, 'success', $plugin);
     }
 
     /**
@@ -134,7 +165,7 @@ class Plugin extends Manage
                 foreach ($map as $k => $v) {
                     $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
                 }
-                if ($id === 'FansGurus' && array_key_exists('sync_action', $hookConfig)) {
+                if (in_array($id, ['FansGurus', 'HStockPlus'], true) && array_key_exists('sync_action', $hookConfig)) {
                     $config['sync_action'] = $hookConfig['sync_action'];
                 }
             }
