@@ -27,7 +27,133 @@
     "#{$static}/assets/index.css"
     ])}
     #{js("/assets/common/js/ready.js")}
-    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260620-9">
+    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260702-2">
+    <style>
+        .xh-tools {
+            position: relative;
+        }
+
+        .xh-tools-toggle {
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .xh-tools-chevron {
+            margin-left: -2px;
+            font-size: .86rem;
+            transition: transform .18s ease;
+        }
+
+        .xh-tools-toggle[aria-expanded="true"] .xh-tools-chevron {
+            transform: rotate(180deg);
+        }
+
+        .xh-tools-menu {
+            position: absolute;
+            left: 50%;
+            top: calc(100% + 14px);
+            z-index: 70;
+            width: 318px;
+            display: none;
+            padding: 18px 0;
+            background: #fff;
+            border: 1px solid rgba(225, 226, 231, .95);
+            border-radius: 8px;
+            box-shadow: 0 20px 46px rgba(14, 16, 22, .14);
+            transform: translateX(-50%);
+        }
+
+        .xh-tools-menu::before {
+            content: "";
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-left: 1px solid rgba(225, 226, 231, .95);
+            border-top: 1px solid rgba(225, 226, 231, .95);
+            transform: translateX(-50%) rotate(45deg);
+        }
+
+        .xh-tools-menu.is-open {
+            display: block;
+        }
+
+        .xh-tools-menu a {
+            min-height: 62px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 28px;
+            color: #34373d;
+            font-size: 1.34rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .xh-tools-menu a:nth-child(4) {
+            margin-top: 12px;
+            padding-top: 14px;
+            border-top: 1px solid #ebecf0;
+        }
+
+        .xh-tools-menu a:hover {
+            background: #f7f8fa;
+        }
+
+        .xh-tools-menu a i {
+            width: 24px;
+            min-width: 24px;
+            color: #3d3f45;
+            font-size: 1.22rem;
+            text-align: center;
+        }
+
+        .xh-tools-menu a:nth-child(2) i {
+            color: #ef2a2d;
+        }
+
+        .xh-mobile-tools {
+            display: grid;
+            gap: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid rgba(222, 223, 229, .9);
+            border-radius: 18px;
+            background: #f7f8fa;
+        }
+
+        .xh-mobile-tools-title,
+        .xh-mobile-tool-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .xh-mobile-tools-title {
+            min-height: 34px;
+            color: #1f232b;
+            font-weight: 900;
+        }
+
+        .xh-mobile-tool-link {
+            min-height: 42px;
+            padding: 0 12px;
+            color: #34373d;
+            background: #fff;
+            border: 1px solid rgba(222, 223, 229, .75);
+            border-radius: 14px;
+            font-weight: 850;
+        }
+
+        @media (max-width: 820px) {
+            .xh-tools-menu {
+                display: none !important;
+            }
+        }
+    </style>
     #{index_var()}
     <!--start::HOOK-->
     #{hook(\App\Consts\Hook::USER_GLOBAL_VIEW_HEADER)}
@@ -56,6 +182,39 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
+        <div class="xh-tools">
+            <button class="xh-navlink xh-tools-toggle" type="button" aria-label="打开2FA工具箱" aria-expanded="false" data-tools-toggle>
+                <i class="fa-duotone fa-regular fa-wrench"></i>
+                <span>2FA工具箱</span>
+                <i class="fa-duotone fa-regular fa-chevron-down xh-tools-chevron"></i>
+            </button>
+            <div class="xh-tools-menu" data-tools-menu aria-hidden="true">
+                <a href="https://5173rhao.cc/2fa/" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-house"></i>
+                    <span>2FA 生成工具</span>
+                </a>
+                <a href="https://trx.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-paper-plane"></i>
+                    <span>波场一键多签</span>
+                </a>
+                <a href="https://app.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-grid-2"></i>
+                    <span>海外APP下载</span>
+                </a>
+                <a href="https://2fa.fun/index.html" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-circle-question"></i>
+                    <span>账户存活检测</span>
+                </a>
+                <a href="https://doc.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-circle-question"></i>
+                    <span>账户使用教程①</span>
+                </a>
+                <a href="https://doc2.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-duotone fa-regular fa-circle-question"></i>
+                    <span>账户使用教程②</span>
+                </a>
+            </div>
+        </div>
         <a class="xh-navlink xh-notice-trigger" href="javascript:void(0);" data-notice-trigger>
             <i class="fa-duotone fa-regular fa-bullhorn"></i>
             <span data-i18n="notice">公告</span>
@@ -119,6 +278,36 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
+        <div class="xh-mobile-tools">
+            <div class="xh-mobile-tools-title">
+                <i class="fa-duotone fa-regular fa-wrench"></i>
+                <span>2FA工具箱</span>
+            </div>
+            <a class="xh-mobile-tool-link" href="https://5173rhao.cc/2fa/" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-house"></i>
+                <span>2FA 生成工具</span>
+            </a>
+            <a class="xh-mobile-tool-link" href="https://trx.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-paper-plane"></i>
+                <span>波场一键多签</span>
+            </a>
+            <a class="xh-mobile-tool-link" href="https://app.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-grid-2"></i>
+                <span>海外APP下载</span>
+            </a>
+            <a class="xh-mobile-tool-link" href="https://2fa.fun/index.html" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-circle-question"></i>
+                <span>账户存活检测</span>
+            </a>
+            <a class="xh-mobile-tool-link" href="https://doc.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-circle-question"></i>
+                <span>账户使用教程①</span>
+            </a>
+            <a class="xh-mobile-tool-link" href="https://doc2.web-ai.top/" target="_blank" rel="noopener noreferrer">
+                <i class="fa-duotone fa-regular fa-circle-question"></i>
+                <span>账户使用教程②</span>
+            </a>
+        </div>
         <a class="xh-mobile-link" href="javascript:void(0);" data-notice-trigger>
             <i class="fa-duotone fa-regular fa-bullhorn"></i>
             <span data-i18n="notice">公告</span>
@@ -183,6 +372,8 @@
         var noticeModal = document.querySelector("[data-notice-modal]");
         var mobileMenu = document.querySelector("[data-mobile-menu]");
         var mobileToggle = document.querySelector("[data-mobile-menu-toggle]");
+        var toolsMenu = document.querySelector("[data-tools-menu]");
+        var toolsToggle = document.querySelector("[data-tools-toggle]");
 
         function closeMobileMenu() {
             if (!mobileMenu) return;
@@ -207,6 +398,24 @@
             document.body.classList.remove("xh-modal-open");
         }
 
+        function closeToolsMenu() {
+            if (!toolsMenu) return;
+            toolsMenu.classList.remove("is-open");
+            toolsMenu.setAttribute("aria-hidden", "true");
+            if (toolsToggle) toolsToggle.setAttribute("aria-expanded", "false");
+        }
+
+        function toggleToolsMenu() {
+            if (!toolsMenu) return;
+            if (toolsMenu.classList.contains("is-open")) {
+                closeToolsMenu();
+                return;
+            }
+            toolsMenu.classList.add("is-open");
+            toolsMenu.setAttribute("aria-hidden", "false");
+            if (toolsToggle) toolsToggle.setAttribute("aria-expanded", "true");
+        }
+
         function toggleMobileMenu() {
             if (!mobileMenu) return;
             if (mobileMenu.classList.contains("is-open")) {
@@ -220,8 +429,19 @@
         }
 
         document.addEventListener("click", function (event) {
+            if (event.target.closest("[data-tools-toggle]")) {
+                event.preventDefault();
+                toggleToolsMenu();
+                return;
+            }
+
+            if (!event.target.closest(".xh-tools")) {
+                closeToolsMenu();
+            }
+
             if (event.target.closest("[data-notice-trigger]")) {
                 event.preventDefault();
+                closeToolsMenu();
                 openNotice();
                 return;
             }
@@ -255,6 +475,7 @@
 
         document.addEventListener("keydown", function (event) {
             if (event.key !== "Escape") return;
+            closeToolsMenu();
             closeNotice();
             closeMobileMenu();
         });
