@@ -10,6 +10,7 @@ use App\Entity\Query\Get;
 use App\Interceptor\UserVisitor;
 use App\Interceptor\Waf;
 use App\Model\Card;
+use App\Model\Category;
 use App\Model\Commodity;
 use App\Model\Config;
 use App\Model\Order;
@@ -18,6 +19,7 @@ use App\Model\UserCommodity;
 use App\Service\Query;
 use App\Service\Shared;
 use App\Service\Shop;
+use App\Service\Bind\Shop as ShopBind;
 use App\Util\Client;
 use App\Util\Tree;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,7 +51,9 @@ class Index extends User
      */
     public function data(): array
     {
-        $category = Tree::generate($this->shop->getCategory($this->getUserGroup()));
+        $source = ShopBind::normalizeSource((string)($_GET['source'] ?? '')) ?: 'fansgurus';
+        $category = Tree::generate($this->shop->getCategory($this->getUserGroup(), $source));
+        $category = $this->shop->normalizeCategoryTree($category);
         hook(Hook::USER_API_INDEX_CATEGORY_LIST, $category);
         return $this->json(200, "success", $category);
     }
@@ -65,6 +69,8 @@ class Index extends User
         $limit = (int)$_GET['limit'];
         $page = (int)$_GET['page'];
         $categoryId = $_GET['categoryId'];
+        $source = ShopBind::normalizeSource((string)($_GET['source'] ?? '')) ?: 'fansgurus';
+        $subcategory = trim(rawurldecode((string)($_GET['subcategory'] ?? '')));
 
         $commodity = Commodity::query()
             ->with(['owner' => function (Relation $relation) {
@@ -75,12 +81,20 @@ class Index extends User
 
         if ($categoryId == 'recommend') {
             $commodity = $commodity->where("recommend", 1);
+        } elseif ($subcategory !== '' && ctype_digit($subcategory)) {
+            $commodity = $commodity->where("category_id", (int)$subcategory);
         } elseif ($categoryId != 0) {
-            $commodity = $commodity->where("category_id", $categoryId);
+            $commodity = $commodity->whereIn("category_id", $this->categoryAndDescendantIds((int)$categoryId));
         }
 
         if ($keywords != "") {
             $commodity = $commodity->where('name', 'like', '%' . $keywords . '%');
+        }
+
+        ShopBind::applySourceFilter($commodity, $source);
+
+        if ($subcategory !== '' && !ctype_digit($subcategory)) {
+            $commodity = $commodity->where('config', 'like', '%' . str_replace(['%', '_'], ['\\%', '\\_'], $subcategory) . '%');
         }
 
         $bus = \App\Model\Business::get();
@@ -129,7 +143,7 @@ class Index extends User
                 'id', 'name', 'cover',
                 'status', 'delivery_way', 'price',
                 'user_price',
-                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id'
+                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id', 'config'
             ])
             ->withCount(['order as order_sold' => function (Builder $relation) {
                 $relation->where("delivery_status", 1);
@@ -150,11 +164,12 @@ class Index extends User
         $user = $this->getUser();
         $userGroup = $this->getUserGroup();
         //取得分类
-        $category = $this->shop->getCategory($userGroup);
-        $cates = [];
+        $category = $this->shop->getCategory($userGroup, $source);
+        $cates = array_map('strval', $this->shop->getSourceVisibleCategoryIds($source));
         foreach ($category as $cate) {
             $cates[] = (string)$cate['id'];
         }
+        $cates = array_values(array_unique($cates));
 
         //最终的商品数据遍历
         foreach ($data as $key => $val) {
@@ -177,6 +192,7 @@ class Index extends User
             }
 
             unset(
+                $data[$key]['config'],
                 $data[$key]['level_price'],
                 $data[$key]['level_disable']
             );
@@ -210,6 +226,31 @@ class Index extends User
         $json = $this->json(200, "success", $data);
         $json['total'] = $total;
         return $json;
+    }
+
+    private function categoryAndDescendantIds(int $categoryId): array
+    {
+        if ($categoryId <= 0) {
+            return [];
+        }
+
+        $ids = [$categoryId];
+        $frontier = [$categoryId];
+        while ($frontier) {
+            $children = Category::query()
+                ->whereIn('pid', $frontier)
+                ->pluck('id')
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $children = array_values(array_diff($children, $ids));
+            if (!$children) {
+                break;
+            }
+            array_push($ids, ...$children);
+            $frontier = $children;
+        }
+
+        return $ids;
     }
 
     /**

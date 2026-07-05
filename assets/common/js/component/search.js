@@ -152,7 +152,7 @@ class Search {
         if (item.hasOwnProperty('dict')) {
             _Dict.advanced(item.dict, res => {
                 res.forEach(s => {
-                    selectInstance.append(' <option value="' + s.id + '"  ' + (parseInt(item.default) === parseInt(s.id) ? "selected" : "") + '>' + s.name.replace(/(<([^>]+)>)/ig, "") + '</option>');
+                    selectInstance.append(' <option value="' + s.id + '"  ' + (String(item.default ?? '') === String(s.id) ? "selected" : "") + '>' + s.name.replace(/(<([^>]+)>)/ig, "") + '</option>');
                 });
                 layui.form.render();
             });

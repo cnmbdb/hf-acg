@@ -21,7 +21,16 @@
       <div class="mb-3">
         <div class="chip-list">
             #{foreach $category as $cate}
-                <a data-id="#{$cate.id}" class="switch-category chip #{if $cate@first && $categoryId == 0} is-primary #{elseif $cate.id == $categoryId} is-primary #{/if}" href="javascript:void(0);">#{if $cate.id != 'recommend'}<span class="chip-icon" style="background: url('#{$cate.icon}') center/cover no-repeat;"></span>#{/if}#{$cate.name}</a>
+                <div class="chip-group" data-category-group="#{$cate.id}">
+                    <a data-id="#{$cate.id}" class="switch-category chip #{if $cate@first && $categoryId == 0} is-primary #{elseif $cate.id == $categoryId} is-primary #{/if}" href="javascript:void(0);">#{if $cate.id != 'recommend'}<span class="chip-icon" style="background: url('#{$cate.icon}') center/cover no-repeat;"></span>#{/if}#{$cate.name}</a>
+                    <div class="chip-list subchip-list">
+                        #{if !empty($cate.subcategories)}
+                            #{foreach $cate.subcategories as $sub}
+                                <button type="button" class="switch-subcategory chip subchip" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">#{$sub.name}</button>
+                            #{/foreach}
+                        #{/if}
+                    </div>
+                </div>
             #{/foreach}
         </div>
       </div>

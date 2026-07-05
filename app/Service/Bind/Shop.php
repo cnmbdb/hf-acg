@@ -27,6 +27,11 @@ use Kernel\Util\Decimal;
 
 class Shop implements \App\Service\Shop
 {
+    private const SOURCE_PREFIX = [
+        'hstockplus' => 'HSP_',
+        'fansgurus' => 'FG_',
+    ];
+
     #[Inject]
     private Shared $shared;
 
@@ -38,11 +43,19 @@ class Shop implements \App\Service\Shop
      * @return array
      * @throws RuntimeException
      */
-    public function getCategory(?UserGroup $group): array
+    public function getCategory(?UserGroup $group, ?string $source = null): array
     {
-        $category = Category::query()->withCount(['children as commodity_count' => function (Builder $builder) {
-            $builder->where("status", 1);
-        }])->where("status", 1)->orderBy("sort", "asc");
+        $source = self::normalizeSource($source);
+        $sourceCategoryIds = $this->sourceVisibleCategoryIds($source);
+        $category = Category::query();
+        if ($source) {
+            $category = $sourceCategoryIds
+                ? $category->whereIn("id", $sourceCategoryIds)
+                : $category->whereRaw("1=0");
+        } else {
+            $category = $category->where("status", 1);
+        }
+        $category = $category->orderBy("sort", "asc");
 
         $bus = Business::get();
         $userCategoryMap = []; //自定义名称的MAP
@@ -113,24 +126,526 @@ class Shop implements \App\Service\Shop
 
         $array = $category->toArray();
         $array = array_values($array);
+        $this->hydrateCategoryTreeMeta($array, $source);
+        $this->normalizeSourceTopCategories($array, $source);
 
         $commodityRecommend = Config::get("commodity_recommend");
         if ($commodityRecommend == 1 && $master) {
+            $recommend = Commodity::query()->where("status", 1)->where("recommend", 1);
+            $this->applySourceFilter($recommend, $source);
             array_unshift($array, [
                 "id" => 'recommend',
                 "name" => Config::get("commodity_name"),
                 "sort" => 1,
                 "create_time" => "-",
                 "owner" => 0,
+                "pid" => null,
                 "icon" => "/assets/static/images/recommend.png",
                 "status" => 1,
                 "hide" => 0,
                 "user_level_config" => null,
-                "commodity_count" => Commodity::query()->where("status", 1)->where("recommend", 1)->count(),
+                "commodity_count" => $recommend->count(),
+                "subcategories" => [],
             ]);
         }
 
         return $array;
+    }
+
+    private function sourceVisibleCategoryIds(?string $source): array
+    {
+        return $this->getSourceVisibleCategoryIds($source);
+    }
+
+    private function normalizeSourceTopCategories(array &$categories, ?string $source): void
+    {
+        if (!in_array($source, ['fansgurus', 'hstockplus'], true)) {
+            return;
+        }
+
+        $sortMap = array_flip($source === 'hstockplus' ? $this->hstockplusPlatformCategories() : $this->fansGurusPlatformCategories());
+        foreach ($categories as &$category) {
+            if (!is_numeric($category['id'] ?? null)) {
+                continue;
+            }
+
+            $pid = (int)($category['pid'] ?? 0);
+            if ($pid > 0) {
+                continue;
+            }
+
+            $name = $this->cleanCategoryName((string)($category['name'] ?? ''));
+            $category['name'] = $name;
+            if (isset($sortMap[$name])) {
+                $category['sort'] = ($sortMap[$name] + 1) * 10;
+                $category['icon'] = $source === 'hstockplus' ? $this->hstockplusCategoryIcon($name) : $this->fansGurusCategoryIcon($name);
+                $category['status'] = 1;
+                $category['hide'] = 0;
+            }
+        }
+        unset($category);
+
+        usort($categories, static function (array $a, array $b): int {
+            $aPid = (int)($a['pid'] ?? 0);
+            $bPid = (int)($b['pid'] ?? 0);
+            if ($aPid !== $bPid) {
+                return $aPid <=> $bPid;
+            }
+            return ((int)($a['sort'] ?? 9999) <=> (int)($b['sort'] ?? 9999)) ?: ((int)($a['id'] ?? 0) <=> (int)($b['id'] ?? 0));
+        });
+    }
+
+    private function fansGurusPlatformCategories(): array
+    {
+        return [
+            'Instagram',
+            'TikTok',
+            'X/Twitter',
+            'YouTube',
+            'Telegram',
+            'Facebook',
+            'VK',
+            'Spotify',
+            'Discord',
+            'Twitch',
+            'Reddit',
+            'LinkedIn',
+            'Crypto',
+            'Binance',
+            'GitHub',
+            'Quora',
+            'WhatsApp',
+            'LINE',
+            'Google/Maps',
+            'Trustpilot',
+            'Website Traffic',
+            'Apple/App Store',
+            'Android/Google Play',
+            '其他服务',
+        ];
+    }
+
+    private function hstockplusPlatformCategories(): array
+    {
+        return [
+            '账户',
+            '电子邮件',
+            '增长服务',
+            '代理服务',
+            '短信验证',
+            '评论',
+        ];
+    }
+
+    private function fansGurusCategoryIcon(string $category): string
+    {
+        $icons = [
+            'Instagram' => 'instagram',
+            'TikTok' => 'tiktok',
+            'X/Twitter' => 'twitter',
+            'YouTube' => 'youtube',
+            'Telegram' => 'telegram',
+            'Facebook' => 'facebook',
+            'VK' => 'vk',
+            'Spotify' => 'spotify',
+            'Discord' => 'discord',
+            'Twitch' => 'twitch',
+            'Reddit' => 'reddit',
+            'LinkedIn' => 'linkedin',
+            'Crypto' => 'crypto',
+            'Binance' => 'binance',
+            'GitHub' => 'github',
+            'Quora' => 'quora',
+            'WhatsApp' => 'whatsapp',
+            'LINE' => 'line',
+            'Google/Maps' => 'google-maps',
+            'Trustpilot' => 'trustpilot',
+            'Website Traffic' => 'website-traffic',
+            'Apple/App Store' => 'apple',
+            'Android/Google Play' => 'android',
+            '其他服务' => 'other',
+        ];
+
+        return '/app/Plugin/FansGurus/Assets/icons/' . ($icons[$category] ?? 'other') . '.svg';
+    }
+
+    private function hstockplusCategoryIcon(string $category): string
+    {
+        $icons = [
+            '账户' => 'other',
+            '电子邮件' => 'other',
+            '增长服务' => 'website-traffic',
+            '代理服务' => 'website-traffic',
+            '短信验证' => 'other',
+            '评论' => 'other',
+        ];
+
+        return '/app/Plugin/HStockPlus/Assets/icons/' . ($icons[$category] ?? 'other') . '.svg';
+    }
+
+    public function getSourceVisibleCategoryIds(?string $source = null): array
+    {
+        if (!$source) {
+            return [];
+        }
+
+        $query = Commodity::query()
+            ->where('status', 1)
+            ->whereNotNull('category_id')
+            ->distinct();
+        self::applySourceFilter($query, $source);
+        $ids = $query
+            ->pluck('category_id')
+            ->filter()
+            ->map(static fn($id): int => (int)$id)
+            ->values()
+            ->all();
+
+        $frontier = $ids;
+        while ($frontier) {
+            $parents = Category::query()
+                ->whereIn('id', $frontier)
+                ->pluck('pid')
+                ->filter()
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $parents = array_values(array_diff($parents, $ids));
+            if (!$parents) {
+                break;
+            }
+            array_push($ids, ...$parents);
+            $frontier = $parents;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    public static function normalizeSource(?string $source): ?string
+    {
+        $source = strtolower(trim((string)$source));
+        return array_key_exists($source, self::SOURCE_PREFIX) ? $source : null;
+    }
+
+    public static function sourcePrefix(?string $source): ?string
+    {
+        $source = self::normalizeSource($source);
+        return $source ? self::SOURCE_PREFIX[$source] : null;
+    }
+
+    public static function applySourceFilter(Builder $builder, ?string $source): void
+    {
+        $prefix = self::sourcePrefix($source);
+        if ($prefix) {
+            $builder->where('code', 'like', $prefix . '%');
+        }
+    }
+
+    public static function sourceFromCommodityConfig(array|string|null $config): ?string
+    {
+        $array = is_array($config) ? $config : self::parseCommodityConfig((string)$config);
+        if (isset($array['hstockplus_specs'])) {
+            return 'hstockplus';
+        }
+        if (isset($array['fansgurus_specs'])) {
+            return 'fansgurus';
+        }
+        return null;
+    }
+
+    public static function sourceSubcategoryValue(array|string|null $config, ?string $source = null): string
+    {
+        $array = is_array($config) ? $config : self::parseCommodityConfig((string)$config);
+        $source = self::normalizeSource($source) ?: self::sourceFromCommodityConfig($array);
+        $spec = $source === 'hstockplus' ? ($array['hstockplus_specs'] ?? []) : ($array['fansgurus_specs'] ?? []);
+        if (!is_array($spec)) {
+            return '';
+        }
+
+        $keys = $source === 'hstockplus'
+            ? ['subcategory_name', 'subcategory']
+            : ['type'];
+
+        foreach ($keys as $key) {
+            $value = self::cleanSourceLabel((string)($spec[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $category = self::cleanSourceLabel((string)($spec['category'] ?? ''));
+        $categoryParts = self::splitSourceCategoryLabel($category);
+        if (count($categoryParts) >= 2) {
+            return $categoryParts[1];
+        }
+        if ($source === 'fansgurus' && $category !== '') {
+            return $category;
+        }
+
+        $value = trim((string)($spec['subcategory_id'] ?? ''));
+        return $value;
+    }
+
+    private static function splitSourceCategoryLabel(string $value): array
+    {
+        $value = self::cleanSourceLabel($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $parts = preg_split('/\s*(?:[-_\/|>＞:：]+)\s*/u', $value) ?: [];
+        $parts = array_values(array_filter(array_map([self::class, 'cleanSourceLabel'], $parts), static fn(string $part): bool => $part !== ''));
+        if (count($parts) <= 1) {
+            return $parts;
+        }
+
+        return [$parts[0], implode('-', array_slice($parts, 1))];
+    }
+
+    private static function cleanSourceLabel(string $value): string
+    {
+        return trim(html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    private static function parseCommodityConfig(string $config): array
+    {
+        if (trim($config) === '') {
+            return [];
+        }
+        try {
+            return Ini::toArray($config);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function hydrateCategoryTreeMeta(array &$categories, ?string $source): void
+    {
+        if (!$categories) {
+            return;
+        }
+
+        $childrenByParent = [];
+        $categoryIds = [];
+        foreach ($categories as $category) {
+            if (!is_numeric($category['id'])) {
+                continue;
+            }
+            $id = (int)$category['id'];
+            $categoryIds[] = $id;
+            $pid = (int)($category['pid'] ?? 0);
+            if ($pid > 0) {
+                $childrenByParent[$pid][] = $id;
+            }
+        }
+
+        $directCounts = [];
+        $descendantCounts = [];
+        if ($categoryIds) {
+            $countQuery = Commodity::query()
+                ->where('status', 1)
+                ->whereIn('category_id', $categoryIds)
+                ->selectRaw('category_id, count(*) as aggregate')
+                ->groupBy('category_id');
+            self::applySourceFilter($countQuery, $source);
+            $directCounts = $countQuery->pluck('aggregate', 'category_id')->all();
+        }
+        $fallbackSubcategories = $this->fallbackSourceSubcategories($categoryIds, $source);
+
+        $categoryById = [];
+        foreach ($categories as $category) {
+            if (is_numeric($category['id'])) {
+                $categoryById[(int)$category['id']] = $category;
+            }
+        }
+
+        foreach ($categories as &$category) {
+            if (!is_numeric($category['id'])) {
+                $category['subcategories'] = [];
+                continue;
+            }
+
+            $id = (int)$category['id'];
+            $category['commodity_count'] = $this->categoryCommodityCount($id, $childrenByParent, $directCounts, $descendantCounts);
+
+            $subs = [];
+            foreach ($childrenByParent[$id] ?? [] as $childId) {
+                $count = $this->categoryCommodityCount((int)$childId, $childrenByParent, $directCounts, $descendantCounts);
+                if ($source && $count <= 0) {
+                    continue;
+                }
+                $child = $categoryById[$childId] ?? null;
+                if (!$child) {
+                    continue;
+                }
+                $subs[] = [
+                    'id' => $childId,
+                    'name' => $this->cleanCategoryName((string)$child['name']),
+                    'value' => (string)$childId,
+                    'count' => $count,
+                ];
+            }
+            if (!$subs && isset($fallbackSubcategories[$id])) {
+                $subs = $fallbackSubcategories[$id];
+            }
+            $category['subcategories'] = $subs;
+        }
+        unset($category);
+
+        if ($source) {
+            $visibleIds = [];
+            foreach ($categories as $category) {
+                if (!is_numeric($category['id'])) {
+                    continue;
+                }
+                if ((int)($category['commodity_count'] ?? 0) > 0) {
+                    $visibleIds[(int)$category['id']] = true;
+                    $pid = (int)($category['pid'] ?? 0);
+                    while ($pid > 0 && isset($categoryById[$pid])) {
+                        $visibleIds[$pid] = true;
+                        $pid = (int)($categoryById[$pid]['pid'] ?? 0);
+                    }
+                }
+            }
+            $categories = array_values(array_filter($categories, static fn(array $category): bool => !is_numeric($category['id']) || isset($visibleIds[(int)$category['id']])));
+        }
+    }
+
+    private function descendantCategoryIds(int $parentId, array $childrenByParent): array
+    {
+        $ids = [];
+        foreach ($childrenByParent[$parentId] ?? [] as $childId) {
+            $ids[] = (int)$childId;
+            array_push($ids, ...$this->descendantCategoryIds((int)$childId, $childrenByParent));
+        }
+        return $ids;
+    }
+
+    private function categoryCommodityCount(int $categoryId, array $childrenByParent, array $directCounts, array &$cache): int
+    {
+        if (isset($cache[$categoryId])) {
+            return $cache[$categoryId];
+        }
+
+        $count = (int)($directCounts[$categoryId] ?? 0);
+        foreach ($childrenByParent[$categoryId] ?? [] as $childId) {
+            $count += $this->categoryCommodityCount((int)$childId, $childrenByParent, $directCounts, $cache);
+        }
+
+        return $cache[$categoryId] = $count;
+    }
+
+    public function normalizeCategoryTree(array $category): array
+    {
+        foreach ($category as &$item) {
+            $children = isset($item['children']) && is_array($item['children']) ? $this->normalizeCategoryTree($item['children']) : [];
+            $item['children'] = $children;
+
+            $subcategories = [];
+            foreach ($children as $child) {
+                if (!is_numeric($child['id'] ?? null)) {
+                    continue;
+                }
+                $subcategories[] = [
+                    'id' => (int)$child['id'],
+                    'name' => $this->cleanCategoryName((string)($child['name'] ?? '')),
+                    'value' => (string)$child['id'],
+                    'count' => (int)($child['commodity_count'] ?? 0),
+                ];
+            }
+
+            if (!$subcategories && isset($item['subcategories']) && is_array($item['subcategories'])) {
+                $subcategories = $item['subcategories'];
+            }
+            $item['subcategories'] = $subcategories;
+        }
+        unset($item);
+
+        return $category;
+    }
+
+    private function fallbackSourceSubcategories(array $categoryIds, ?string $source): array
+    {
+        if (!$source || !$categoryIds) {
+            return [];
+        }
+
+        $query = Commodity::query()
+            ->where('status', 1)
+            ->whereIn('category_id', $categoryIds)
+            ->whereNotNull('config');
+        self::applySourceFilter($query, $source);
+
+        $subcategories = [];
+        foreach ($query->get(['category_id', 'config']) as $row) {
+            $value = self::sourceSubcategoryValue((string)$row->config, $source);
+            if ($value === '') {
+                continue;
+            }
+            $categoryId = (int)$row->category_id;
+            $key = md5($value);
+            $subcategories[$categoryId][$key] ??= [
+                'id' => $key,
+                'name' => $value,
+                'value' => rawurlencode($value),
+                'count' => 0,
+            ];
+            $subcategories[$categoryId][$key]['count']++;
+        }
+
+        foreach ($subcategories as &$items) {
+            $items = array_values($items);
+            usort($items, static fn(array $a, array $b) => $b['count'] <=> $a['count'] ?: strcmp($a['name'], $b['name']));
+        }
+        unset($items);
+
+        return $subcategories;
+    }
+
+    private function appendSourceSubcategories(array &$categories, ?string $source): void
+    {
+        if (!$source || !$categories) {
+            foreach ($categories as &$category) {
+                $category['subcategories'] = [];
+            }
+            unset($category);
+            return;
+        }
+
+        $categoryIds = array_values(array_filter(array_map(static fn(array $category) => is_numeric($category['id']) ? (int)$category['id'] : null, $categories)));
+        if (!$categoryIds) {
+            return;
+        }
+
+        $query = Commodity::query()
+            ->where("status", 1)
+            ->whereIn("category_id", $categoryIds)
+            ->whereNotNull("config");
+        self::applySourceFilter($query, $source);
+        $rows = $query->get(['category_id', 'config']);
+        $subcategories = [];
+
+        foreach ($rows as $row) {
+            $value = self::sourceSubcategoryValue((string)$row->config, $source);
+            if ($value === '') {
+                continue;
+            }
+            $key = md5($value);
+            $categoryId = (int)$row->category_id;
+            $subcategories[$categoryId][$key] ??= [
+                'id' => $key,
+                'name' => $value,
+                'value' => rawurlencode($value),
+                'count' => 0,
+            ];
+            $subcategories[$categoryId][$key]['count']++;
+        }
+
+        foreach ($categories as &$category) {
+            $items = array_values($subcategories[(int)$category['id']] ?? []);
+            usort($items, static fn(array $a, array $b) => $b['count'] <=> $a['count'] ?: strcmp($a['name'], $b['name']));
+            $category['subcategories'] = $items;
+        }
+        unset($category);
     }
 
     private function cleanCategoryName(string $name): string

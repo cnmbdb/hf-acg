@@ -21,17 +21,28 @@
         </div>
         <div class="xh-category-list">
             #{foreach $category as $cate}
-                <a data-id="#{$cate.id}" class="switch-category xh-category #{if $cate@first && $categoryId == 0}is-active#{elseif $cate.id == $categoryId}is-active#{/if}" href="javascript:void(0);">
-                    <span class="xh-category-icon">
-                        #{if $cate.id != 'recommend' && $cate.icon}
-                            <img src="#{$cate.icon}" alt="#{$cate.name}">
-                        #{else}
-                            <i class="fa-duotone fa-regular fa-star"></i>
+                <div class="xh-category-group" data-category-group="#{$cate.id}">
+                    <a data-id="#{$cate.id}" class="switch-category xh-category #{if $cate@first && $categoryId == 0}is-active#{elseif $cate.id == $categoryId}is-active#{/if}" href="javascript:void(0);">
+                        <span class="xh-category-icon">
+                            #{if $cate.id != 'recommend' && $cate.icon}
+                                <img src="#{$cate.icon}" alt="#{$cate.name}">
+                            #{else}
+                                <i class="fa-duotone fa-regular fa-star"></i>
+                            #{/if}
+                        </span>
+                        <span class="xh-category-name">#{$cate.name}</span>
+                        #{if !empty($cate.subcategories)}
+                            <i class="fa-duotone fa-regular fa-chevron-down xh-category-arrow"></i>
                         #{/if}
-                    </span>
-                    <span class="xh-category-name">#{$cate.name}</span>
-                    <i class="fa-duotone fa-regular fa-chevron-right xh-category-arrow"></i>
-                </a>
+                    </a>
+                    <div class="xh-subcategory-list" aria-label="#{$cate.name}二级商品类目">
+                        #{if !empty($cate.subcategories)}
+                            #{foreach $cate.subcategories as $sub}
+                                <button type="button" class="switch-subcategory xh-subcategory" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">#{$sub.name}</button>
+                            #{/foreach}
+                        #{/if}
+                    </div>
+                </div>
             #{/foreach}
         </div>
     </aside>
@@ -65,5 +76,5 @@
         </div>
     </section>
 </main>
-#{ready("#{$static}/assets/index.js?xh=20260620-4")}
+#{ready("#{$static}/assets/index.js?xh=20260703-6")}
 #{include file="./Footer.html"}

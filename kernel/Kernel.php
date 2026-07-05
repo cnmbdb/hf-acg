@@ -46,6 +46,10 @@ try {
         $_GET['cid'] = $_cat[1];
     }
 
+    if (trim($_GET['s'] ?? "/", "/") === "2") {
+        $_GET['s'] = "/user/index/two";
+    }
+
     //waf install -> 2025-07-26
     $routePath = $_GET['s'] = $_GET['s'] ?? "/user/index/index";
     Context::set(\Kernel\Context\Interface\Request::class, new Request());

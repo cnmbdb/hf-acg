@@ -344,7 +344,7 @@ class Order implements \App\Service\Order
         $commodity = clone $commodity;
 
         //默认成本价
-        $price = (new Decimal($commodity->factory_price, 2));
+        $price = (new Decimal($commodity->factory_price, 4));
 
         //解析配置文件
         $config = Ini::toArray($commodity->config ?: "") ?: [];
@@ -354,9 +354,9 @@ class Order implements \App\Service\Order
         if (!empty($race) && !empty($config['category_cost'])) {
             $_race = $config['category_cost'];
             if (isset($_race[$race])) {
-                $price = (new Decimal($_race[$race], 2));
+                $price = (new Decimal($_race[$race], 4));
             } else {
-                $price = (new Decimal(0, 2));
+                $price = (new Decimal(0, 4));
             }
         }
 

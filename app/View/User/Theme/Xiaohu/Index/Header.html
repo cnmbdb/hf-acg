@@ -27,7 +27,7 @@
     "#{$static}/assets/index.css"
     ])}
     #{js("/assets/common/js/ready.js")}
-    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260702-2">
+    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260703-3">
     <style>
         .xh-tools {
             position: relative;
@@ -167,20 +167,28 @@
         <span>#{$config.shop_name}</span>
     </a>
 
-    <button class="xh-menu-button" type="button" aria-label="打开导航" aria-expanded="false" data-mobile-menu-toggle data-i18n-aria-label="openNav">
+    <button class="xh-menu-button" type="button" aria-label="打开导航" aria-expanded="false" data-mobile-menu-toggle data-i18n-aria-label="openNav" onclick="event.preventDefault();event.stopPropagation();(window.XhMobileMenu?window.XhMobileMenu.toggle(event):(function(){var menu=document.querySelector('[data-mobile-menu]');var btn=document.querySelector('[data-mobile-menu-toggle]');if(!menu)return;var open=!menu.classList.contains('is-open');menu.classList.toggle('is-open',open);menu.setAttribute('aria-hidden',open?'false':'true');if(btn)btn.setAttribute('aria-expanded',open?'true':'false');document.body.classList.toggle('xh-modal-open',open);})())">
         <span></span>
         <span></span>
         <span></span>
     </button>
 
     <div class="xh-navlinks">
-        <a class="xh-navlink #{if $title != "订单查询"}is-active#{/if}" href="/">
+        <a class="xh-navlink #{if $title != "订单查询" && !$shopSource}is-active#{/if}" href="/">
             <i class="fa-duotone fa-regular fa-cart-shopping"></i>
             <span data-i18n="shopping">购物</span>
         </a>
         <a class="xh-navlink #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
+        </a>
+        <a class="xh-navlink #{if $shopSource == "fansgurus"}is-active#{/if}" href="/">
+            <i class="fa-duotone fa-regular fa-users"></i>
+            <span>粉丝服务</span>
+        </a>
+        <a class="xh-navlink #{if $shopSource == "hstockplus"}is-active#{/if}" href="/2">
+            <i class="fa-duotone fa-regular fa-id-card"></i>
+            <span>海外账号购买</span>
         </a>
         <div class="xh-tools">
             <button class="xh-navlink xh-tools-toggle" type="button" aria-label="打开2FA工具箱" aria-expanded="false" data-tools-toggle>
@@ -270,13 +278,21 @@
             <button type="button" data-lang-option="ru">Русский</button>
             <button type="button" data-lang-option="ko">한국어</button>
         </div>
-        <a class="xh-mobile-link #{if $title != "订单查询"}is-active#{/if}" href="/">
+        <a class="xh-mobile-link #{if $title != "订单查询" && !$shopSource}is-active#{/if}" href="/">
             <i class="fa-duotone fa-regular fa-cart-shopping"></i>
             <span data-i18n="shopping">购物</span>
         </a>
         <a class="xh-mobile-link #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
+        </a>
+        <a class="xh-mobile-link #{if $shopSource == "fansgurus"}is-active#{/if}" href="/">
+            <i class="fa-duotone fa-regular fa-users"></i>
+            <span>粉丝服务</span>
+        </a>
+        <a class="xh-mobile-link #{if $shopSource == "hstockplus"}is-active#{/if}" href="/2">
+            <i class="fa-duotone fa-regular fa-id-card"></i>
+            <span>海外账号购买</span>
         </a>
         <div class="xh-mobile-tools">
             <div class="xh-mobile-tools-title">
@@ -428,6 +444,34 @@
             document.body.classList.add("xh-modal-open");
         }
 
+        window.XhMobileMenu = {
+            open: function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                if (!mobileMenu) return;
+                mobileMenu.classList.add("is-open");
+                mobileMenu.setAttribute("aria-hidden", "false");
+                if (mobileToggle) mobileToggle.setAttribute("aria-expanded", "true");
+                document.body.classList.add("xh-modal-open");
+            },
+            close: function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                closeMobileMenu();
+            },
+            toggle: function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                toggleMobileMenu();
+            }
+        };
+
         document.addEventListener("click", function (event) {
             if (event.target.closest("[data-tools-toggle]")) {
                 event.preventDefault();
@@ -463,12 +507,14 @@
 
             if (event.target.closest("[data-mobile-menu-toggle]")) {
                 event.preventDefault();
+                event.stopPropagation();
                 toggleMobileMenu();
                 return;
             }
 
             if (event.target.closest("[data-mobile-menu-close]")) {
                 event.preventDefault();
+                event.stopPropagation();
                 closeMobileMenu();
             }
         });

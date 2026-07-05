@@ -116,7 +116,8 @@
 
     table = new Table("/admin/api/category/data", "#category-table");
     table.setUpdate("/admin/api/category/save");
-    table.setTree(3);
+    table.disablePagination();
+    table.setTree(3, "name", "id", "pid", false);
     table.setColumns([
         {checkbox: true},
         {field: 'icon', title: '', type: "image", style: "border-radius:25%;", width: 28},
@@ -125,6 +126,18 @@
         },
         {
             field: 'name', title: '分类名称'
+        }
+        , {
+            field: 'level_name', title: '层级', formatter: (value, row) => {
+                const className = row._level == 2 ? "badge-light-info" : "badge-light-primary";
+                return `<span class="badge ${className}">${value || (row.pid > 0 ? "二级分类" : "一级分类")}</span>`;
+            }
+        }
+        , {
+            field: 'children_count', title: '下级数', class: "nowrap"
+        }
+        , {
+            field: 'commodity_count', title: '商品数', class: "nowrap"
         }
         , {field: 'sort', title: '排序(越小越前)', sort: true, type: "input", reload: true}
         , {
@@ -159,7 +172,8 @@
                 {
                     icon: 'fa-duotone fa-regular fa-trash-can text-danger',
                     click: (event, value, row, index) => {
-                        message.ask("是否删除此分类？", () => {
+                        const tips = row.children_count > 0 ? `此分类包含 ${row.children_count} 个下级分类，删除会一并删除下级分类和商品，是否继续？` : "是否删除此分类？";
+                        message.ask(tips, () => {
                             util.post('/admin/api/category/del', {list: [row.id]}, res => {
                                 message.success("删除成功");
                                 table.refresh();
@@ -172,10 +186,15 @@
     ]);
     table.setSearch([
         {
-            title: "商家，默认主站",
-            name: "user_id",
-            type: "remoteSelect",
-            dict: "user->business_level>0,id,username"
+            title: "平台来源",
+            name: "source",
+            type: "select",
+            dict: [
+                {id: "fansgurus", name: "fansgurus平台"},
+                {id: "hstockplus", name: "hstockplus平台"}
+            ],
+            default: "fansgurus",
+            change: () => table.reload({pageNumber: 1})
         },
         {title: "分类名称", name: "search-name", type: "input"}
     ]);
@@ -195,7 +214,7 @@
             return;
         }
 
-        message.ask("注意，删除分类后无法恢复", () => {
+        message.ask("注意，删除一级分类会同时删除它下面的二级分类和商品，删除后无法恢复", () => {
             util.post("/admin/api/category/del", {list: data}, res => {
                 message.success("删除成功")
                 table.refresh();
@@ -209,7 +228,7 @@
             layer.msg("请至少勾选1个分类进行操作！");
             return;
         }
-        message.ask(null, () => {
+        message.ask("启用一级分类会同时启用它下面的二级分类，是否继续？", () => {
             util.post("/admin/api/category/status", {list: data, status: 1}, res => {
                 message.success("启用成功");
                 table.refresh();
@@ -223,7 +242,7 @@
             layer.msg("请至少勾选1个分类进行操作！");
             return;
         }
-        message.ask(null, () => {
+        message.ask("停用一级分类会同时停用它下面的二级分类，是否继续？", () => {
             util.post("/admin/api/category/status", {list: data, status: 0}, res => {
                 message.success("停用成功");
                 table.refresh();

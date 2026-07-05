@@ -134,7 +134,7 @@ CREATE TABLE `__PREFIX__commodity`  (
                                         `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '商品名称',
                                         `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '商品说明',
                                         `cover` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '商品封面图片',
-                                        `factory_price` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '成本单价',
+                                        `factory_price` decimal(10, 4) UNSIGNED NOT NULL DEFAULT 0.0000 COMMENT '成本单价',
                                         `price` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '商品单价(未登录)',
                                         `user_price` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '商品单价(会员价)',
                                         `status` tinyint UNSIGNED NOT NULL DEFAULT 0 COMMENT '状态：0=下架，1=上架',

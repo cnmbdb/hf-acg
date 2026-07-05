@@ -28,6 +28,18 @@ class Main
         $sync = new Sync();
         $sync->cleanupLegacyCategories();
         $sync->reconcilePluginCategories($config);
+        $syncAction = (int)($config['sync_action'] ?? 0);
+        if ($syncAction > 0) {
+            try {
+                $sync->run($config);
+                $this->log("插件已启动，已执行同步动作{$syncAction}");
+                $config = $this->config();
+            } catch (\Throwable $e) {
+                $this->log('启用同步失败：' . $e->getMessage());
+                throw $e;
+            }
+        }
+
         if ((int)($config['enable_products_on_start'] ?? 1) === 1) {
             $categoryStatus = (int)($config['default_category_status'] ?? 1);
             $productStatus = (int)($config['default_product_status'] ?? 1);
@@ -65,6 +77,9 @@ class Main
 
         $config = array_replace($this->config(), $map);
         if ((int)($config['auto_sync_on_save'] ?? 0) === 1) {
+            if ((int)($config['sync_action'] ?? 0) <= 0) {
+                $config['sync_action'] = '3';
+            }
             try {
                 (new Sync())->run($config);
             } catch (\Throwable $e) {
@@ -210,19 +225,62 @@ class Main
             ->unique()
             ->values()
             ->all();
-
-        $categories = Category::query()->where('owner', 0)->whereIn('id', $categoryIds);
+        $categoryIds = $this->withParentCategoryIds($categoryIds);
 
         $productCount = (clone $products)->count();
-        $categoryCount = (clone $categories)->count();
 
         $products->update(['status' => $productStatus]);
-        $categories->update(['status' => $categoryStatus]);
+
+        $categoryCount = 0;
+        foreach ($categoryIds as $categoryId) {
+            if ($categoryStatus === 1) {
+                $categoryCount += Category::query()
+                    ->where('owner', 0)
+                    ->where('id', $categoryId)
+                    ->update(['status' => 1]);
+                continue;
+            }
+
+            $activeProducts = Commodity::query()
+                ->where('category_id', $categoryId)
+                ->where('status', 1)
+                ->count();
+            if ((int)$activeProducts > 0) {
+                continue;
+            }
+
+            $categoryCount += Category::query()
+                ->where('owner', 0)
+                ->where('id', $categoryId)
+                ->update(['status' => 0]);
+        }
 
         return [
             'products' => (int)$productCount,
             'categories' => (int)$categoryCount,
         ];
+    }
+
+    private function withParentCategoryIds(array $categoryIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $categoryIds))));
+        $frontier = $ids;
+        while ($frontier) {
+            $parents = Category::query()
+                ->whereIn('id', $frontier)
+                ->pluck('pid')
+                ->filter()
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $parents = array_values(array_diff($parents, $ids));
+            if (!$parents) {
+                break;
+            }
+            array_push($ids, ...$parents);
+            $frontier = $parents;
+        }
+
+        return $ids;
     }
 
     private function client(array $config): Client

@@ -13,6 +13,9 @@ use App\Entity\Query\Save;
 use App\Entity\QueryTemplateEntity;
 use App\Interceptor\ManageSession;
 use App\Model\ManageLog;
+use App\Model\Category as CategoryModel;
+use App\Model\Commodity;
+use App\Model\UserCategory;
 use App\Service\Query;
 use App\Util\Client;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,6 +35,16 @@ use Kernel\Waf\Filter;
 #[Interceptor(ManageSession::class, Interceptor::TYPE_API)]
 class Category extends Manage
 {
+    private const SOURCE_CODE_PREFIX = [
+        'fansgurus' => 'FG_',
+        'hstockplus' => 'HSP_',
+    ];
+
+    private const SOURCE_ICON_PREFIX = [
+        'fansgurus' => '/app/Plugin/FansGurus/Assets/icons/%',
+        'hstockplus' => '/app/Plugin/HStockPlus/Assets/icons/%',
+    ];
+
     #[Inject]
     private Query $query;
 
@@ -41,21 +54,34 @@ class Category extends Manage
     public function data(): array
     {
         $map = $this->normalizeHStockPlusSearch($_POST);
-        $get = new Get(\App\Model\Category::class);
-        $get->setPaginate((int)$this->request->post("page"), (int)$this->request->post("limit"));
+        $source = $this->normalizeSource((string)($map['source'] ?? 'fansgurus'));
+        unset($map['source']);
+
+        $sourceCategoryIds = $source ? $this->sourceCategoryIds($source) : [];
+        $get = new Get(CategoryModel::class);
         $get->setWhere($map);
-        $get->setOrderBy(...$this->query->getOrderBy($map, "sort", "asc"));
-        $data = $this->query->get($get, function (Builder $builder) use ($map) {
+        $orderBy = $this->query->getOrderBy($map, "sort", "asc");
+        $get->setOrderBy($orderBy[0], $orderBy[1]);
+        $data = $this->query->get($get, function (Builder $builder) use ($map, $source, $sourceCategoryIds) {
             if (isset($map['user_id']) && $map['user_id'] > 0) {
                 $builder = $builder->where("owner", $map['user_id']);
             } else {
                 $builder = $builder->where("owner", 0);
             }
 
+            if ($source) {
+                $builder = $sourceCategoryIds
+                    ? $builder->whereIn('id', $sourceCategoryIds)
+                    : $builder->whereRaw('1 = 0');
+            }
+
             return $builder->with(['owner' => function (Relation $relation) {
                 $relation->select(["id", "username", "avatar"]);
             }]);
         });
+
+        $data['list'] = $this->normalizeCategoryRows((array)$data['list'], $source);
+        $data['total'] = count($data['list']);
 
         foreach ($data['list'] as &$item) {
             if (isset($item['name']) && is_scalar($item['name'])) {
@@ -65,6 +91,124 @@ class Category extends Manage
         }
 
         return $this->json(data: $data);
+    }
+
+    private function normalizeSource(string $source): ?string
+    {
+        $source = strtolower(trim($source));
+        return array_key_exists($source, self::SOURCE_CODE_PREFIX) ? $source : null;
+    }
+
+    private function sourceCategoryIds(string $source): array
+    {
+        $prefix = self::SOURCE_CODE_PREFIX[$source] ?? null;
+        if (!$prefix) {
+            return [];
+        }
+
+        $ids = Commodity::query()
+            ->where('code', 'like', $prefix . '%')
+            ->whereNotNull('category_id')
+            ->distinct()
+            ->pluck('category_id')
+            ->map(static fn($id): int => (int)$id)
+            ->filter(static fn(int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
+        $categoryIds = $this->categoryAncestorIds($ids);
+        $pluginCategoryIds = CategoryModel::query()
+            ->where('icon', 'like', self::SOURCE_ICON_PREFIX[$source])
+            ->pluck('id')
+            ->map(static fn($id): int => (int)$id)
+            ->filter(static fn(int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
+        return $this->categoryAncestorIds(array_values(array_unique(array_merge($categoryIds, $pluginCategoryIds))));
+    }
+
+    private function categoryAncestorIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        $frontier = $ids;
+
+        while ($frontier) {
+            $parents = CategoryModel::query()
+                ->whereIn('id', $frontier)
+                ->pluck('pid')
+                ->map(static fn($id): int => (int)$id)
+                ->filter(static fn(int $id): bool => $id > 0)
+                ->values()
+                ->all();
+            $parents = array_values(array_diff($parents, $ids));
+            if (!$parents) {
+                break;
+            }
+            array_push($ids, ...$parents);
+            $frontier = $parents;
+        }
+
+        return $ids;
+    }
+
+    private function normalizeCategoryRows(array $rows, ?string $source = null): array
+    {
+        $ids = [];
+        $childrenByParent = [];
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $ids[] = $id;
+            $pid = (int)($row['pid'] ?? 0);
+            if ($pid > 0) {
+                $childrenByParent[$pid][] = $id;
+            }
+        }
+
+        if ($ids) {
+            $commodityQuery = Commodity::query()->whereIn('category_id', $ids);
+            if ($source) {
+                $commodityQuery->where('code', 'like', self::SOURCE_CODE_PREFIX[$source] . '%');
+            }
+            $commodityCounts = $commodityQuery
+                ->selectRaw('category_id, count(*) as aggregate')
+                ->groupBy('category_id')
+                ->pluck('aggregate', 'category_id')
+                ->all();
+        } else {
+            $commodityCounts = [];
+        }
+
+        $descendantCountCache = [];
+        foreach ($rows as &$row) {
+            $id = (int)($row['id'] ?? 0);
+            $pid = (int)($row['pid'] ?? 0);
+            $row['pid'] = $pid;
+            $row['level_name'] = $pid > 0 ? '二级分类' : '一级分类';
+            $row['children_count'] = count($childrenByParent[$id] ?? []);
+            $row['commodity_count'] = $this->categoryCommodityCount($id, $childrenByParent, $commodityCounts, $descendantCountCache);
+            $row['_level'] = $pid > 0 ? 2 : 1;
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function categoryCommodityCount(int $categoryId, array $childrenByParent, array $directCounts, array &$cache): int
+    {
+        if (isset($cache[$categoryId])) {
+            return $cache[$categoryId];
+        }
+
+        $count = (int)($directCounts[$categoryId] ?? 0);
+        foreach ($childrenByParent[$categoryId] ?? [] as $childId) {
+            $count += $this->categoryCommodityCount((int)$childId, $childrenByParent, $directCounts, $cache);
+        }
+
+        return $cache[$categoryId] = $count;
     }
 
     private function cleanHStockPlusTitle(string $value): string
@@ -112,7 +256,9 @@ class Category extends Manage
     public function save(Request $request): array
     {
         $map = $request->post(flags: Filter::NORMAL);
-        $save = new Save(\App\Model\Category::class);
+        $this->guardCategoryParent($map);
+
+        $save = new Save(CategoryModel::class);
         $save->setMap($map);
         $save->enableCreateTime();
         $save = $this->query->save($save);
@@ -122,6 +268,25 @@ class Category extends Manage
 
         ManageLog::log($this->getManage(), "[新增/修改]商品分类");
         return $this->json(200, '（＾∀＾）保存成功');
+    }
+
+    private function guardCategoryParent(array &$map): void
+    {
+        $id = (int)($map['id'] ?? 0);
+        $pid = (int)($map['pid'] ?? 0);
+        $map['pid'] = $pid > 0 ? $pid : 0;
+
+        if ($id <= 0 || $pid <= 0) {
+            return;
+        }
+
+        if ($id === $pid) {
+            throw new JSONException('父级分类不能选择自己');
+        }
+
+        if (in_array($pid, $this->categoryDescendantIds([$id]), true)) {
+            throw new JSONException('父级分类不能选择自己的下级分类');
+        }
     }
 
 
@@ -134,7 +299,8 @@ class Category extends Manage
     public function del(): array
     {
         $list = (array)$_POST['list'];
-        $del = new Delete(\App\Model\Category::class, $list);
+        $list = $this->categoryDescendantIds($list);
+        $del = new Delete(CategoryModel::class, $list);
         $count = $this->query->delete($del);
         if ($count == 0) {
             throw new JSONException("没有移除任何数据");
@@ -142,8 +308,9 @@ class Category extends Manage
 
         //删除所有商品
         foreach ($list as $id) {
-            \App\Model\Commodity::query()->where("category_id", $id)->delete();
+            Commodity::query()->where("category_id", $id)->delete();
         }
+        UserCategory::query()->whereIn('category_id', $list)->delete();
 
         ManageLog::log($this->getManage(), "[删除]商品分类");
         return $this->json(200, '（＾∀＾）移除成功');
@@ -155,10 +322,33 @@ class Category extends Manage
     public function status(): array
     {
         $list = (array)$_POST['list'];
+        $list = $this->categoryDescendantIds($list);
         $status = (int)$_POST['status'];
-        \App\Model\Category::query()->whereIn('id', $list)->update(['status' => $status]);
+        CategoryModel::query()->whereIn('id', $list)->update(['status' => $status]);
 
         ManageLog::log($this->getManage(), "[批量更新]商品分类状态，STATUS：" . $status);
         return $this->json(200, '分类状态已经更新');
+    }
+
+    private function categoryDescendantIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        $frontier = $ids;
+
+        while ($frontier) {
+            $children = CategoryModel::query()
+                ->whereIn('pid', $frontier)
+                ->pluck('id')
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $children = array_values(array_diff($children, $ids));
+            if (!$children) {
+                break;
+            }
+            array_push($ids, ...$children);
+            $frontier = $children;
+        }
+
+        return $ids;
     }
 }

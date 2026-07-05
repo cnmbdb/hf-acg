@@ -2,6 +2,7 @@
     const i18n = {
         "zh-CN": {
             shopping: "购物", orderLookup: "订单查询", notice: "公告", login: "登录", createAccount: "创建账号", languageSelect: "语言选择",
+            overseasAccounts: "海外账号购买", fanServices: "粉丝服务",
             navigation: "导航", openNav: "打开导航", closeNav: "关闭导航", switchLanguage: "切换语言",
             noticeEyebrow: "Notice", cancel: "取消", read: "我已阅读", noticeTip: "点击“我已阅读”后，1 小时内不再弹出。",
             categories: "商品分类", catalog: "商品目录", recommend: "推荐", product: "商品", price: "价格", stock: "库存",
@@ -16,6 +17,7 @@
         },
         en: {
             shopping: "Shop", orderLookup: "Orders", notice: "Notice", login: "Log in", createAccount: "Sign up", languageSelect: "Language",
+            overseasAccounts: "Accounts", fanServices: "Fans",
             navigation: "Navigation", openNav: "Open navigation", closeNav: "Close navigation", switchLanguage: "Switch language",
             noticeEyebrow: "Notice", cancel: "Cancel", read: "I have read", noticeTip: "After clicking “I have read”, it will not pop up for 1 hour.",
             categories: "Categories", catalog: "Catalog", recommend: "Recommended", product: "Product", price: "Price", stock: "Stock",
@@ -30,6 +32,7 @@
         },
         "zh-TW": {
             shopping: "購物", orderLookup: "訂單查詢", notice: "公告", login: "登入", createAccount: "建立帳號", languageSelect: "語言選擇",
+            overseasAccounts: "海外帳號購買", fanServices: "粉絲服務",
             navigation: "導航", openNav: "開啟導航", closeNav: "關閉導航", switchLanguage: "切換語言",
             noticeEyebrow: "Notice", cancel: "取消", read: "我已閱讀", noticeTip: "點擊「我已閱讀」後，1 小時內不再彈出。",
             categories: "商品分類", catalog: "商品目錄", recommend: "推薦", product: "商品", price: "價格", stock: "庫存",
@@ -44,6 +47,7 @@
         },
         ja: {
             shopping: "購入", orderLookup: "注文検索", notice: "お知らせ", login: "ログイン", createAccount: "アカウント作成", languageSelect: "言語選択",
+            overseasAccounts: "海外アカウント", fanServices: "ファンサービス",
             navigation: "ナビゲーション", openNav: "ナビゲーションを開く", closeNav: "ナビゲーションを閉じる", switchLanguage: "言語を切り替え",
             noticeEyebrow: "Notice", cancel: "キャンセル", read: "確認しました", noticeTip: "「確認しました」を押すと、1時間は表示されません。",
             categories: "商品カテゴリ", catalog: "カタログ", recommend: "おすすめ", product: "商品", price: "価格", stock: "在庫",
@@ -58,6 +62,7 @@
         },
         ru: {
             shopping: "Магазин", orderLookup: "Заказы", notice: "Объявление", login: "Войти", createAccount: "Создать аккаунт", languageSelect: "Язык",
+            overseasAccounts: "Аккаунты", fanServices: "Сервисы",
             navigation: "Навигация", openNav: "Открыть меню", closeNav: "Закрыть меню", switchLanguage: "Сменить язык",
             noticeEyebrow: "Notice", cancel: "Отмена", read: "Прочитано", noticeTip: "После нажатия «Прочитано» окно не появится в течение 1 часа.",
             categories: "Категории", catalog: "Каталог", recommend: "Рекомендуем", product: "Товар", price: "Цена", stock: "Остаток",
@@ -72,6 +77,7 @@
         },
         ko: {
             shopping: "쇼핑", orderLookup: "주문 조회", notice: "공지", login: "로그인", createAccount: "계정 만들기", languageSelect: "언어 선택",
+            overseasAccounts: "해외 계정", fanServices: "팬 서비스",
             navigation: "내비게이션", openNav: "내비게이션 열기", closeNav: "내비게이션 닫기", switchLanguage: "언어 변경",
             noticeEyebrow: "Notice", cancel: "취소", read: "확인했습니다", noticeTip: "“확인했습니다”를 누르면 1시간 동안 다시 표시되지 않습니다.",
             categories: "상품 분류", catalog: "카탈로그", recommend: "추천", product: "상품", price: "가격", stock: "재고",
@@ -149,28 +155,20 @@
     }
 
     const $category = $(".switch-category");
+    const $subcategory = $(".switch-subcategory");
+    const $categoryGroup = $(".xh-category-group");
     const $list = $(".item-list");
     const $currentCategory = $(".xh-current-category");
     const categoryId = getVar("CAT_ID");
+    const shopSource = getVar("SHOP_SOURCE");
+    const categoryUrl = getVar("SHOP_CATEGORY_URL") || "/cat";
     const $noticeModal = $("[data-notice-modal]");
-    const $mobileMenu = $("[data-mobile-menu]");
-    const $mobileMenuToggle = $("[data-mobile-menu-toggle]");
     const noticeStorageKey = "xiaohu_notice_read_until";
 
-    function openMobileMenu() {
-        $mobileMenu.addClass("is-open").attr("aria-hidden", "false");
-        $mobileMenuToggle.attr("aria-expanded", "true");
-        $("body").addClass("xh-modal-open");
-    }
-
-    function closeMobileMenu() {
-        $mobileMenu.removeClass("is-open").attr("aria-hidden", "true");
-        $mobileMenuToggle.attr("aria-expanded", "false");
-        $("body").removeClass("xh-modal-open");
-    }
-
     function openNotice() {
-        closeMobileMenu();
+        if (window.XhMobileMenu) {
+            window.XhMobileMenu.close();
+        }
         $noticeModal.addClass("is-open").attr("aria-hidden", "false");
         $("body").addClass("xh-modal-open");
     }
@@ -213,24 +211,18 @@
         }
     });
 
-    $mobileMenuToggle.on("click", function () {
-        if ($mobileMenu.hasClass("is-open")) {
-            closeMobileMenu();
-        } else {
-            openMobileMenu();
+    $("[data-mobile-menu-close], .xh-mobile-link[href!=\"javascript:void(0);\"]").on("click", function (event) {
+        if (window.XhMobileMenu) {
+            window.XhMobileMenu.close(event);
         }
-    });
-
-    $("[data-mobile-menu-close], .xh-mobile-link[href!=\"javascript:void(0);\"]").on("click", function () {
-        closeMobileMenu();
     });
 
     $(document).on("keydown", function (event) {
         if (event.key === "Escape" && $noticeModal.hasClass("is-open")) {
             closeNotice();
         }
-        if (event.key === "Escape" && $mobileMenu.hasClass("is-open")) {
-            closeMobileMenu();
+        if (event.key === "Escape" && window.XhMobileMenu) {
+            window.XhMobileMenu.close();
         }
     });
 
@@ -308,14 +300,49 @@
         $category.removeClass("is-active");
         $active.addClass("is-active");
         $currentCategory.text($active.find(".xh-category-name").text() || t("item"));
+        setSubcategoryState(id, "", false, true);
 
         if (updateUrl) {
-            history.pushState(null, "", `/cat/${id}`);
+            history.pushState(null, "", categoryUrl === "/cat" ? `/cat/${id}` : `${categoryUrl}?cid=${id}`);
         }
 
         $list.html(`<div class="xh-empty">${t("loading")}</div>`);
         trade.getCommodityList({
             categoryId: id,
+            source: shopSource,
+            done: renderProducts
+        });
+    }
+
+    function setSubcategoryState(categoryId, value, load = false, open = true) {
+        $category.removeClass("is-active");
+        $category.filter(`[data-id="${categoryId}"]`).addClass("is-active");
+        $categoryGroup.find(".xh-subcategory-list").css("display", "none");
+        $categoryGroup.removeClass("is-open");
+        $subcategory.removeClass("is-active");
+        const $group = $categoryGroup.filter(`[data-category-group="${categoryId}"]`);
+        const $items = $group.find(".switch-subcategory");
+        if (open && $items.length > 0) {
+            $group.addClass("is-open");
+            $group.find(".xh-subcategory-list").css("display", "flex");
+        }
+        const $active = $items.filter(`[data-subcategory="${value}"]`).first();
+        if (value !== "") {
+            $active.addClass("is-active");
+            $currentCategory.text($active.text() || $category.filter(`[data-id="${categoryId}"]`).find(".xh-category-name").text() || t("item"));
+        }
+
+        if (!load) {
+            return;
+        }
+
+        history.pushState(null, "", categoryUrl === "/cat" ? `/cat/${categoryId}` : `${categoryUrl}?cid=${categoryId}&subcategory=${encodeURIComponent(value)}`);
+
+        $list.html(`<div class="xh-empty">${t("loading")}</div>`);
+        trade.getCommodityList({
+            categoryId: categoryId,
+            source: shopSource,
+            subcategory: value,
             done: renderProducts
         });
     }
@@ -332,6 +359,7 @@
         $list.html(`<div class="xh-empty">${t("loading")}</div>`);
         trade.getCommodityList({
             keywords: keyword,
+            source: shopSource,
             done: renderProducts
         });
     }
@@ -339,12 +367,23 @@
     const firstCategory = $category.first().data("id");
     setCategoryState(categoryId > 0 ? categoryId : firstCategory);
 
-    $category.on("click", function () {
+    $category.on("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
         const id = $(this).data("id");
         if ($(this).hasClass("is-active")) {
+            const $group = $categoryGroup.filter(`[data-category-group="${id}"]`);
+            setSubcategoryState(id, "", false, !$group.hasClass("is-open"));
             return;
         }
         setCategoryState(id, true);
+    });
+
+    $subcategory.on("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = $(this).data("parent-id") || $category.filter(".is-active").data("id");
+        setSubcategoryState(id, $(this).data("subcategory") || "", true);
     });
 
     $(".item-search-input").on("keypress", function (event) {

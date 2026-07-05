@@ -22,8 +22,9 @@ class Main
     #[PluginState(state: PluginState::START)]
     public function start(): void
     {
+        $syncResult = $this->syncOnStart();
         $changed = $this->setSyncedGoodsStatus(1);
-        $this->log("插件已启动，已上架同步商品{$changed['commodities']}个、分类{$changed['categories']}个");
+        $this->log("插件已启动，{$syncResult}，已上架同步商品{$changed['commodities']}个、分类{$changed['categories']}个");
     }
 
     #[PluginState(state: PluginState::STOP)]
@@ -46,6 +47,9 @@ class Main
 
         $config = array_replace($this->config(), $map);
         if ((int)($config['auto_sync_on_save'] ?? 0) === 1) {
+            if ((int)($config['sync_action'] ?? 0) <= 0) {
+                $config['sync_action'] = '3';
+            }
             (new Sync())->run($config);
         }
     }
@@ -125,6 +129,22 @@ class Main
         return Plugin::getConfig(self::PLUGIN, false);
     }
 
+    private function syncOnStart(): string
+    {
+        $config = $this->config();
+        $config['sync_action'] = '3';
+        $config['default_category_status'] = '1';
+        $config['default_product_status'] = '1';
+
+        try {
+            $result = (new Sync())->run($config);
+            return (string)($result['last_sync_result'] ?? '已同步上游分类和商品');
+        } catch (\Throwable $e) {
+            $this->log('插件启动同步失败：' . $e->getMessage());
+            return '启动同步失败，已保留现有同步数据';
+        }
+    }
+
     private function setSyncedGoodsStatus(int $status): array
     {
         $categoryIds = Commodity::query()
@@ -135,19 +155,57 @@ class Main
             ->filter()
             ->values()
             ->all();
+        $categoryIds = $this->withParentCategoryIds($categoryIds);
 
         $commodities = Commodity::query()
             ->where('code', 'like', 'FG_%')
             ->update(['status' => $status]);
 
         $categories = 0;
-        if ($categoryIds) {
-            $categories = \App\Model\Category::query()
-                ->whereIn('id', $categoryIds)
-                ->update(['status' => $status]);
+        foreach ($categoryIds as $categoryId) {
+            if ($status === 1) {
+                $categories += \App\Model\Category::query()
+                    ->where('id', $categoryId)
+                    ->update(['status' => 1]);
+                continue;
+            }
+
+            $activeProducts = Commodity::query()
+                ->where('category_id', $categoryId)
+                ->where('status', 1)
+                ->count();
+            if ((int)$activeProducts > 0) {
+                continue;
+            }
+
+            $categories += \App\Model\Category::query()
+                ->where('id', $categoryId)
+                ->update(['status' => 0]);
         }
 
         return ['commodities' => $commodities, 'categories' => $categories];
+    }
+
+    private function withParentCategoryIds(array $categoryIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $categoryIds))));
+        $frontier = $ids;
+        while ($frontier) {
+            $parents = \App\Model\Category::query()
+                ->whereIn('id', $frontier)
+                ->pluck('pid')
+                ->filter()
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $parents = array_values(array_diff($parents, $ids));
+            if (!$parents) {
+                break;
+            }
+            array_push($ids, ...$parents);
+            $frontier = $parents;
+        }
+
+        return $ids;
     }
 
     /**

@@ -16,7 +16,19 @@ interface Shop
      * @param UserGroup|null $group
      * @return array
      */
-    public function getCategory(?UserGroup $group): array;
+    public function getCategory(?UserGroup $group, ?string $source = null): array;
+
+    /**
+     * @param array $category
+     * @return array
+     */
+    public function normalizeCategoryTree(array $category): array;
+
+    /**
+     * @param string|null $source
+     * @return array
+     */
+    public function getSourceVisibleCategoryIds(?string $source = null): array;
 
     /**
      * @param int|string $commodityId

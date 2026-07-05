@@ -673,7 +673,7 @@ class Table {
             //     console.log(field, checked);
             // },
             // showColumns: true,
-            sidePagination: 'server',
+            sidePagination: this.isPagination ? 'server' : 'client',
             contentType: "application/x-www-form-urlencoded",
             dataType: "json",
             processData: false,
@@ -689,7 +689,12 @@ class Table {
             //     };
             // },
             queryParams: (params) => {
-                params.page = (params.offset / params.limit) + 1;
+                if (this.isPagination) {
+                    params.page = (params.offset / params.limit) + 1;
+                } else {
+                    delete params.offset;
+                    delete params.limit;
+                }
                 if (this.queryParams) {
                     for (const key in params) {
                         this.queryParams[key] = params[key];

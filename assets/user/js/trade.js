@@ -4,7 +4,12 @@ const trade = new class {
 
     //获取分类
     getCategoryList(done = null) {
-        util.get("/user/api/index/data", data => {
+        let params = {};
+        if (typeof getVar === "function" && getVar("SHOP_SOURCE")) {
+            params.source = getVar("SHOP_SOURCE");
+        }
+
+        util.get("/user/api/index/data" + (!util.isEmptyOrNotJson(params) ? "?" + util.objectToQueryString(params) : ""), data => {
             typeof done === "function" && done(data);
         });
     }
@@ -24,6 +29,16 @@ const trade = new class {
 
         if (opt.categoryId) {
             params.categoryId = opt.categoryId;
+        }
+
+        if (opt.source) {
+            params.source = opt.source;
+        } else if (typeof getVar === "function" && getVar("SHOP_SOURCE")) {
+            params.source = getVar("SHOP_SOURCE");
+        }
+
+        if (opt.subcategory) {
+            params.subcategory = opt.subcategory;
         }
 
         util.get("/user/api/index/commodity" + (!util.isEmptyOrNotJson(params) ? "?" + util.objectToQueryString(params) : ""), data => {

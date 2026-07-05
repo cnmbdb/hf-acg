@@ -110,6 +110,7 @@ body.xh-page a {
 
 .xh-menu-button {
     display: none;
+    position: relative;
     align-items: center;
     justify-content: center;
     width: 84px;
@@ -467,11 +468,14 @@ body.xh-page a {
     padding: 26px 28px 30px;
 }
 
+.xh-category-group {
+    margin-bottom: 14px;
+}
+
 .xh-category {
     min-height: 58px;
     gap: 14px;
     padding: 0 16px;
-    margin-bottom: 14px;
     border: 1px solid transparent;
     border-radius: 999px;
     color: #5b606d;
@@ -506,6 +510,47 @@ body.xh-page a {
 .xh-category-arrow {
     margin-left: auto;
     color: #a4a8b2;
+    font-size: .82rem;
+    transition: transform .18s ease, color .18s ease;
+}
+
+.xh-category-group.is-open .xh-category-arrow {
+    color: #0d0f14;
+    transform: rotate(180deg);
+}
+
+.xh-subcategory-list {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 4px 0 10px 10px;
+    margin-left: 24px;
+    border-left: 2px solid #eceef3;
+}
+
+.xh-subcategory {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 12px;
+    color: #555b67;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    font-size: .92rem;
+    font-weight: 800;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.xh-subcategory.is-active,
+.xh-subcategory:hover {
+    color: #0d0f14;
+    background: #f1f3f6;
 }
 
 .xh-catalog-head {

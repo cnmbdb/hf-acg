@@ -1,5 +1,7 @@
 !function () {
-    const $SwitchCategory = $(`.switch-category`), $ItemList = $(`.item-list`), categoryId = getVar("CAT_ID");
+    const $SwitchCategory = $(`.switch-category`), $SwitchSubcategory = $(`.switch-subcategory`), $CategoryGroup = $(`.chip-group`), $ItemList = $(`.item-list`), categoryId = getVar("CAT_ID");
+    const shopSource = getVar("SHOP_SOURCE"), categoryUrl = getVar("SHOP_CATEGORY_URL") || "/cat";
+    let activeSubcategory = "";
 
 
     function _PushCommodityList(data) {
@@ -34,17 +36,33 @@
     }
 
     function _SwitchCategory(id, link = false) {
+        activeSubcategory = "";
         $SwitchCategory.removeClass("is-primary");
         $(`a[data-id=${id}]`).addClass("is-primary");
+        _RenderSubcategory(id);
         if (link) {
-            history.pushState(null, '', `/cat/${id}`);
+            history.pushState(null, '', categoryUrl === "/cat" ? `/cat/${id}` : `${categoryUrl}?cid=${id}`);
         }
         trade.getCommodityList({
             categoryId: id,
+            source: shopSource,
             done: data => {
                 _PushCommodityList(data);
             }
         });
+    }
+
+    function _RenderSubcategory(id) {
+        $SwitchSubcategory.hide().removeClass("is-primary");
+        $CategoryGroup.removeClass("is-open");
+        $CategoryGroup.find(".subchip-list").css("display", "none");
+        const $group = $CategoryGroup.filter(`[data-category-group="${id}"]`);
+        const $items = $group.find(".switch-subcategory");
+        if ($items.length > 0) {
+            $group.addClass("is-open");
+            $group.find(".subchip-list").css("display", "flex");
+            $items.show();
+        }
     }
 
 
@@ -58,6 +76,7 @@
 
         trade.getCommodityList({
             keywords: keywords,
+            source: shopSource,
             done: data => {
                 _PushCommodityList(data);
             }
@@ -69,11 +88,43 @@
     _SwitchCategory(categoryId > 0 ? categoryId : $SwitchCategory.first().data("id"));
 
 
-    $SwitchCategory.click(function () {
+    $SwitchCategory.click(function (event) {
+        event.preventDefault();
+        event.stopPropagation();
         if ($(this).hasClass("is-primary")) {
+            const id = $(this).data("id");
+            const $group = $CategoryGroup.filter(`[data-category-group="${id}"]`);
+            if ($group.hasClass("is-open")) {
+                $group.removeClass("is-open").find(".subchip-list").hide();
+                $SwitchSubcategory.filter(`[data-parent-id="${id}"]`).hide().removeClass("is-primary");
+            } else {
+                _RenderSubcategory(id);
+            }
             return;
         }
         _SwitchCategory($(this).data("id"), true);
+    });
+
+    $SwitchSubcategory.click(function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = $(this).data("parent-id") || $SwitchCategory.filter(".is-primary").data("id");
+        activeSubcategory = $(this).data("subcategory") || "";
+        $SwitchCategory.removeClass("is-primary");
+        $(`a[data-id=${id}]`).addClass("is-primary");
+        $SwitchSubcategory.filter(`[data-parent-id="${id}"]`).removeClass("is-primary");
+        $(this).addClass("is-primary");
+        _RenderSubcategory(id);
+        $(this).addClass("is-primary");
+        history.pushState(null, '', categoryUrl === "/cat" ? `/cat/${id}` : `${categoryUrl}?cid=${id}&subcategory=${encodeURIComponent(activeSubcategory)}`);
+        trade.getCommodityList({
+            categoryId: id,
+            source: shopSource,
+            subcategory: activeSubcategory,
+            done: data => {
+                _PushCommodityList(data);
+            }
+        });
     });
 
 

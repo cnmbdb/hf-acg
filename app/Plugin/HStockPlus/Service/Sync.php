@@ -52,13 +52,9 @@ class Sync
 
         $source = strtolower(trim((string)($config['sync_source'] ?? 'services')));
         $services = $this->fetchSourceRows($client, $source, $filters, $config);
-        if ($action === 4) {
-            $this->syncPricesOnly($services, $config, $stats);
-            return $this->finish($config, $action, $stats);
-        }
-
+        $categoryHints = $this->categoryHints($client, $filters);
         $categories = [];
-        Db::connection()->transaction(function () use ($services, $config, $action, &$stats, &$categories): void {
+        Db::connection()->transaction(function () use ($services, $config, $action, $categoryHints, &$stats, &$categories): void {
             $this->cleanupLegacyCategories($stats);
             foreach ($services as $index => $service) {
                 if (!is_array($service)) {
@@ -73,13 +69,13 @@ class Sync
                     continue;
                 }
 
-                $upstreamCategory = $this->categoryName($service);
-                $categoryKey = trim($upstreamCategory) !== '' ? trim($upstreamCategory) : '其他服务';
+                $path = $this->categoryPath($service, $categoryHints);
+                $categoryKey = implode('>', $path);
                 if (!isset($categories[$categoryKey])) {
-                    $categories[$categoryKey] = $this->syncCategory($upstreamCategory, $config, $stats);
+                    $categories[$categoryKey] = $this->syncCategoryPath($path, $config, $stats);
                 }
                 $category = $categories[$categoryKey];
-                $category->sort = $this->categorySort($categoryKey);
+                $category->sort = $this->categorySort((string)end($path));
                 $category->save();
 
                 if ($action === 1) {
@@ -92,9 +88,7 @@ class Sync
                 }
             }
 
-            if (in_array($action, [2, 3], true)) {
-                $this->reconcilePluginCategories($config, $stats);
-            }
+            $this->reconcilePluginCategories($config, $stats);
         });
 
         return $this->finish($config, $action, $stats);
@@ -112,46 +106,83 @@ class Sync
 
         Db::connection()->transaction(function () use ($rows, $config, &$stats): void {
             $this->cleanupLegacyCategories($stats);
-            foreach ($this->extractCategoryNames($rows) as $categoryName) {
-                $this->syncCategory($categoryName, $config, $stats);
-            }
+            $this->syncCategoryTree($rows, $config, $stats);
             $this->reconcilePluginCategories($config, $stats);
         });
     }
 
-    private function syncPricesOnly(array $services, array $config, array &$stats): void
+    private function categoryHints(Client $client, array $filters): array
     {
-        Db::connection()->transaction(function () use ($services, $config, &$stats): void {
-            foreach ($services as $index => $service) {
-                if (!is_array($service)) {
-                    $stats['products_skipped']++;
-                    continue;
-                }
+        try {
+            $rows = $this->extractRows($client->categories($filters));
+        } catch (\Throwable) {
+            return [];
+        }
 
-                $serviceId = trim((string)($service['service'] ?? $service['id'] ?? ''));
-                if ($serviceId === '') {
-                    $stats['products_skipped']++;
-                    continue;
-                }
-
-                /** @var Commodity|null $commodity */
-                $commodity = Commodity::query()
-                    ->where('code', 'HSP_' . preg_replace('/[^A-Za-z0-9_]/', '_', $serviceId))
-                    ->first();
-                if (!$commodity) {
-                    $stats['products_skipped']++;
-                    continue;
-                }
-
-                $commodity->factory_price = $this->costPerUnit($service, $config);
-                $commodity->price = $this->price((float)$commodity->factory_price, $config);
-                $commodity->user_price = $commodity->price;
-                $commodity->sort = $index + 1;
-                $commodity->save();
-                $stats['products_price_updated']++;
+        $hints = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
             }
-        });
+            $parent = $this->cleanTitle((string)($row['category'] ?? $row['name'] ?? $row['title'] ?? ''));
+            if ($parent === '') {
+                continue;
+            }
+            foreach ($this->extractSubcategoryNames($row) as $child) {
+                $hints[$this->categoryLookupKey($child)] = $parent;
+            }
+        }
+
+        return $hints;
     }
+
+    private function syncCategoryTree(array $rows, array $config, array &$stats): void
+    {
+        foreach ($rows as $row) {
+            if (is_string($row) || is_numeric($row)) {
+                $this->syncCategoryPath([(string)$row], $config, $stats);
+                continue;
+            }
+
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $parent = $this->cleanTitle((string)($row['category'] ?? $row['name'] ?? $row['title'] ?? ''));
+            if ($parent === '') {
+                continue;
+            }
+            $parentCategory = $this->syncCategoryPath([$parent], $config, $stats);
+            foreach ($this->extractSubcategoryNames($row) as $index => $child) {
+                $category = $this->syncCategoryPath([$parent, $child], $config, $stats);
+                $category->sort = ($index + 1) * 10;
+                $category->save();
+            }
+            $parentCategory->sort = $this->categorySort($parent);
+            $parentCategory->save();
+        }
+    }
+
+    private function extractSubcategoryNames(array $row): array
+    {
+        $raw = $row['subcategories'] ?? $row['children'] ?? $row['subs'] ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $names = [];
+        foreach ($raw as $sub) {
+            $name = is_array($sub)
+                ? $this->cleanTitle((string)($sub['name'] ?? $sub['category'] ?? $sub['title'] ?? ''))
+                : $this->cleanTitle((string)$sub);
+            if ($name !== '') {
+                $names[$name] = $name;
+            }
+        }
+
+        return array_values($names);
+    }
+
 
     private function finish(array $config, int $action, array $stats): array
     {
@@ -283,7 +314,19 @@ class Sync
         return array_values($names);
     }
 
-    private function syncCategory(string $upstreamCategory, array $config, array &$stats): Category
+    private function syncCategoryPath(array $path, array $config, array &$stats): Category
+    {
+        $parent = null;
+        $category = null;
+        foreach ($path as $index => $name) {
+            $category = $this->syncCategoryNode((string)$name, $config, $stats, $parent, ($index + 1) * 10);
+            $parent = $category;
+        }
+
+        return $category ?? $this->syncCategoryNode('默认分类', $config, $stats, null, 9999);
+    }
+
+    private function syncCategoryNode(string $upstreamCategory, array $config, array &$stats, ?Category $parent = null, int $sort = 0): Category
     {
         $prefix = (string)($config['sync_category_prefix'] ?? '');
         $cleanCategory = $this->cleanTitle($upstreamCategory);
@@ -293,8 +336,17 @@ class Sync
             $name = trim($prefix . $cleanCategory);
         }
 
+        $query = Category::query()->where('owner', 0)->where('name', $name);
+        if ($parent) {
+            $query->where('pid', $parent->id);
+        } else {
+            $query->where(function ($builder): void {
+                $builder->whereNull('pid')->orWhere('pid', 0);
+            });
+        }
+
         /** @var Category|null $category */
-        $category = Category::query()->where('owner', 0)->where('name', $name)->first();
+        $category = $query->first();
         foreach ($this->legacyCategoryNames($cleanCategory, $prefix) as $oldName) {
             if ($category || $oldName === $name) {
                 continue;
@@ -307,18 +359,25 @@ class Sync
             $category->owner = 0;
             $category->create_time = date('Y-m-d H:i:s');
             $category->hide = 0;
-            $category->sort = 0;
             $category->icon = '/favicon.ico';
             $created = true;
         }
 
         $category->name = $name;
+        $category->pid = $parent?->id;
+        $category->sort = $sort ?: $this->categorySort($cleanCategory);
         $category->icon = $this->categoryIcon($upstreamCategory);
         $category->status = (int)($config['default_category_status'] ?? 1);
+        $category->hide = 0;
         $category->save();
 
         $stats[$created ? 'categories_created' : 'categories_updated']++;
         return $category;
+    }
+
+    private function syncCategory(string $upstreamCategory, array $config, array &$stats): Category
+    {
+        return $this->syncCategoryPath([$upstreamCategory], $config, $stats);
     }
 
     private function legacyCategoryNames(string $category, string $prefix): array
@@ -417,9 +476,20 @@ class Sync
             return;
         }
 
-        $categoryIds = $categories->pluck('id')->all();
+        $categoryIds = $categories->pluck('id')->map(static fn($id): int => (int)$id)->all();
+        $childrenByParent = Category::query()
+            ->whereIn('pid', $categoryIds)
+            ->get(['id', 'pid'])
+            ->groupBy('pid')
+            ->map(static fn($items) => $items->pluck('id')->map(static fn($id): int => (int)$id)->all())
+            ->all();
+        $allCategoryIds = $categoryIds;
+        foreach ($categoryIds as $categoryId) {
+            array_push($allCategoryIds, ...$this->descendantCategoryIds((int)$categoryId, $childrenByParent));
+        }
+        $allCategoryIds = array_values(array_unique($allCategoryIds));
         $commodityCounts = Commodity::query()
-            ->whereIn('category_id', $categoryIds)
+            ->whereIn('category_id', $allCategoryIds)
             ->selectRaw('category_id, count(*) as aggregate')
             ->groupBy('category_id')
             ->pluck('aggregate', 'category_id')
@@ -427,7 +497,8 @@ class Sync
 
         $defaultStatus = (int)($config['default_category_status'] ?? 1);
         foreach ($categories as $category) {
-            $commodityCount = (int)($commodityCounts[$category->id] ?? 0);
+            $countIds = array_merge([(int)$category->id], $this->descendantCategoryIds((int)$category->id, $childrenByParent));
+            $commodityCount = array_sum(array_map(static fn(int $categoryId): int => (int)($commodityCounts[$categoryId] ?? 0), $countIds));
             if ($commodityCount <= 0) {
                 Coupon::query()->where('category_id', $category->id)->update(['category_id' => 0]);
                 UserCategory::query()->where('category_id', $category->id)->delete();
@@ -444,6 +515,16 @@ class Sync
                 $stats['categories_enabled']++;
             }
         }
+    }
+
+    private function descendantCategoryIds(int $parentId, array $childrenByParent): array
+    {
+        $ids = [];
+        foreach ($childrenByParent[$parentId] ?? [] as $childId) {
+            $ids[] = (int)$childId;
+            array_push($ids, ...$this->descendantCategoryIds((int)$childId, $childrenByParent));
+        }
+        return $ids;
     }
 
     private function syncCommodity(Category $category, array $service, array $config, int $action, array &$stats, int $sort): ?Commodity
@@ -473,6 +554,7 @@ class Sync
             $commodity->factory_price = $cost;
             $commodity->price = $price;
             $commodity->user_price = $price;
+            $commodity->category_id = $category->id;
             $commodity->sort = $sort;
             $commodity->save();
             $stats['products_price_updated']++;
@@ -594,10 +676,90 @@ class Sync
         return '其他服务';
     }
 
+    private function categoryPath(array $service, array $categoryHints = []): array
+    {
+        $category = $this->cleanTitle((string)($service['category'] ?? ''));
+        $subcategory = $this->cleanTitle((string)($service['subcategoryName'] ?? $service['subcategory_name'] ?? $service['subCategoryName'] ?? $service['subcategory'] ?? ''));
+        $rawParts = $this->splitCategoryPath($category);
+        $rawLeaf = $subcategory !== '' ? $subcategory : ($rawParts[1] ?? $rawParts[0] ?? '');
+        $parent = $this->hstockplusTopCategory($service, $category, $rawLeaf);
+        $child = $rawLeaf !== '' ? $rawLeaf : $parent;
+
+        return [$parent, $child];
+    }
+
+    private function hstockplusTopCategory(array $service, string $category, string $subcategory): string
+    {
+        $entityType = trim((string)($service['entityType'] ?? $service['entity_type'] ?? ''));
+        $text = mb_strtolower($category . ' ' . $subcategory . ' ' . (string)($service['name'] ?? ''), 'UTF-8');
+
+        if ($entityType === 'smm' || str_contains($text, '增长') || str_contains($text, '粉丝') || str_contains($text, '关注') || str_contains($text, '观看') || str_contains($text, '点赞') || str_contains($text, '成员')) {
+            return '增长服务';
+        }
+
+        if (str_contains($text, '代理') || str_contains($text, 'proxy') || str_contains($text, 'proxies') || str_contains($text, 'vpn') || str_contains($text, 'vps')) {
+            return '代理服务';
+        }
+
+        if (str_contains($text, '短信') || str_contains($text, 'sms') || str_contains($text, '验证') || str_contains($text, 'verification')) {
+            return '短信验证';
+        }
+
+        if (str_contains($text, '评论') || str_contains($text, 'review') || str_contains($text, '评价') || str_contains($text, 'trustpilot')) {
+            return '评论';
+        }
+
+        if (str_contains($text, '邮件') || str_contains($text, '邮箱') || str_contains($text, 'email') || str_contains($text, 'mail') || str_contains($text, 'gmail') || str_contains($text, 'hotmail') || str_contains($text, 'outlook')) {
+            return '电子邮件';
+        }
+
+        return '账户';
+    }
+
+    private function splitCategoryPath(string $category): array
+    {
+        $category = trim($category);
+        if ($category === '') {
+            return [];
+        }
+
+        $parts = preg_split('/\s*(?:[-_\/|>＞:：]+)\s*/u', $category) ?: [];
+        $parts = array_values(array_filter(array_map(fn(string $part): string => $this->cleanTitle($part), $parts), static fn(string $part): bool => $part !== ''));
+
+        if (count($parts) <= 1) {
+            return $parts;
+        }
+
+        return [$parts[0], implode('-', array_slice($parts, 1))];
+    }
+
+    private function fallbackParentCategory(array $service): string
+    {
+        $entityType = trim((string)($service['entityType'] ?? $service['entity_type'] ?? ''));
+        if ($entityType === 'product') {
+            return '产品货源';
+        }
+        if ($entityType === 'smm') {
+            return '增长服务';
+        }
+        return '其他服务';
+    }
+
+    private function categoryLookupKey(string $value): string
+    {
+        return mb_strtolower($this->cleanTitle($value), 'UTF-8');
+    }
+
     private function categoryIcon(string $category): string
     {
         $text = mb_strtolower($category, 'UTF-8');
         $icons = [
+            '账户' => 'other',
+            '电子邮件' => 'other',
+            '增长服务' => 'website-traffic',
+            '代理服务' => 'website-traffic',
+            '短信验证' => 'other',
+            '评论' => 'other',
             'instagram' => 'instagram',
             'tiktok' => 'tiktok',
             'twitter' => 'twitter',
@@ -627,7 +789,7 @@ class Sync
 
     private function categorySort(string $category): int
     {
-        $order = ['产品货源', '增长服务', 'Instagram', 'TikTok', 'YouTube', 'Telegram', 'Facebook', 'X/Twitter', '其他服务'];
+        $order = ['账户', '电子邮件', '增长服务', '代理服务', '短信验证', '评论', '其他服务'];
         $position = array_search($category, $order, true);
         return $position === false ? 9999 : ($position + 1) * 10;
     }
@@ -635,7 +797,7 @@ class Sync
     private function costPerUnit(array $service, array $config): float
     {
         $rate = (float)($service['rate'] ?? $service['price'] ?? 0);
-        $usdToCny = max(0, (float)($config['usd_to_cny'] ?? 7.3));
+        $usdToCny = $this->numberConfig($config, 'usd_to_cny', 7.3);
         $cost = max(0, $rate) * $usdToCny;
 
         if (($service['entityType'] ?? '') === 'smm' && (int)($config['smm_rate_per_1000'] ?? 1) === 1) {
@@ -647,10 +809,20 @@ class Sync
 
     private function price(float $cost, array $config): float
     {
-        $multiplier = max(0, (float)($config['price_multiplier'] ?? 1.2));
-        $plus = max(0, (float)($config['price_plus'] ?? 0));
-        $floor = max(0, (float)($config['price_floor'] ?? 0.01));
+        $multiplier = $this->numberConfig($config, 'price_multiplier', 1.2);
+        $plus = $this->numberConfig($config, 'price_plus', 0);
+        $floor = $this->numberConfig($config, 'price_floor', 0.01);
         return round(max($floor, ($cost * $multiplier) + $plus), 2);
+    }
+
+    private function numberConfig(array $config, string $key, float $default): float
+    {
+        $value = trim((string)($config[$key] ?? ''));
+        if ($value === '' || !is_numeric($value)) {
+            return $default;
+        }
+
+        return max(0, (float)$value);
     }
 
     private function stockValue(mixed $value, array $config): int
@@ -716,6 +888,8 @@ class Sync
                 'minimum_order' => (string)max(0, (int)($service['min'] ?? 0)),
                 'maximum_order' => (string)max(0, (int)($service['max'] ?? 0)),
                 'category' => $this->configValue((string)($service['category'] ?? '')),
+                'subcategory' => $this->configValue((string)($service['subcategory'] ?? '')),
+                'subcategory_name' => $this->configValue((string)($service['subcategoryName'] ?? $service['subcategory_name'] ?? $service['subCategoryName'] ?? '')),
                 'subcategory_id' => $this->configValue((string)($service['subcategoryId'] ?? '')),
                 'auto_delivery' => filter_var($service['autoDelivery'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             ],

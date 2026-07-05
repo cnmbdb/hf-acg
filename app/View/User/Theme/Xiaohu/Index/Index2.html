@@ -1,0 +1,80 @@
+#{include file="./Header.html"}
+<main class="xh-shell xh-main">
+    <section class="xh-panel xh-home-notice">
+        <div class="xh-home-notice-title">
+            <i class="fa-duotone fa-regular fa-bullhorn"></i>
+            <span data-i18n="notice">公告</span>
+        </div>
+        <div class="xh-home-notice-content">
+            <div class="xh-notice-marquee">
+                <div class="xh-notice-marquee-item">
+                    #{$config.notice}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <aside class="xh-panel xh-categories" aria-label="商品分类">
+        <div class="xh-panel-head">
+            <span class="xh-eyebrow">Categories</span>
+            <h1 data-i18n="categories">商品分类</h1>
+        </div>
+        <div class="xh-category-list">
+            #{foreach $category as $cate}
+                <div class="xh-category-group" data-category-group="#{$cate.id}">
+                    <a data-id="#{$cate.id}" class="switch-category xh-category #{if $cate@first && $categoryId == 0}is-active#{elseif $cate.id == $categoryId}is-active#{/if}" href="javascript:void(0);">
+                        <span class="xh-category-icon">
+                            #{if $cate.id != 'recommend' && $cate.icon}
+                                <img src="#{$cate.icon}" alt="#{$cate.name}">
+                            #{else}
+                                <i class="fa-duotone fa-regular fa-star"></i>
+                            #{/if}
+                        </span>
+                        <span class="xh-category-name">#{$cate.name}</span>
+                        #{if !empty($cate.subcategories)}
+                            <i class="fa-duotone fa-regular fa-chevron-down xh-category-arrow"></i>
+                        #{/if}
+                    </a>
+                    <div class="xh-subcategory-list" aria-label="#{$cate.name}二级商品类目">
+                        #{if !empty($cate.subcategories)}
+                            #{foreach $cate.subcategories as $sub}
+                                <button type="button" class="switch-subcategory xh-subcategory" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">#{$sub.name}</button>
+                            #{/foreach}
+                        #{/if}
+                    </div>
+                </div>
+            #{/foreach}
+        </div>
+    </aside>
+
+    <section class="xh-panel xh-catalog" aria-label="商品目录">
+        <div class="xh-catalog-head">
+            <div>
+                <span class="xh-eyebrow">Catalog</span>
+                <h2 class="xh-current-category" data-i18n="recommend">推荐</h2>
+            </div>
+            <div class="xh-search" role="search">
+                <i class="fa-duotone fa-regular fa-magnifying-glass"></i>
+                <input class="item-search-input" type="search" placeholder="搜索商品关键词" aria-label="搜索商品关键词" data-i18n-placeholder="searchPlaceholder" data-i18n-aria-label="searchPlaceholder">
+                <button type="button" class="xh-search-button">
+                    <i class="fa-duotone fa-regular fa-magnifying-glass"></i>
+                    <span data-i18n="search">搜索</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="xh-table">
+            <div class="xh-table-row xh-table-header">
+                <div data-i18n="product">商品</div>
+                <div data-i18n="price">价格</div>
+                <div data-i18n="stock">库存</div>
+                <div></div>
+            </div>
+            <div class="item-list xh-product-list">
+                <div class="xh-empty" data-i18n="loading">努力加载中...</div>
+            </div>
+        </div>
+    </section>
+</main>
+#{ready("#{$static}/assets/index.js?xh=20260703-6")}
+#{include file="./Footer.html"}

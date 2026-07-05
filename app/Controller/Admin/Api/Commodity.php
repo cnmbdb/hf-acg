@@ -9,6 +9,7 @@ use App\Entity\Query\Delete;
 use App\Entity\Query\Get;
 use App\Entity\Query\Save;
 use App\Interceptor\ManageSession;
+use App\Model\Category;
 use App\Model\ManageLog;
 use App\Service\Query;
 use App\Util\Client;
@@ -28,6 +29,11 @@ use Kernel\Waf\Filter;
 #[Interceptor(ManageSession::class, Interceptor::TYPE_API)]
 class Commodity extends Manage
 {
+    private const SOURCE_CODE_PREFIX = [
+        'fansgurus' => 'FG_',
+        'hstockplus' => 'HSP_',
+    ];
+
     #[Inject]
     private Query $query;
 
@@ -37,12 +43,19 @@ class Commodity extends Manage
     public function data(): array
     {
         $map = $_POST;
+        $source = $this->normalizeSource((string)($map['source'] ?? 'fansgurus'));
+        unset($map['source']);
+
         $get = new Get(\App\Model\Commodity::class);
         $get->setPaginate((int)$this->request->post("page"), (int)$this->request->post("limit"));
         $get->setWhere($map);
         $get->setOrderBy(...$this->query->getOrderBy($map, "sort", "asc"));
 
-        $data = $this->query->get($get, function (Builder $builder) use ($map) {
+        $data = $this->query->get($get, function (Builder $builder) use ($map, $source) {
+            if ($source) {
+                $builder = $builder->where('code', 'like', self::SOURCE_CODE_PREFIX[$source] . '%');
+            }
+
             if (isset($map['display_scope'])) {
                 if ($map['display_scope'] == 1) {
                     $builder = $builder->where("owner", 0);
@@ -86,6 +99,7 @@ class Commodity extends Manage
         });
 
         $clientUrl = Client::getUrl();
+        $parentCategoryMap = $this->parentCategoryMap($data['list']);
         foreach ($data['list'] as &$val) {
             $url = $clientUrl;
             if ($val['owner'] && $val['owner']['business']) {
@@ -97,10 +111,52 @@ class Commodity extends Manage
                 }
             }
             $val['share_url'] = $url . "/item/{$val['id']}";
+            $val['category_path'] = $this->categoryPath($val['category'] ?? null, $parentCategoryMap);
         }
 
 
         return $this->json(data: $data);
+    }
+
+    private function normalizeSource(string $source): ?string
+    {
+        $source = strtolower(trim($source));
+        return array_key_exists($source, self::SOURCE_CODE_PREFIX) ? $source : null;
+    }
+
+    private function parentCategoryMap(array $rows): array
+    {
+        $parentIds = [];
+        foreach ($rows as $row) {
+            $pid = (int)($row['category']['pid'] ?? 0);
+            if ($pid > 0) {
+                $parentIds[] = $pid;
+            }
+        }
+
+        if (!$parentIds) {
+            return [];
+        }
+
+        return Category::query()
+            ->whereIn('id', array_values(array_unique($parentIds)))
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    private function categoryPath(?array $category, array $parentCategoryMap): string
+    {
+        if (!$category) {
+            return '-';
+        }
+
+        $name = (string)($category['name'] ?? '-');
+        $pid = (int)($category['pid'] ?? 0);
+        if ($pid <= 0 || !isset($parentCategoryMap[$pid])) {
+            return $name;
+        }
+
+        return $parentCategoryMap[$pid] . ' / ' . $name;
     }
 
 

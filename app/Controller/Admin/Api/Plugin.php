@@ -6,6 +6,7 @@ namespace App\Controller\Admin\Api;
 use App\Consts\Hook;
 use App\Controller\Base\API\Manage;
 use App\Interceptor\ManageSession;
+use App\Model\Config as CFG;
 use App\Util\Theme;
 use Kernel\Annotation\Interceptor;
 use Kernel\Annotation\Post;
@@ -16,6 +17,31 @@ use Kernel\Waf\Filter;
 #[Interceptor([ManageSession::class], Interceptor::TYPE_API)]
 class Plugin extends Manage
 {
+    private const USER_THEME_CONFIG_KEYS = [
+        'user_theme',
+        'user_mobile_theme',
+        'user_center_theme',
+    ];
+
+    /**
+     * 普通插件启停不应该改动前台模板选择。
+     */
+    private function snapshotUserThemeConfig(): array
+    {
+        $snapshot = [];
+        foreach (self::USER_THEME_CONFIG_KEYS as $key) {
+            $snapshot[$key] = CFG::get($key);
+        }
+        return $snapshot;
+    }
+
+    private function restoreUserThemeConfig(array $snapshot): void
+    {
+        foreach ($snapshot as $key => $value) {
+            CFG::put($key, $value);
+        }
+    }
+
     /**
      * @return array
      */
@@ -136,41 +162,67 @@ class Plugin extends Manage
         $config = $plugin[\App\Consts\Plugin::PLUGIN_CONFIG];
 
         if (isset($map['STATUS'])) {
+            $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
             if ((int)$config['STATUS'] == 0 && $map['STATUS'] == 1) {
-                _plugin_start($id);
-                $config['STATUS'] = 1;
-                setConfig($config, BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php');
+                $themeConfig = $this->snapshotUserThemeConfig();
+                try {
+                    _plugin_start($id);
+                    \App\Util\Opcache::invalidate($configFile);
+                    $hookConfig = is_file($configFile) ? require $configFile : [];
+                    if (is_array($hookConfig)) {
+                        $config = array_replace($config, $hookConfig);
+                    }
+                    $config['STATUS'] = 1;
+                    setConfig($config, $configFile);
+                } finally {
+                    $this->restoreUserThemeConfig($themeConfig);
+                }
                 return $this->json(200, "插件已启动");
             } else if ((int)$config['STATUS'] == 1 && $map['STATUS'] == 0) {
-                _plugin_stop($id);
-                $config['STATUS'] = 0;
-                setConfig($config, BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php');
+                $themeConfig = $this->snapshotUserThemeConfig();
+                try {
+                    _plugin_stop($id);
+                    \App\Util\Opcache::invalidate($configFile);
+                    $hookConfig = is_file($configFile) ? require $configFile : [];
+                    if (is_array($hookConfig)) {
+                        $config = array_replace($config, $hookConfig);
+                    }
+                    $config['STATUS'] = 0;
+                    setConfig($config, $configFile);
+                } finally {
+                    $this->restoreUserThemeConfig($themeConfig);
+                }
                 return $this->json(200, "插件已停止");
             }
         }
 
+        $themeConfig = $this->snapshotUserThemeConfig();
         foreach ($map as $k => $v) {
             $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
         }
 
-        hook(Hook::ADMIN_API_PLUGIN_SAVE_CONFIG, $id, $map); //12/09-重写HOOK逻辑
-        \Kernel\Util\Plugin::runHookState($id, \Kernel\Annotation\Plugin::SAVE_CONFIG, $id, $map);//2022/01/12新增插件保存配置逻辑，无需启用插件也可以hook
+        try {
+            hook(Hook::ADMIN_API_PLUGIN_SAVE_CONFIG, $id, $map); //12/09-重写HOOK逻辑
+            \Kernel\Util\Plugin::runHookState($id, \Kernel\Annotation\Plugin::SAVE_CONFIG, $id, $map);//2022/01/12新增插件保存配置逻辑，无需启用插件也可以hook
 
-        $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
-        if (is_file($configFile)) {
-            \App\Util\Opcache::invalidate($configFile);
-            $hookConfig = require $configFile;
-            if (is_array($hookConfig)) {
-                $config = array_replace($hookConfig, $config);
-                foreach ($map as $k => $v) {
-                    $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
-                }
-                if (in_array($id, ['FansGurus', 'HStockPlus'], true) && array_key_exists('sync_action', $hookConfig)) {
-                    $config['sync_action'] = $hookConfig['sync_action'];
+            $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
+            if (is_file($configFile)) {
+                \App\Util\Opcache::invalidate($configFile);
+                $hookConfig = require $configFile;
+                if (is_array($hookConfig)) {
+                    $config = array_replace($hookConfig, $config);
+                    foreach ($map as $k => $v) {
+                        $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
+                    }
+                    if (in_array($id, ['FansGurus', 'HStockPlus'], true) && array_key_exists('sync_action', $hookConfig)) {
+                        $config['sync_action'] = $hookConfig['sync_action'];
+                    }
                 }
             }
+            setConfig($config, $configFile);
+        } finally {
+            $this->restoreUserThemeConfig($themeConfig);
         }
-        setConfig($config, $configFile);
         return $this->json(200, '配置已生效');
     }
 

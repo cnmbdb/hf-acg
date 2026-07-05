@@ -10,6 +10,8 @@ if (!function_exists("index_var")) {
         return set_script_var([
             "DEBUG" => DEBUG,
             "CAT_ID" => (int)$_GET['cid'],
+            "SHOP_SOURCE" => $GLOBALS['shopSource'] ?? null,
+            "SHOP_CATEGORY_URL" => $GLOBALS['shopCategoryUrl'] ?? "/cat",
             "HACK_ROUTE_TABLE_COLUMNS" => hook(Hook::HACK_ROUTE_TABLE_COLUMNS),
             "HACK_SUBMIT_FORM" => hook(Hook::HACK_SUBMIT_FORM),
             "HACK_SUBMIT_TAB" => hook(Hook::HACK_SUBMIT_TAB),
@@ -126,4 +128,3 @@ if (!function_exists("item_var")) {
         ]);
     }
 }
-

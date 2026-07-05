@@ -19,6 +19,32 @@ class Dict implements \App\Service\Dict
     {
         $dict = explode(",", $dictName);
 
+        $virtualTable = explode('->', $dict[0], 2);
+        if ($virtualTable[0] === 'commodity_platform_category') {
+            $source = 'fansgurus';
+            $virtualWhere = $virtualTable[1] ?? $where;
+            if (preg_match('/(?:^|&)source=([a-z0-9_]+)/i', $virtualWhere, $matches)) {
+                $source = strtolower($matches[1]);
+            }
+
+            $icons = [
+                'fansgurus' => '/app/Plugin/FansGurus/Assets/icons/%',
+                'hstockplus' => '/app/Plugin/HStockPlus/Assets/icons/%',
+            ];
+            if (!isset($icons[$source])) {
+                return [];
+            }
+
+            $prefix = config('database')['prefix'];
+            $keywordWhere = $keywords !== '' ? " and name like '%{$keywords}%'" : '';
+            $select = DB::select(
+                "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and icon like ?{$keywordWhere} order by sort asc,id asc",
+                [$icons[$source]]
+            );
+
+            return array_map('get_object_vars', $select);
+        }
+
         $dictLength = count($dict);
 
         if ($dictLength >= 3) {

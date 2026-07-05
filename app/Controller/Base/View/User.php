@@ -22,7 +22,7 @@ abstract class User extends \App\Controller\Base\User
      * @var array|string[]
      */
     protected array $indexTemplateList = [
-        'INDEX', 'ITEM', 'QUERY', 'CLOSED'
+        'INDEX', 'INDEX2', 'ITEM', 'QUERY', 'CLOSED'
     ];
 
     /**
@@ -71,6 +71,8 @@ abstract class User extends \App\Controller\Base\User
             $data['title'] = $title;
             $data['app']['version'] = \config("app")['version'];
             $data['favicon'] = "/favicon.ico";
+            $GLOBALS['shopSource'] = $data['shopSource'] ?? null;
+            $GLOBALS['shopCategoryUrl'] = $data['shopCategoryUrl'] ?? "/cat";
 
             $cfg = Config::list();
 
