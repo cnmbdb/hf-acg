@@ -7,6 +7,7 @@ use App\Model\Category;
 use App\Model\Commodity;
 use App\Model\Coupon;
 use App\Model\UserCategory;
+use App\Plugin\Support\ExchangeRate;
 use App\Util\Ini;
 use App\Util\Plugin;
 use Illuminate\Database\Capsule\Manager as Db;
@@ -26,6 +27,9 @@ class Sync
         $action = (int)($config['sync_action'] ?? 0);
         if ($action <= 0) {
             return ['last_sync_result' => '未执行同步'];
+        }
+        if ($action !== 1) {
+            $config = ExchangeRate::applyUsdToCny($config, self::PLUGIN);
         }
 
         $client = new Client(
@@ -797,7 +801,7 @@ class Sync
     private function costPerUnit(array $service, array $config): float
     {
         $rate = (float)($service['rate'] ?? $service['price'] ?? 0);
-        $usdToCny = $this->numberConfig($config, 'usd_to_cny', 7.3);
+        $usdToCny = ExchangeRate::rate($config);
         $cost = max(0, $rate) * $usdToCny;
 
         if (($service['entityType'] ?? '') === 'smm' && (int)($config['smm_rate_per_1000'] ?? 1) === 1) {

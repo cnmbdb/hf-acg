@@ -10,7 +10,6 @@ use App\Entity\Query\Get;
 use App\Interceptor\UserVisitor;
 use App\Interceptor\Waf;
 use App\Model\Card;
-use App\Model\Category;
 use App\Model\Commodity;
 use App\Model\Config;
 use App\Model\Order;
@@ -19,8 +18,8 @@ use App\Model\UserCommodity;
 use App\Service\Query;
 use App\Service\Shared;
 use App\Service\Shop;
-use App\Service\Bind\Shop as ShopBind;
 use App\Util\Client;
+use App\Util\Throttle;
 use App\Util\Tree;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -51,9 +50,7 @@ class Index extends User
      */
     public function data(): array
     {
-        $source = ShopBind::normalizeSource((string)($_GET['source'] ?? '')) ?: 'fansgurus';
-        $category = Tree::generate($this->shop->getCategory($this->getUserGroup(), $source));
-        $category = $this->shop->normalizeCategoryTree($category);
+        $category = Tree::generate($this->shop->getCategory($this->getUserGroup()));
         hook(Hook::USER_API_INDEX_CATEGORY_LIST, $category);
         return $this->json(200, "success", $category);
     }
@@ -69,8 +66,6 @@ class Index extends User
         $limit = (int)$_GET['limit'];
         $page = (int)$_GET['page'];
         $categoryId = $_GET['categoryId'];
-        $source = ShopBind::normalizeSource((string)($_GET['source'] ?? '')) ?: 'fansgurus';
-        $subcategory = trim(rawurldecode((string)($_GET['subcategory'] ?? '')));
 
         $commodity = Commodity::query()
             ->with(['owner' => function (Relation $relation) {
@@ -81,20 +76,12 @@ class Index extends User
 
         if ($categoryId == 'recommend') {
             $commodity = $commodity->where("recommend", 1);
-        } elseif ($subcategory !== '' && ctype_digit($subcategory)) {
-            $commodity = $commodity->where("category_id", (int)$subcategory);
         } elseif ($categoryId != 0) {
-            $commodity = $commodity->whereIn("category_id", $this->categoryAndDescendantIds((int)$categoryId));
+            $commodity = $commodity->where("category_id", $categoryId);
         }
 
         if ($keywords != "") {
             $commodity = $commodity->where('name', 'like', '%' . $keywords . '%');
-        }
-
-        ShopBind::applySourceFilter($commodity, $source);
-
-        if ($subcategory !== '' && !ctype_digit($subcategory)) {
-            $commodity = $commodity->where('config', 'like', '%' . str_replace(['%', '_'], ['\\%', '\\_'], $subcategory) . '%');
         }
 
         $bus = \App\Model\Business::get();
@@ -143,7 +130,7 @@ class Index extends User
                 'id', 'name', 'cover',
                 'status', 'delivery_way', 'price',
                 'user_price',
-                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id', 'config'
+                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id'
             ])
             ->withCount(['order as order_sold' => function (Builder $relation) {
                 $relation->where("delivery_status", 1);
@@ -164,12 +151,11 @@ class Index extends User
         $user = $this->getUser();
         $userGroup = $this->getUserGroup();
         //取得分类
-        $category = $this->shop->getCategory($userGroup, $source);
-        $cates = array_map('strval', $this->shop->getSourceVisibleCategoryIds($source));
+        $category = $this->shop->getCategory($userGroup);
+        $cates = [];
         foreach ($category as $cate) {
             $cates[] = (string)$cate['id'];
         }
-        $cates = array_values(array_unique($cates));
 
         //最终的商品数据遍历
         foreach ($data as $key => $val) {
@@ -192,7 +178,6 @@ class Index extends User
             }
 
             unset(
-                $data[$key]['config'],
                 $data[$key]['level_price'],
                 $data[$key]['level_disable']
             );
@@ -226,31 +211,6 @@ class Index extends User
         $json = $this->json(200, "success", $data);
         $json['total'] = $total;
         return $json;
-    }
-
-    private function categoryAndDescendantIds(int $categoryId): array
-    {
-        if ($categoryId <= 0) {
-            return [];
-        }
-
-        $ids = [$categoryId];
-        $frontier = [$categoryId];
-        while ($frontier) {
-            $children = Category::query()
-                ->whereIn('pid', $frontier)
-                ->pluck('id')
-                ->map(static fn($id): int => (int)$id)
-                ->all();
-            $children = array_values(array_diff($children, $ids));
-            if (!$children) {
-                break;
-            }
-            array_push($ids, ...$children);
-            $frontier = $children;
-        }
-
-        return $ids;
     }
 
     /**
@@ -432,6 +392,11 @@ class Index extends User
             throw new JSONException("无数据");
         }
 
+        //限流：挡住按订单号/联系方式批量枚举订单卡密（本接口免登录）
+        if (Throttle::tooMany("query:ip:" . Client::getAddress(), 30, 600)) {
+            throw new JSONException("请求过于频繁，请稍后再试");
+        }
+
         $get = new Get(Order::class);
         $get->setPaginate((int)$this->request->post("page"), (int)$this->request->post("limit"));
         $get->setColumn('id', 'trade_no', 'sku', 'secret', 'user_id', 'password', 'amount', 'pay_id', 'commodity_id', 'create_time', 'pay_time', 'delivery_status', 'status', 'card_num', 'contact', "race");
@@ -476,6 +441,15 @@ class Index extends User
      */
     public function secret(string $tradeNo, string $password): array
     {
+        $tradeNo = trim($tradeNo);
+        $ip = Client::getAddress();
+
+        //限流：挡住卡密查询密码爆破 / 订单号枚举（本接口免登录，曾被单次刷 1 万+）
+        if (Throttle::tooMany("secret:ip:{$ip}", 40, 600)
+            || Throttle::tooMany("secret:no:{$tradeNo}:{$ip}", 8, 600)) {
+            throw new JSONException("请求过于频繁，请稍后再试");
+        }
+
         $order = Order::with(['commodity'])->where("trade_no", $tradeNo)->first();
 
         if (!$order) {
@@ -483,7 +457,8 @@ class Index extends User
         }
 
         if (!empty($order->password)) {
-            if ($password != $order->password) {
+            //定时安全比较，避免按响应时间逐字符猜测查询密码
+            if (!hash_equals((string)$order->password, (string)$password)) {
                 throw new JSONException("密码错误");
             }
         }
@@ -491,6 +466,9 @@ class Index extends User
         if ($order->status != 1) {
             throw new JSONException("订单还未支付");
         }
+
+        //验证通过，重置该订单的失败计数，避免正常用户多次查看被误伤
+        Throttle::clear("secret:no:{$tradeNo}:{$ip}");
 
         $widget = (array)json_decode((string)$order->widget, true);
         if (empty($widget)) {

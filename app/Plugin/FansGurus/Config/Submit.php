@@ -65,10 +65,36 @@ return [
         'placeholder' => '例如 1.2 表示成本上浮 20%',
     ],
     [
-        'title' => '美元兑人民币汇率',
+        'title' => '汇率设置',
+        'name' => 'exchange_rate_notice',
+        'type' => 'input',
+        'disabled' => true,
+        'submit' => false,
+        'placeholder' => '上游 API 价格为美元；自动同步开启时使用实时 USD/CNY，关闭时使用手动汇率',
+    ],
+    [
+        'title' => '自动同步实时汇率',
+        'name' => 'exchange_rate_auto',
+        'type' => 'switch',
+        'placeholder' => '开启|关闭',
+    ],
+    [
+        'title' => '手动设置汇率',
         'name' => 'usd_to_cny',
         'type' => 'number',
-        'placeholder' => 'FansGurus 为美元价格，默认 7.30',
+        'placeholder' => '自动同步关闭时生效，例如 7.30',
+    ],
+    [
+        'title' => '汇率更新时间',
+        'name' => 'exchange_rate_last_sync_at',
+        'type' => 'input',
+        'placeholder' => '同步商品或重算价格后生成',
+    ],
+    [
+        'title' => '汇率同步结果',
+        'name' => 'exchange_rate_last_sync_result',
+        'type' => 'input',
+        'placeholder' => '同步商品或重算价格后生成',
     ],
     [
         'title' => '固定加价',
