@@ -46,8 +46,16 @@ try {
         $_GET['cid'] = $_cat[1];
     }
 
+    if (($_GET['s'] ?? '') === '/fans') {
+        $_GET['s'] = '/user/index/index';
+    }
+
+    if (($_GET['s'] ?? '') === '/3') {
+        $_GET['s'] = '/user/index/three';
+    }
+
     //waf install -> 2025-07-26
-    $routePath = $_GET['s'] = $_GET['s'] ?? "/user/index/index";
+    $routePath = $_GET['s'] = $_GET['s'] ?? "/user/index/two";
     Context::set(\Kernel\Context\Interface\Request::class, new Request());
     if (trim($routePath, "/") == 'admin') {
         header('location:' . "/admin/authentication/login");

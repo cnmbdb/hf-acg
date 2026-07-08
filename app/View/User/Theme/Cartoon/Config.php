@@ -41,6 +41,7 @@ interface Config
     const THEME = [
         "INDEX" => "Index/Index.html", //卡网首页
         "INDEX2" => "Index/Index2.html", //备用首页
+        "INDEX3" => "Index/Index.html", //默认平台商品页
         "CLOSED" => "Index/Closed.html", //维护页面
         "QUERY" => "Index/Query.html", //订单查询
         "LOGIN" => "Authentication/Login.html", //用户登录

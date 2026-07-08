@@ -28,6 +28,7 @@ use Kernel\Util\Decimal;
 class Shop implements \App\Service\Shop
 {
     private const SOURCE_PREFIX = [
+        'default' => '',
         'hstockplus' => 'HSP_',
         'fansgurus' => 'FG_',
     ];
@@ -179,11 +180,43 @@ class Shop implements \App\Service\Shop
             if (isset($sortMap[$name])) {
                 $category['sort'] = ($sortMap[$name] + 1) * 10;
                 $category['icon'] = $source === 'hstockplus' ? $this->hstockplusCategoryIcon($name) : $this->fansGurusCategoryIcon($name);
-                $category['status'] = 1;
-                $category['hide'] = 0;
             }
         }
         unset($category);
+
+        if ($source === 'hstockplus') {
+            $enabled = array_flip($this->hstockplusEnabledTopCategories());
+            $existing = [];
+            foreach ($categories as $category) {
+                if ((int)($category['pid'] ?? 0) === 0) {
+                    $existing[$this->cleanCategoryName((string)($category['name'] ?? ''))] = true;
+                }
+            }
+
+            foreach ($this->hstockplusPlatformCategories() as $name) {
+                if (!isset($enabled[$name])) {
+                    continue;
+                }
+                if (isset($existing[$name])) {
+                    continue;
+                }
+                $categories[] = [
+                    'id' => 'hstockplus-' . md5($name),
+                    'name' => $name,
+                    'sort' => ($sortMap[$name] + 1) * 10,
+                    'create_time' => '-',
+                    'owner' => 0,
+                    'pid' => null,
+                    'icon' => $this->hstockplusCategoryIcon($name),
+                    'status' => 1,
+                    'hide' => 0,
+                    'user_level_config' => null,
+                    'commodity_count' => 0,
+                    'subcategories' => [],
+                    'children' => [],
+                ];
+            }
+        }
 
         usort($categories, static function (array $a, array $b): int {
             $aPid = (int)($a['pid'] ?? 0);
@@ -237,6 +270,17 @@ class Shop implements \App\Service\Shop
         ];
     }
 
+    private function hstockplusEnabledTopCategories(): array
+    {
+        $configFile = BASE_PATH . '/app/Plugin/HStockPlus/Config/Config.php';
+        $config = is_file($configFile) ? require $configFile : [];
+        $raw = is_array($config) ? (string)($config['enabled_top_categories'] ?? '账户') : '账户';
+        $items = preg_split('/[,，|\\s]+/u', $raw) ?: [];
+        $enabled = array_values(array_filter(array_map([$this, 'cleanCategoryName'], $items), static fn(string $name): bool => $name !== ''));
+
+        return $enabled ?: ['账户'];
+    }
+
     private function fansGurusCategoryIcon(string $category): string
     {
         $icons = [
@@ -285,6 +329,7 @@ class Shop implements \App\Service\Shop
 
     public function getSourceVisibleCategoryIds(?string $source = null): array
     {
+        $source = self::normalizeSource($source);
         if (!$source) {
             return [];
         }
@@ -317,7 +362,55 @@ class Shop implements \App\Service\Shop
             $frontier = $parents;
         }
 
+        if ($source === 'hstockplus') {
+            $ids = $this->filterHStockPlusEnabledCategoryIds($ids);
+        }
+
         return array_values(array_unique($ids));
+    }
+
+    private function filterHStockPlusEnabledCategoryIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) {
+            return [];
+        }
+
+        $rows = Category::query()->whereIn('id', $ids)->get(['id', 'pid', 'name']);
+        $byId = [];
+        $frontier = [];
+        foreach ($rows as $row) {
+            $id = (int)$row->id;
+            $byId[$id] = ['id' => $id, 'pid' => (int)$row->pid, 'name' => (string)$row->name];
+            if ((int)$row->pid > 0 && !in_array((int)$row->pid, $ids, true)) {
+                $frontier[] = (int)$row->pid;
+            }
+        }
+
+        while ($frontier) {
+            $parents = Category::query()->whereIn('id', array_values(array_unique($frontier)))->get(['id', 'pid', 'name']);
+            $frontier = [];
+            foreach ($parents as $parent) {
+                $id = (int)$parent->id;
+                if (isset($byId[$id])) {
+                    continue;
+                }
+                $byId[$id] = ['id' => $id, 'pid' => (int)$parent->pid, 'name' => (string)$parent->name];
+                if ((int)$parent->pid > 0) {
+                    $frontier[] = (int)$parent->pid;
+                }
+            }
+        }
+
+        $enabled = array_flip($this->hstockplusEnabledTopCategories());
+        return array_values(array_filter($ids, function (int $id) use ($enabled, $byId): bool {
+            $current = $byId[$id] ?? null;
+            while ($current && (int)$current['pid'] > 0 && isset($byId[(int)$current['pid']])) {
+                $current = $byId[(int)$current['pid']];
+            }
+
+            return $current && isset($enabled[$this->cleanCategoryName((string)$current['name'])]);
+        }));
     }
 
     public static function normalizeSource(?string $source): ?string
@@ -329,11 +422,22 @@ class Shop implements \App\Service\Shop
     public static function sourcePrefix(?string $source): ?string
     {
         $source = self::normalizeSource($source);
-        return $source ? self::SOURCE_PREFIX[$source] : null;
+        return $source && self::SOURCE_PREFIX[$source] !== '' ? self::SOURCE_PREFIX[$source] : null;
     }
 
     public static function applySourceFilter(Builder $builder, ?string $source): void
     {
+        $source = self::normalizeSource($source);
+        if ($source === 'default') {
+            foreach (self::SOURCE_PREFIX as $prefix) {
+                if ($prefix === '') {
+                    continue;
+                }
+                $builder->where('code', 'not like', $prefix . '%');
+            }
+            return;
+        }
+
         $prefix = self::sourcePrefix($source);
         if ($prefix) {
             $builder->where('code', 'like', $prefix . '%');
@@ -508,6 +612,30 @@ class Shop implements \App\Service\Shop
             }
             $categories = array_values(array_filter($categories, static fn(array $category): bool => !is_numeric($category['id']) || isset($visibleIds[(int)$category['id']])));
         }
+
+        if ($source === 'hstockplus') {
+            $categories = $this->filterHStockPlusEnabledTopCategories($categories);
+        }
+    }
+
+    private function filterHStockPlusEnabledTopCategories(array $categories): array
+    {
+        $enabled = array_flip($this->hstockplusEnabledTopCategories());
+        $byId = [];
+        foreach ($categories as $category) {
+            if (is_numeric($category['id'] ?? null)) {
+                $byId[(int)$category['id']] = $category;
+            }
+        }
+
+        return array_values(array_filter($categories, function (array $category) use ($enabled, $byId): bool {
+            $current = $category;
+            while (is_numeric($current['pid'] ?? null) && (int)$current['pid'] > 0 && isset($byId[(int)$current['pid']])) {
+                $current = $byId[(int)$current['pid']];
+            }
+
+            return isset($enabled[$this->cleanCategoryName((string)($current['name'] ?? ''))]);
+        }));
     }
 
     private function descendantCategoryIds(int $parentId, array $childrenByParent): array

@@ -750,6 +750,47 @@ body.xh-page a {
     font-weight: 800;
 }
 
+@media (min-width: 981px) {
+    .xh-categories,
+    .xh-catalog {
+        position: sticky;
+        top: 126px;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100dvh - 146px);
+    }
+
+    .xh-categories .xh-panel-head,
+    .xh-catalog-head {
+        flex: 0 0 auto;
+    }
+
+    .xh-category-list,
+    .xh-table {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .xh-category-list {
+        flex: 1 1 auto;
+    }
+
+    .xh-table {
+        flex: 1 1 auto;
+    }
+}
+
+@supports not (height: 100dvh) {
+    @media (min-width: 981px) {
+        .xh-categories,
+        .xh-catalog {
+            max-height: calc(100vh - 146px);
+        }
+    }
+}
+
 .xh-modal {
     position: fixed;
     inset: 0;
@@ -783,11 +824,22 @@ body.xh-page a {
     left: 14px;
     right: 14px;
     top: 126px;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 16px;
     background: #fff;
     border: 1px solid var(--xh-line);
     border-radius: 28px;
     box-shadow: 0 24px 60px rgba(13, 15, 20, .2);
+}
+
+@supports not (height: 100dvh) {
+    .xh-mobile-menu-panel {
+        max-height: calc(100vh - 150px);
+    }
 }
 
 .xh-mobile-menu-head,

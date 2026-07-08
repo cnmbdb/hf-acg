@@ -28,6 +28,7 @@ interface Config
     const THEME = [
         "INDEX" => "Index/Index.html",
         "INDEX2" => "Index/Index2.html",
+        "INDEX3" => "Index/Index.html",
         "ITEM" => "Index/Item.html",
         "QUERY" => "Index/Query.html",
     ];

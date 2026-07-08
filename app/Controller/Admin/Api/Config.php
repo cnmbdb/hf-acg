@@ -14,6 +14,7 @@ use App\Service\Query;
 use App\Service\Sms;
 use App\Util\Client;
 use App\Util\Date;
+use App\Util\Theme;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Kernel\Annotation\Inject;
@@ -49,6 +50,26 @@ class Config extends Manage
         $keys = ["closed_message", "background_mobile_url", "closed", "username_len", "user_theme", "user_mobile_theme", "user_center_theme", "background_url", "shop_name", "title", "description", "keywords", "registered_state", "registered_type", "registered_verification", "registered_phone_verification", "registered_email_verification", "login_verification", "forget_type", "notice", "trade_verification", "session_expire", "request_log", "admin_entrance"]; //全部字段
         $inits = ["closed", "registered_state", "registered_type", "registered_verification", "registered_phone_verification", "registered_email_verification", "login_verification", "forget_type", "trade_verification", "session_expire", "request_log"]; //需要初始化的字段
 
+        if (($post['user_mobile_theme'] ?? null) === "Xiaohu") {
+            $post['user_mobile_theme'] = "0";
+        }
+
+        if (($post['user_center_theme'] ?? null) === "Xiaohu") {
+            $post['user_center_theme'] = "Cartoon";
+        }
+
+        if (empty($post['user_theme']) || empty(Theme::getConfig((string)$post['user_theme']))) {
+            throw new JSONException("PC模板不存在");
+        }
+
+        if (!empty($post['user_mobile_theme']) && $post['user_mobile_theme'] !== "0" && empty(Theme::getConfig((string)$post['user_mobile_theme']))) {
+            throw new JSONException("手机模板不存在");
+        }
+
+        if (!empty($post['user_center_theme']) && empty(Theme::getConfig((string)$post['user_center_theme']))) {
+            throw new JSONException("用户中心模板不存在");
+        }
+
         $file = $post['logo'];
         if ($file != '/favicon.ico') {
             @copy(BASE_PATH . $file, BASE_PATH . '/favicon.ico');
@@ -71,7 +92,12 @@ class Config extends Manage
             throw new JSONException("保存失败，请检查原因");
         }
 
-        _plugin_start($post['user_theme'], true);
+        try {
+            _plugin_start($post['user_theme'], true);
+        } catch (\Throwable $e) {
+            error_log('Theme plugin activation skipped for ' . $post['user_theme'] . ': ' . $e->getMessage());
+        }
+
         ManageLog::log($this->getManage(), "修改了网站设置");
         return $this->json(200, '保存成功');
     }

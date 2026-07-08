@@ -7,6 +7,7 @@ use App\Consts\Render;
 use App\Model\Business;
 use App\Model\Config;
 use App\Util\Client;
+use App\Util\Plugin;
 use App\Util\Theme;
 use Kernel\Exception\JSONException;
 use Kernel\Exception\ViewException;
@@ -22,7 +23,7 @@ abstract class User extends \App\Controller\Base\User
      * @var array|string[]
      */
     protected array $indexTemplateList = [
-        'INDEX', 'INDEX2', 'ITEM', 'QUERY', 'CLOSED'
+        'INDEX', 'INDEX2', 'INDEX3', 'ITEM', 'QUERY', 'CLOSED'
     ];
 
     /**
@@ -79,6 +80,9 @@ abstract class User extends \App\Controller\Base\User
             foreach ($cfg as $k => $v) {
                 $data["config"][$k] = $v;
             }
+            $manualShopPage = Plugin::getConfig('ManualShopPage', false);
+            $data['manualShopPage'] = $manualShopPage;
+            $data['manualShopPageNavLabel'] = trim(strip_tags((string)($manualShopPage['nav_label'] ?? ''))) ?: '更多购买';
 
             if (in_array($template, $this->indexTemplateList)) {
                 if (Client::isMobile()) {

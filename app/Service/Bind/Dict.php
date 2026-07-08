@@ -31,12 +31,24 @@ class Dict implements \App\Service\Dict
                 'fansgurus' => '/app/Plugin/FansGurus/Assets/icons/%',
                 'hstockplus' => '/app/Plugin/HStockPlus/Assets/icons/%',
             ];
-            if (!isset($icons[$source])) {
+            if ($source !== 'default' && !isset($icons[$source])) {
                 return [];
             }
 
             $prefix = config('database')['prefix'];
             $keywordWhere = $keywords !== '' ? " and name like '%{$keywords}%'" : '';
+            if ($source === 'default') {
+                $notPluginIconWhere = '';
+                foreach ($icons as $iconPrefix) {
+                    $notPluginIconWhere .= " and icon not like '" . addslashes($iconPrefix) . "'";
+                }
+                $select = DB::select(
+                    "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (icon is null or (1=1{$notPluginIconWhere})){$keywordWhere} order by sort asc,id asc"
+                );
+
+                return array_map('get_object_vars', $select);
+            }
+
             $select = DB::select(
                 "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and icon like ?{$keywordWhere} order by sort asc,id asc",
                 [$icons[$source]]

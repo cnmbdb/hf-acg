@@ -8,9 +8,7 @@ use App\Consts\Hook;
 use App\Controller\Base\View\User;
 use App\Interceptor\UserVisitor;
 use App\Interceptor\Waf;
-use App\Model\Commodity;
 use App\Model\Config;
-use App\Plugin\HStockPlus\Service\Sync as HStockPlusSync;
 use App\Service\Shop;
 use App\Util\Tree;
 use Kernel\Annotation\Inject;
@@ -34,7 +32,7 @@ class Index extends User
      */
     public function index(): string
     {
-        return $this->shopPage('fansgurus', "INDEX", "Index/Index.html", "/");
+        return $this->shopPage('fansgurus', "INDEX", "Index/Index.html", "/fans");
     }
 
     /**
@@ -46,32 +44,19 @@ class Index extends User
      */
     public function two(): string
     {
-        $this->bootstrapHStockPlusProducts();
         return $this->shopPage('hstockplus', "INDEX2", "Index/Index2.html", "/2");
     }
 
-    private function bootstrapHStockPlusProducts(): void
+    /**
+     * @return string
+     * @throws RuntimeException
+     * @throws ViewException
+     * @throws JSONException
+     * @throws \ReflectionException
+     */
+    public function three(): string
     {
-        if (Commodity::query()->where('code', 'like', 'HSP\_%')->where('status', 1)->exists()) {
-            return;
-        }
-
-        $configFile = BASE_PATH . '/app/Plugin/HStockPlus/Config/Config.php';
-        $config = is_file($configFile) ? require $configFile : [];
-        if (!is_array($config) || (int)($config['STATUS'] ?? 0) !== 1) {
-            return;
-        }
-
-        try {
-            (new HStockPlusSync())->run(array_replace($config, [
-                'sync_action' => 3,
-                'sync_source' => 'products',
-                'sync_limit' => (string)max(1, (int)($config['sync_limit'] ?? 500) ?: 500),
-                'sync_page_size' => (string)min(100, max(20, (int)($config['sync_page_size'] ?? 100))),
-            ]));
-        } catch (\Throwable $e) {
-            error_log('HStockPlus bootstrap sync failed: ' . $e->getMessage());
-        }
+        return $this->shopPage('default', "INDEX3", "Index/Index3.html", "/3");
     }
 
     /**

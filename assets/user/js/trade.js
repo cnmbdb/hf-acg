@@ -22,19 +22,21 @@ const trade = new class {
             params.keywords = opt.keywords;
         }
 
+        const source = opt.source || (typeof getVar === "function" ? getVar("SHOP_SOURCE") : "");
         if (opt.limit && opt.page) {
             params.limit = opt.limit;
             params.page = opt.page;
+        } else if (source === "hstockplus") {
+            params.limit = 100;
+            params.page = 1;
         }
 
         if (opt.categoryId) {
             params.categoryId = opt.categoryId;
         }
 
-        if (opt.source) {
-            params.source = opt.source;
-        } else if (typeof getVar === "function" && getVar("SHOP_SOURCE")) {
-            params.source = getVar("SHOP_SOURCE");
+        if (source) {
+            params.source = source;
         }
 
         if (opt.subcategory) {

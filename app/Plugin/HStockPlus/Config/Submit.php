@@ -47,6 +47,12 @@ return [
         'placeholder' => '开启|关闭',
     ],
     [
+        'title' => '启用时自动补同步',
+        'name' => 'auto_sync_on_start',
+        'type' => 'switch',
+        'placeholder' => '开启|关闭',
+    ],
+    [
         'title' => '保存时自动同步',
         'name' => 'auto_sync_on_save',
         'type' => 'switch',
@@ -87,6 +93,12 @@ return [
         'name' => 'default_product_status',
         'type' => 'switch',
         'placeholder' => '上架|下架',
+    ],
+    [
+        'title' => '前台启用一级分类',
+        'name' => 'enabled_top_categories',
+        'type' => 'input',
+        'placeholder' => '多个用英文逗号分隔；默认只保留：账户',
     ],
     [
         'title' => '分类名前缀',
@@ -154,7 +166,7 @@ return [
         'title' => '同步数量限制',
         'name' => 'sync_limit',
         'type' => 'number',
-        'placeholder' => '0 为同步全部，上游商品多时可先填 50 测试',
+        'placeholder' => '0 为扫描全部；只保留账户时建议保持 0，避免遗漏后面页的账户商品',
     ],
     [
         'title' => '每页同步数量',

@@ -74,6 +74,11 @@ class Sync
                 }
 
                 $path = $this->categoryPath($service, $categoryHints);
+                if (!$this->isEnabledTopCategory((string)($path[0] ?? ''), $config)) {
+                    $stats['products_skipped']++;
+                    continue;
+                }
+
                 $categoryKey = implode('>', $path);
                 if (!isset($categories[$categoryKey])) {
                     $categories[$categoryKey] = $this->syncCategoryPath($path, $config, $stats);
@@ -207,6 +212,7 @@ class Sync
             $stats['products_skipped']
         );
         $config['sync_action'] = '0';
+        unset($config['sync_start_page'], $config['sync_max_pages']);
 
         setConfig($config, BASE_PATH . '/app/Plugin/' . self::PLUGIN . '/Config/Config.php');
         Plugin::log(self::PLUGIN, '同步完成：' . $config['last_sync_result']);
@@ -255,7 +261,9 @@ class Sync
         $maxRows = max(0, (int)($config['sync_limit'] ?? 0));
         $pageSize = max(1, (int)($config['sync_page_size'] ?? 100));
         $pageSize = min($pageSize, 500);
-        $page = 1;
+        $page = max(1, (int)($config['sync_start_page'] ?? 1));
+        $maxPages = max(0, (int)($config['sync_max_pages'] ?? 0));
+        $pagesFetched = 0;
         $rows = [];
 
         while ($page <= 10000) {
@@ -268,6 +276,7 @@ class Sync
             if (!$pageRows) {
                 break;
             }
+            $pagesFetched++;
 
             foreach ($pageRows as $row) {
                 $rows[] = $row;
@@ -281,6 +290,9 @@ class Sync
                 break;
             }
             if (count($pageRows) < $pageSize) {
+                break;
+            }
+            if ($maxPages > 0 && $pagesFetched >= $maxPages) {
                 break;
             }
 
@@ -696,6 +708,11 @@ class Sync
     {
         $entityType = trim((string)($service['entityType'] ?? $service['entity_type'] ?? ''));
         $text = mb_strtolower($category . ' ' . $subcategory . ' ' . (string)($service['name'] ?? ''), 'UTF-8');
+        $categoryText = mb_strtolower($category, 'UTF-8');
+
+        if (str_contains($categoryText, '账号') || str_contains($categoryText, '账户') || str_contains($categoryText, 'account')) {
+            return '账户';
+        }
 
         if ($entityType === 'smm' || str_contains($text, '增长') || str_contains($text, '粉丝') || str_contains($text, '关注') || str_contains($text, '观看') || str_contains($text, '点赞') || str_contains($text, '成员')) {
             return '增长服务';
@@ -718,6 +735,21 @@ class Sync
         }
 
         return '账户';
+    }
+
+    private function isEnabledTopCategory(string $category, array $config): bool
+    {
+        $enabled = $this->enabledTopCategories($config);
+        return in_array($this->cleanTitle($category), $enabled, true);
+    }
+
+    private function enabledTopCategories(array $config): array
+    {
+        $raw = (string)($config['enabled_top_categories'] ?? '账户');
+        $items = preg_split('/[,，|\\s]+/u', $raw) ?: [];
+        $enabled = array_values(array_filter(array_map(fn(string $item): string => $this->cleanTitle($item), $items), static fn(string $name): bool => $name !== ''));
+
+        return $enabled ?: ['账户'];
     }
 
     private function splitCategoryPath(string $category): array

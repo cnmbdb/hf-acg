@@ -213,7 +213,11 @@
 
     $("[data-mobile-menu-close], .xh-mobile-link[href!=\"javascript:void(0);\"]").on("click", function (event) {
         if (window.XhMobileMenu) {
-            window.XhMobileMenu.close(event);
+            if ($(this).is("[data-mobile-menu-close]")) {
+                window.XhMobileMenu.close(event);
+                return;
+            }
+            window.XhMobileMenu.close();
         }
     });
 

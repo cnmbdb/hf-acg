@@ -36,6 +36,7 @@ use Kernel\Waf\Filter;
 class Category extends Manage
 {
     private const SOURCE_CODE_PREFIX = [
+        'default' => '',
         'fansgurus' => 'FG_',
         'hstockplus' => 'HSP_',
     ];
@@ -54,7 +55,7 @@ class Category extends Manage
     public function data(): array
     {
         $map = $this->normalizeHStockPlusSearch($_POST);
-        $source = $this->normalizeSource((string)($map['source'] ?? 'fansgurus'));
+        $source = $this->normalizeSource((string)($map['source'] ?? 'default'));
         unset($map['source']);
 
         $sourceCategoryIds = $source ? $this->sourceCategoryIds($source) : [];
@@ -102,21 +103,48 @@ class Category extends Manage
     private function sourceCategoryIds(string $source): array
     {
         $prefix = self::SOURCE_CODE_PREFIX[$source] ?? null;
-        if (!$prefix) {
-            return [];
-        }
-
-        $ids = Commodity::query()
+        $query = Commodity::query()
             ->where('code', 'like', $prefix . '%')
             ->whereNotNull('category_id')
-            ->distinct()
-            ->pluck('category_id')
+            ->distinct();
+        if ($source === 'default') {
+            foreach (self::SOURCE_CODE_PREFIX as $sourcePrefix) {
+                if ($sourcePrefix === '') {
+                    continue;
+                }
+                $query->where('code', 'not like', $sourcePrefix . '%');
+            }
+        } else {
+            $query->where('code', 'like', $prefix . '%');
+        }
+
+        $ids = $query->pluck('category_id')
             ->map(static fn($id): int => (int)$id)
             ->filter(static fn(int $id): bool => $id > 0)
             ->values()
             ->all();
 
         $categoryIds = $this->categoryAncestorIds($ids);
+        if ($source === 'default') {
+            $pluginIconPrefixes = array_values(self::SOURCE_ICON_PREFIX);
+            $manualCategoryIds = CategoryModel::query()
+                ->where('owner', 0)
+                ->where(function (Builder $builder) use ($pluginIconPrefixes): void {
+                    $builder->whereNull('icon')->orWhere(function (Builder $subQuery) use ($pluginIconPrefixes): void {
+                        foreach ($pluginIconPrefixes as $iconPrefix) {
+                            $subQuery->where('icon', 'not like', $iconPrefix);
+                        }
+                    });
+                })
+                ->pluck('id')
+                ->map(static fn($id): int => (int)$id)
+                ->filter(static fn(int $id): bool => $id > 0)
+                ->values()
+                ->all();
+
+            return $this->categoryAncestorIds(array_values(array_unique(array_merge($categoryIds, $manualCategoryIds))));
+        }
+
         $pluginCategoryIds = CategoryModel::query()
             ->where('icon', 'like', self::SOURCE_ICON_PREFIX[$source])
             ->pluck('id')
@@ -170,7 +198,14 @@ class Category extends Manage
 
         if ($ids) {
             $commodityQuery = Commodity::query()->whereIn('category_id', $ids);
-            if ($source) {
+            if ($source === 'default') {
+                foreach (self::SOURCE_CODE_PREFIX as $prefix) {
+                    if ($prefix === '') {
+                        continue;
+                    }
+                    $commodityQuery->where('code', 'not like', $prefix . '%');
+                }
+            } elseif ($source) {
                 $commodityQuery->where('code', 'like', self::SOURCE_CODE_PREFIX[$source] . '%');
             }
             $commodityCounts = $commodityQuery

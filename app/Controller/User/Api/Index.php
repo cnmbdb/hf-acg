@@ -18,6 +18,7 @@ use App\Model\UserCommodity;
 use App\Service\Query;
 use App\Service\Shared;
 use App\Service\Shop;
+use App\Service\Bind\Shop as ShopBind;
 use App\Util\Client;
 use App\Util\Throttle;
 use App\Util\Tree;
@@ -50,7 +51,9 @@ class Index extends User
      */
     public function data(): array
     {
-        $category = Tree::generate($this->shop->getCategory($this->getUserGroup()));
+        $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
+        $category = Tree::generate($this->shop->getCategory($this->getUserGroup(), $source));
+        $category = $this->shop->normalizeCategoryTree($category);
         hook(Hook::USER_API_INDEX_CATEGORY_LIST, $category);
         return $this->json(200, "success", $category);
     }
@@ -66,6 +69,8 @@ class Index extends User
         $limit = (int)$_GET['limit'];
         $page = (int)$_GET['page'];
         $categoryId = $_GET['categoryId'];
+        $subcategory = (string)($_GET['subcategory'] ?? '');
+        $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
 
         $commodity = Commodity::query()
             ->with(['owner' => function (Relation $relation) {
@@ -76,12 +81,26 @@ class Index extends User
 
         if ($categoryId == 'recommend') {
             $commodity = $commodity->where("recommend", 1);
+        } elseif ($subcategory !== '' && is_numeric($subcategory)) {
+            $commodity = $commodity->where("category_id", (int)$subcategory);
+        } elseif ($categoryId != 0 && is_numeric($categoryId)) {
+            $commodity = $commodity->whereIn("category_id", $this->categoryAndDescendantIds((int)$categoryId, $source));
         } elseif ($categoryId != 0) {
-            $commodity = $commodity->where("category_id", $categoryId);
+            $commodity = $commodity->whereRaw("1=0");
+        }
+        ShopBind::applySourceFilter($commodity, $source);
+        $sourceCategoryIds = $this->shop->getSourceVisibleCategoryIds($source);
+        if ($sourceCategoryIds) {
+            $commodity = $commodity->whereIn('category_id', $sourceCategoryIds);
+        } elseif ($source) {
+            $commodity = $commodity->whereRaw("1=0");
         }
 
         if ($keywords != "") {
             $commodity = $commodity->where('name', 'like', '%' . $keywords . '%');
+        }
+        if ($subcategory !== '' && !is_numeric($subcategory)) {
+            $commodity = $commodity->where('config', 'like', '%' . rawurldecode($subcategory) . '%');
         }
 
         $bus = \App\Model\Business::get();
@@ -130,7 +149,7 @@ class Index extends User
                 'id', 'name', 'cover',
                 'status', 'delivery_way', 'price',
                 'user_price',
-                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id'
+                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id', 'config'
             ])
             ->withCount(['order as order_sold' => function (Builder $relation) {
                 $relation->where("delivery_status", 1);
@@ -151,10 +170,10 @@ class Index extends User
         $user = $this->getUser();
         $userGroup = $this->getUserGroup();
         //取得分类
-        $category = $this->shop->getCategory($userGroup);
+        $category = $this->shop->getCategory($userGroup, $source);
         $cates = [];
-        foreach ($category as $cate) {
-            $cates[] = (string)$cate['id'];
+        foreach ($this->shop->getSourceVisibleCategoryIds($source) as $id) {
+            $cates[] = (string)$id;
         }
 
         //最终的商品数据遍历
@@ -179,7 +198,8 @@ class Index extends User
 
             unset(
                 $data[$key]['level_price'],
-                $data[$key]['level_disable']
+                $data[$key]['level_disable'],
+                $data[$key]['config']
             );
 
             if (!$val['cover']) {
@@ -211,6 +231,36 @@ class Index extends User
         $json = $this->json(200, "success", $data);
         $json['total'] = $total;
         return $json;
+    }
+
+    private function categoryAndDescendantIds(int $categoryId, ?string $source): array
+    {
+        $ids = [$categoryId];
+        $visibleIds = array_flip($this->shop->getSourceVisibleCategoryIds($source));
+        $categories = $this->shop->getCategory($this->getUserGroup(), $source);
+        $childrenByParent = [];
+
+        foreach ($categories as $category) {
+            if (!is_numeric($category['id'] ?? null)) {
+                continue;
+            }
+            $id = (int)$category['id'];
+            if (!isset($visibleIds[$id])) {
+                continue;
+            }
+            $pid = (int)($category['pid'] ?? 0);
+            $childrenByParent[$pid][] = $id;
+        }
+
+        $walk = static function (int $id) use (&$walk, &$ids, $childrenByParent): void {
+            foreach ($childrenByParent[$id] ?? [] as $childId) {
+                $ids[] = (int)$childId;
+                $walk((int)$childId);
+            }
+        };
+        $walk($categoryId);
+
+        return array_values(array_unique($ids));
     }
 
     /**

@@ -51,10 +51,12 @@
                 <li class="nav-item"><a class="nav-link #{if $title == "订单查询"}active#{/if}"
                                         href="/user/index/query"><i
                                 class="fa-duotone fa-regular fa-folders nav-icon"></i>订单查询</a></li>
-                <li class="nav-item"><a class="nav-link #{if $shopSource == "fansgurus"}active#{/if}" href="/"><i
+                <li class="nav-item"><a class="nav-link #{if $shopSource == "fansgurus"}active#{/if}" href="/fans"><i
                                 class="fa-duotone fa-regular fa-users nav-icon"></i>粉丝服务</a></li>
                 <li class="nav-item"><a class="nav-link #{if $shopSource == "hstockplus"}active#{/if}" href="/2"><i
                                 class="fa-duotone fa-regular fa-id-card nav-icon"></i>海外账号购买</a></li>
+                <li class="nav-item"><a class="nav-link #{if $shopSource == "default"}active#{/if}" href="/3"><i
+                                class="fa-duotone fa-regular fa-box-open nav-icon"></i>#{$manualShopPageNavLabel}</a></li>
             </ul>
             <div class="d-none d-lg-flex search-input" role="search">
                 <div class="input-group">

@@ -27,7 +27,7 @@
     "#{$static}/assets/index.css"
     ])}
     #{js("/assets/common/js/ready.js")}
-    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260703-3">
+    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260708-1">
     <style>
         .xh-tools {
             position: relative;
@@ -182,13 +182,17 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
-        <a class="xh-navlink #{if $shopSource == "fansgurus"}is-active#{/if}" href="/">
+        <a class="xh-navlink #{if $shopSource == "fansgurus"}is-active#{/if}" href="/fans">
             <i class="fa-duotone fa-regular fa-users"></i>
             <span>粉丝服务</span>
         </a>
         <a class="xh-navlink #{if $shopSource == "hstockplus"}is-active#{/if}" href="/2">
             <i class="fa-duotone fa-regular fa-id-card"></i>
             <span>海外账号购买</span>
+        </a>
+        <a class="xh-navlink #{if $shopSource == "default"}is-active#{/if}" href="/3">
+            <i class="fa-duotone fa-regular fa-box-open"></i>
+            <span>#{$manualShopPageNavLabel}</span>
         </a>
         <div class="xh-tools">
             <button class="xh-navlink xh-tools-toggle" type="button" aria-label="打开2FA工具箱" aria-expanded="false" data-tools-toggle>
@@ -197,7 +201,7 @@
                 <i class="fa-duotone fa-regular fa-chevron-down xh-tools-chevron"></i>
             </button>
             <div class="xh-tools-menu" data-tools-menu aria-hidden="true">
-                <a href="https://5173rhao.cc/2fa/" target="_blank" rel="noopener noreferrer">
+                <a href="https://2fa.fun/index.html" target="_blank" rel="noopener noreferrer">
                     <i class="fa-duotone fa-regular fa-house"></i>
                     <span>2FA 生成工具</span>
                 </a>
@@ -286,7 +290,7 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
-        <a class="xh-mobile-link #{if $shopSource == "fansgurus"}is-active#{/if}" href="/">
+        <a class="xh-mobile-link #{if $shopSource == "fansgurus"}is-active#{/if}" href="/fans">
             <i class="fa-duotone fa-regular fa-users"></i>
             <span>粉丝服务</span>
         </a>
@@ -294,12 +298,16 @@
             <i class="fa-duotone fa-regular fa-id-card"></i>
             <span>海外账号购买</span>
         </a>
+        <a class="xh-mobile-link #{if $shopSource == "default"}is-active#{/if}" href="/3">
+            <i class="fa-duotone fa-regular fa-box-open"></i>
+            <span>#{$manualShopPageNavLabel}</span>
+        </a>
         <div class="xh-mobile-tools">
             <div class="xh-mobile-tools-title">
                 <i class="fa-duotone fa-regular fa-wrench"></i>
                 <span>2FA工具箱</span>
             </div>
-            <a class="xh-mobile-tool-link" href="https://5173rhao.cc/2fa/" target="_blank" rel="noopener noreferrer">
+            <a class="xh-mobile-tool-link" href="https://2fa.fun/index.html" target="_blank" rel="noopener noreferrer">
                 <i class="fa-duotone fa-regular fa-house"></i>
                 <span>2FA 生成工具</span>
             </a>

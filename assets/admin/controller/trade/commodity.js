@@ -1,10 +1,11 @@
 !function () {
     let table, _createForms = [];
     const platformDict = [
+        {id: "default", name: "默认平台"},
         {id: "fansgurus", name: "fansgurus平台"},
         {id: "hstockplus", name: "hstockplus平台"}
     ];
-    const platformCategoryDict = source => `commodity_platform_category->source=${source || "fansgurus"},id,name,pid&tree=true`;
+    const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
     const modal = (title, assign = {}) => {
 
         const owner = assign?.owner ? assign?.owner.id : 0;
@@ -893,10 +894,10 @@ ACC_JP_6M_0KLD-22MM-PP31║地区:日区·时长:6个月
             name: "source",
             type: "select",
             dict: platformDict,
-            default: "fansgurus",
+            default: "default",
             change: (search, value) => {
-                search.treeSelectReload("equal-category_id", platformCategoryDict(value || "fansgurus"));
-                table.reload({pageNumber: 1, query: {"source": value || "fansgurus", "equal-category_id": ""}});
+                search.treeSelectReload("equal-category_id", platformCategoryDict(value || "default"));
+                table.reload({pageNumber: 1, query: {"source": value || "default", "equal-category_id": ""}});
             }
         },
         {
@@ -912,7 +913,7 @@ ACC_JP_6M_0KLD-22MM-PP31║地区:日区·时长:6个月
                     search.show("user_id");
                 } else {
                     search.hide("user_id");
-                    search.treeSelectReload("equal-category_id", platformCategoryDict(search.getData().source || "fansgurus"));
+                    search.treeSelectReload("equal-category_id", platformCategoryDict(search.getData().source || "default"));
                 }
             }
         },
@@ -926,7 +927,7 @@ ACC_JP_6M_0KLD-22MM-PP31║地区:日区·时长:6个月
                 if (selected) {
                     search.treeSelectReload("equal-category_id", `category->owner=${value},id,name,pid&tree=true`);
                 } else {
-                    search.treeSelectReload("equal-category_id", platformCategoryDict(search.getData().source || "fansgurus"));
+                    search.treeSelectReload("equal-category_id", platformCategoryDict(search.getData().source || "default"));
                 }
             }
         },
@@ -934,7 +935,7 @@ ACC_JP_6M_0KLD-22MM-PP31║地区:日区·时长:6个月
             title: "商品分类",
             name: "equal-category_id",
             type: "treeSelect",
-            dict: platformCategoryDict("fansgurus"),
+            dict: platformCategoryDict("default"),
             search: true
         },
         {title: "商品名称(模糊搜索)", name: "search-name", type: "input"},

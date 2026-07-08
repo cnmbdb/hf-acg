@@ -29,9 +29,20 @@ class Main
         $sync->cleanupLegacyCategories();
         $sync->reconcilePluginCategories($config);
         $syncAction = (int)($config['sync_action'] ?? 0);
+        if ($syncAction <= 0 && (int)($config['auto_sync_on_start'] ?? 0) === 1) {
+            $syncAction = 3;
+            $config['sync_action'] = '3';
+            $config['sync_source'] = $config['sync_source'] ?? 'products';
+            $config['sync_limit'] = '0';
+        }
         if ($syncAction > 0) {
             try {
                 $sync->run($config);
+                $this->setSyncedProductsStatus(
+                    (int)($config['default_product_status'] ?? 1),
+                    (int)($config['default_category_status'] ?? 1),
+                    $config
+                );
                 $this->log("插件已启动，已执行同步动作{$syncAction}");
                 $config = $this->config();
             } catch (\Throwable $e) {
@@ -82,6 +93,11 @@ class Main
             }
             try {
                 (new Sync())->run($config);
+                $this->setSyncedProductsStatus(
+                    (int)($config['default_product_status'] ?? 1),
+                    (int)($config['default_category_status'] ?? 1),
+                    $config
+                );
             } catch (\Throwable $e) {
                 $this->log('同步失败：' . $e->getMessage());
                 throw $e;
@@ -205,6 +221,33 @@ class Main
         }
     }
 
+    #[HookPoint(point: Hook::KERNEL_INIT)]
+    public function ensurePublicRoute(): void
+    {
+        $file = BASE_PATH . '/.htaccess';
+        $rule = ' RewriteRule ^2$ index.php?s=/plugin/HStockPlus/index/index [QSA,L]';
+        if (!is_file($file) || !is_writable($file)) {
+            return;
+        }
+
+        $content = (string)file_get_contents($file);
+        if (str_contains($content, 'index.php?s=/plugin/HStockPlus/index/index')) {
+            return;
+        }
+
+        if (str_contains($content, 'RewriteBase /')) {
+            $content = preg_replace('/(RewriteBase \\/\\R)/', '$1' . $rule . PHP_EOL, $content, 1) ?? $content;
+        } else {
+            $content .= PHP_EOL . '<IfModule mod_rewrite.c>' . PHP_EOL
+                . ' RewriteEngine on' . PHP_EOL
+                . ' RewriteBase /' . PHP_EOL
+                . $rule . PHP_EOL
+                . '</IfModule>' . PHP_EOL;
+        }
+
+        file_put_contents($file, $content);
+    }
+
     #[HookPoint(point: Hook::USER_API_INDEX_CATEGORY_LIST)]
     public function categoryList(array &$category): void
     {
@@ -226,13 +269,36 @@ class Main
             ->values()
             ->all();
         $categoryIds = $this->withParentCategoryIds($categoryIds);
+        $enabledCategoryIds = $this->enabledCategoryIds($categoryIds, $config);
+        $disabledCategoryIds = array_values(array_diff(array_map('intval', $categoryIds), $enabledCategoryIds));
 
         $productCount = (clone $products)->count();
 
-        $products->update(['status' => $productStatus]);
+        if ($productStatus === 1) {
+            if ($enabledCategoryIds) {
+                (clone $products)->whereIn('category_id', $enabledCategoryIds)->update(['status' => 1]);
+            }
+            (clone $products)->where(function ($query) use ($enabledCategoryIds): void {
+                if ($enabledCategoryIds) {
+                    $query->whereNotIn('category_id', $enabledCategoryIds)->orWhereNull('category_id');
+                    return;
+                }
+                $query->whereRaw('1=1');
+            })->update(['status' => 0]);
+        } else {
+            $products->update(['status' => 0]);
+        }
 
         $categoryCount = 0;
         foreach ($categoryIds as $categoryId) {
+            if (!in_array((int)$categoryId, $enabledCategoryIds, true)) {
+                $categoryCount += Category::query()
+                    ->where('owner', 0)
+                    ->where('id', $categoryId)
+                    ->update(['status' => 0]);
+                continue;
+            }
+
             if ($categoryStatus === 1) {
                 $categoryCount += Category::query()
                     ->where('owner', 0)
@@ -259,6 +325,56 @@ class Main
             'products' => (int)$productCount,
             'categories' => (int)$categoryCount,
         ];
+    }
+
+    private function enabledCategoryIds(array $categoryIds, array $config): array
+    {
+        $enabledTop = array_flip($this->enabledTopCategories($config));
+        $ids = array_values(array_unique(array_filter(array_map('intval', $categoryIds))));
+        if (!$ids) {
+            return [];
+        }
+
+        $rows = Category::query()->whereIn('id', $ids)->get(['id', 'pid', 'name']);
+        $byId = [];
+        foreach ($rows as $row) {
+            $byId[(int)$row->id] = [
+                'id' => (int)$row->id,
+                'pid' => (int)$row->pid,
+                'name' => (string)$row->name,
+            ];
+        }
+
+        return array_values(array_filter($ids, function (int $id) use ($enabledTop, $byId): bool {
+            $current = $byId[$id] ?? null;
+            while ($current && (int)$current['pid'] > 0 && isset($byId[(int)$current['pid']])) {
+                $current = $byId[(int)$current['pid']];
+            }
+
+            return $current && isset($enabledTop[$this->cleanCategoryName((string)$current['name'])]);
+        }));
+    }
+
+    private function enabledTopCategories(array $config): array
+    {
+        $raw = (string)($config['enabled_top_categories'] ?? '账户');
+        $items = preg_split('/[,，|\\s]+/u', $raw) ?: [];
+        $enabled = array_values(array_filter(array_map([$this, 'cleanCategoryName'], $items), static fn(string $name): bool => $name !== ''));
+
+        return $enabled ?: ['账户'];
+    }
+
+    private function cleanCategoryName(string $name): string
+    {
+        $name = trim(html_entity_decode(strip_tags($name), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $prefixes = ['HStockPlus-', 'HStockPlus - ', 'HStockPlus'];
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($name, $prefix)) {
+                $name = trim(substr($name, strlen($prefix)));
+            }
+        }
+
+        return $name;
     }
 
     private function withParentCategoryIds(array $categoryIds): array

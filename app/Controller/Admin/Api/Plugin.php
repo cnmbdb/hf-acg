@@ -32,6 +32,12 @@ class Plugin extends Manage
         foreach ($plugins as $key => $plugin) {
 
             $plugins[$key]["id"] = $plugin[\App\Consts\Plugin::PLUGIN_NAME];
+            $plugins[$key]["HAS_CONFIG"] = !empty($plugin[\App\Consts\Plugin::PLUGIN_SUBMIT]);
+            $plugins[$key][\App\Consts\Plugin::PLUGIN_SUBMIT] = [];
+            $plugins[$key][\App\Consts\Plugin::PLUGIN_CONFIG] = [
+                'STATUS' => $plugin[\App\Consts\Plugin::PLUGIN_CONFIG]['STATUS'] ?? 0,
+                'top' => $plugin[\App\Consts\Plugin::PLUGIN_CONFIG]['top'] ?? 0,
+            ];
             if (!array_key_exists($plugins[$key]["id"], $appStore)) {
                 $plugins[$key]['icon'] = "/favicon.ico";
             } else {
@@ -75,6 +81,25 @@ class Plugin extends Manage
         });
 
         return $this->json(200, 'success', ["list" => $plugins]);
+    }
+
+    /**
+     * @throws JSONException
+     */
+    public function getConfig(Request $request): array
+    {
+        $id = $request->post("id") ?: $request->get("id");
+        if (!$id) {
+            throw new JSONException("插件不存在");
+        }
+
+        $plugin = \Kernel\Util\Plugin::getPlugin((string)$id, false);
+        if (!$plugin) {
+            throw new JSONException("插件不存在");
+        }
+
+        $plugin["id"] = (string)$id;
+        return $this->json(200, 'success', $plugin);
     }
 
     /**

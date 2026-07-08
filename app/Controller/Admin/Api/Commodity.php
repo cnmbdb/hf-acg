@@ -30,6 +30,7 @@ use Kernel\Waf\Filter;
 class Commodity extends Manage
 {
     private const SOURCE_CODE_PREFIX = [
+        'default' => '',
         'fansgurus' => 'FG_',
         'hstockplus' => 'HSP_',
     ];
@@ -43,7 +44,7 @@ class Commodity extends Manage
     public function data(): array
     {
         $map = $_POST;
-        $source = $this->normalizeSource((string)($map['source'] ?? 'fansgurus'));
+        $source = $this->normalizeSource((string)($map['source'] ?? 'default'));
         unset($map['source']);
 
         $get = new Get(\App\Model\Commodity::class);
@@ -52,7 +53,14 @@ class Commodity extends Manage
         $get->setOrderBy(...$this->query->getOrderBy($map, "sort", "asc"));
 
         $data = $this->query->get($get, function (Builder $builder) use ($map, $source) {
-            if ($source) {
+            if ($source === 'default') {
+                foreach (self::SOURCE_CODE_PREFIX as $prefix) {
+                    if ($prefix === '') {
+                        continue;
+                    }
+                    $builder = $builder->where('code', 'not like', $prefix . '%');
+                }
+            } elseif ($source) {
                 $builder = $builder->where('code', 'like', self::SOURCE_CODE_PREFIX[$source] . '%');
             }
 

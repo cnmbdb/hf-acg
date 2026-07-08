@@ -190,10 +190,11 @@
             name: "source",
             type: "select",
             dict: [
+                {id: "default", name: "默认平台"},
                 {id: "fansgurus", name: "fansgurus平台"},
                 {id: "hstockplus", name: "hstockplus平台"}
             ],
-            default: "fansgurus",
+            default: "default",
             change: () => table.reload({pageNumber: 1})
         },
         {title: "分类名称", name: "search-name", type: "input"}
