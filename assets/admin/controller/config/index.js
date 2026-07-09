@@ -184,8 +184,8 @@
         $('.save-data').click(function () {
             const data = util.arrayToObject($("#data-form").serializeArray());
 
-            data.user_theme = $('select[name=user_theme]').val();
-            data.user_mobile_theme = $('select[name=user_mobile_theme]').val();
+            data.user_theme = 'Xiaohu';
+            data.user_mobile_theme = '0';
             data.user_center_theme = $('select[name=user_center_theme]').val();
 
             util.post("/admin/api/config/setting", data, res => {

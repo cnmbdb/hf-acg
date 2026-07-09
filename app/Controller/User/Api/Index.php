@@ -71,6 +71,8 @@ class Index extends User
         $categoryId = $_GET['categoryId'];
         $subcategory = (string)($_GET['subcategory'] ?? '');
         $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
+        $sort = (string)($_GET['sort'] ?? 'recommend');
+        $inStock = (int)($_GET['inStock'] ?? 0) === 1;
 
         $commodity = Commodity::query()
             ->with(['owner' => function (Relation $relation) {
@@ -81,6 +83,9 @@ class Index extends User
 
         if ($categoryId == 'recommend') {
             $commodity = $commodity->where("recommend", 1);
+        } elseif ($source === 'hstockplus' && str_starts_with($subcategory, 'hspacc:') && is_numeric($categoryId)) {
+            $subcategoryIds = $this->shop->getHStockPlusAccountSubcategoryIds((int)$categoryId, rawurldecode(substr($subcategory, 7)));
+            $commodity = $subcategoryIds ? $commodity->whereIn("category_id", $subcategoryIds) : $commodity->whereRaw("1=0");
         } elseif ($subcategory !== '' && is_numeric($subcategory)) {
             $commodity = $commodity->where("category_id", (int)$subcategory);
         } elseif ($categoryId != 0 && is_numeric($categoryId)) {
@@ -99,8 +104,16 @@ class Index extends User
         if ($keywords != "") {
             $commodity = $commodity->where('name', 'like', '%' . $keywords . '%');
         }
-        if ($subcategory !== '' && !is_numeric($subcategory)) {
+        if ($subcategory !== '' && !is_numeric($subcategory) && !str_starts_with($subcategory, 'hspacc:')) {
             $commodity = $commodity->where('config', 'like', '%' . rawurldecode($subcategory) . '%');
+        }
+        if ($inStock) {
+            $commodity = $commodity->where(function (Builder $query): void {
+                $query->where('stock', '>', 0)
+                    ->orWhereHas('card', function (Builder $relation): void {
+                        $relation->where('status', 0);
+                    });
+            });
         }
 
         $bus = \App\Model\Business::get();
@@ -144,7 +157,6 @@ class Index extends User
 
         $commodity = $commodity
             ->where("status", 1)
-            ->orderBy("sort", "asc")
             ->select([
                 'id', 'name', 'cover',
                 'status', 'delivery_way', 'price',
@@ -154,6 +166,15 @@ class Index extends User
             ->withCount(['order as order_sold' => function (Builder $relation) {
                 $relation->where("delivery_status", 1);
             }]);
+        $commodity = match ($sort) {
+            'price_asc' => $commodity->orderBy('price', 'asc')->orderBy('sort', 'asc'),
+            'price_desc' => $commodity->orderBy('price', 'desc')->orderBy('sort', 'asc'),
+            'newest' => $commodity->orderBy('create_time', 'desc')->orderBy('id', 'desc'),
+            'stock_desc' => $commodity->orderBy('stock', 'desc')->orderBy('sort', 'asc'),
+            'sales_desc' => $commodity->orderBy('order_sold', 'desc')->orderBy('sort', 'asc'),
+            'rating_desc' => $commodity->orderBy('recommend', 'desc')->orderBy('order_sold', 'desc')->orderBy('sort', 'asc'),
+            default => $commodity->orderBy('recommend', 'desc')->orderBy('sort', 'asc'),
+        };
         if ($limit == 0) {
             $commodity = $commodity
                 ->get();
@@ -205,6 +226,7 @@ class Index extends User
             if (!$val['cover']) {
                 $data[$key]['cover'] = "/favicon.ico";
             }
+            $data[$key]['cover_fallback'] = $this->commodityCoverFallback($val);
 
             //分站自定义名称和价格
             if (isset($userCommodityMap[$val['id']])) {
@@ -231,6 +253,16 @@ class Index extends User
         $json = $this->json(200, "success", $data);
         $json['total'] = $total;
         return $json;
+    }
+
+    private function commodityCoverFallback(array $commodity): string
+    {
+        $icon = (string)($commodity['category']['icon'] ?? '');
+        if ($icon !== '') {
+            return $icon;
+        }
+
+        return '/favicon.ico';
     }
 
     private function categoryAndDescendantIds(int $categoryId, ?string $source): array

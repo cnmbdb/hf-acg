@@ -8,6 +8,7 @@ use App\Model\Commodity;
 use App\Model\Coupon;
 use App\Model\UserCategory;
 use App\Plugin\Support\ExchangeRate;
+use App\Plugin\Support\UpstreamPriceRecalculator;
 use App\Util\Ini;
 use App\Util\Plugin;
 use Illuminate\Database\Capsule\Manager as Db;
@@ -18,6 +19,58 @@ class Sync
     private const PLUGIN = 'HStockPlus';
     private const DESCRIPTION_MAX_BYTES = 50000;
     private const STOCK_MAX = 2147483647;
+    private const ACCOUNT_SUBCATEGORIES = [
+        'TikTok',
+        'Facebook',
+        'Twitter/X',
+        'Telegram',
+        'Instagram',
+        'Discord',
+        'Snapchat',
+        'Spotify',
+        'WhatsApp',
+        'OnlyFans',
+        '领英',
+        'Microsoft',
+        'Apple iCloud',
+        '行项目',
+        'Zalo',
+        'Twitch',
+        'Reddit',
+        'Fiverr',
+        '踢出',
+        'GitHub',
+        'Quora',
+        'Tripadvisor',
+        'Tumblr',
+        'VKontakte',
+        'Odnoklassniki',
+        'YouTube',
+        '蓝空',
+        'Apple ID',
+        'Pinterest',
+        'Threads',
+        'Amazon',
+        'Ozon',
+        '批量预订',
+        'GitLab',
+        '超级',
+        'Trovo',
+        'Deezer',
+        'Dropbox',
+        'OLX',
+        'ExitLag',
+        '教育科技',
+        'Classmates',
+        'Bosslike',
+        'Tuta',
+        'Vps 云服务器',
+        'BeReal',
+        'Mastodon',
+        'Clubhouse',
+        'MeWe',
+        '其它',
+    ];
 
     /**
      * @throws JSONException
@@ -28,17 +81,10 @@ class Sync
         if ($action <= 0) {
             return ['last_sync_result' => '未执行同步'];
         }
-        if ($action !== 1) {
+        if (!in_array($action, [1, 4], true)) {
             $config = ExchangeRate::applyUsdToCny($config, self::PLUGIN);
         }
 
-        $client = new Client(
-            $this->normalizeApiUrl((string)($config['api_url'] ?? 'https://hstockplus.com/api/v2')),
-            trim((string)($config['api_key'] ?? '')),
-            (int)($config['timeout'] ?? 30)
-        );
-
-        $filters = $this->filters($config);
         $stats = [
             'categories_created' => 0,
             'categories_updated' => 0,
@@ -49,6 +95,21 @@ class Sync
             'products_price_updated' => 0,
             'products_skipped' => 0,
         ];
+        if ($action === 4) {
+            $result = UpstreamPriceRecalculator::recalculate(self::PLUGIN, $config);
+            $config = $result['config'];
+            $stats['products_price_updated'] = (int)$result['updated'];
+            $stats['products_skipped'] = (int)$result['skipped'];
+            return $this->finish($config, $action, $stats);
+        }
+
+        $client = new Client(
+            $this->normalizeApiUrl((string)($config['api_url'] ?? 'https://hstockplus.com/api/v2')),
+            trim((string)($config['api_key'] ?? '')),
+            (int)($config['timeout'] ?? 30)
+        );
+
+        $filters = $this->filters($config);
         if ($action === 1) {
             $this->syncCategoriesOnly($client, $filters, $config, $stats);
             return $this->finish($config, $action, $stats);
@@ -60,6 +121,7 @@ class Sync
         $categories = [];
         Db::connection()->transaction(function () use ($services, $config, $action, $categoryHints, &$stats, &$categories): void {
             $this->cleanupLegacyCategories($stats);
+            $this->normalizeAccountSubcategories($config, $stats);
             foreach ($services as $index => $service) {
                 if (!is_array($service)) {
                     $stats['products_skipped']++;
@@ -116,6 +178,7 @@ class Sync
         Db::connection()->transaction(function () use ($rows, $config, &$stats): void {
             $this->cleanupLegacyCategories($stats);
             $this->syncCategoryTree($rows, $config, $stats);
+            $this->normalizeAccountSubcategories($config, $stats);
             $this->reconcilePluginCategories($config, $stats);
         });
     }
@@ -128,17 +191,27 @@ class Sync
             return [];
         }
 
-        $hints = [];
+        $hints = [
+            'parent_by_child' => [],
+            'child_by_id' => [],
+            'parent_by_child_id' => [],
+        ];
         foreach ($rows as $row) {
             if (!is_array($row)) {
                 continue;
             }
-            $parent = $this->cleanTitle((string)($row['category'] ?? $row['name'] ?? $row['title'] ?? ''));
+            $parent = $this->normalizeTopCategory($this->cleanTitle($this->fieldValue($row, ['category', 'name', 'title'])));
             if ($parent === '') {
                 continue;
             }
-            foreach ($this->extractSubcategoryNames($row) as $child) {
-                $hints[$this->categoryLookupKey($child)] = $parent;
+            $isAccountParent = $this->normalizeTopCategory($parent) === '账户';
+            foreach ($this->extractSubcategories($row, $isAccountParent) as $child) {
+                $name = (string)$child['name'];
+                $hints['parent_by_child'][$this->categoryLookupKey($name)] = $parent;
+                if ((string)$child['id'] !== '') {
+                    $hints['child_by_id'][(string)$child['id']] = $name;
+                    $hints['parent_by_child_id'][(string)$child['id']] = $parent;
+                }
             }
         }
 
@@ -157,14 +230,14 @@ class Sync
                 continue;
             }
 
-            $parent = $this->cleanTitle((string)($row['category'] ?? $row['name'] ?? $row['title'] ?? ''));
+            $parent = $this->normalizeTopCategory($this->cleanTitle($this->fieldValue($row, ['category', 'name', 'title'])));
             if ($parent === '') {
                 continue;
             }
             $parentCategory = $this->syncCategoryPath([$parent], $config, $stats);
-            foreach ($this->extractSubcategoryNames($row) as $index => $child) {
+            foreach ($this->extractSubcategoryNames($row, $this->normalizeTopCategory($parent) === '账户') as $index => $child) {
                 $category = $this->syncCategoryPath([$parent, $child], $config, $stats);
-                $category->sort = ($index + 1) * 10;
+                $category->sort = $this->categorySort($child);
                 $category->save();
             }
             $parentCategory->sort = $this->categorySort($parent);
@@ -172,24 +245,36 @@ class Sync
         }
     }
 
-    private function extractSubcategoryNames(array $row): array
+    private function extractSubcategoryNames(array $row, bool $normalizeAccount = false): array
+    {
+        return array_values(array_unique(array_map(static fn(array $sub): string => (string)$sub['name'], $this->extractSubcategories($row, $normalizeAccount))));
+    }
+
+    private function extractSubcategories(array $row, bool $normalizeAccount = false): array
     {
         $raw = $row['subcategories'] ?? $row['children'] ?? $row['subs'] ?? [];
         if (!is_array($raw)) {
             return [];
         }
 
-        $names = [];
+        $items = [];
         foreach ($raw as $sub) {
             $name = is_array($sub)
-                ? $this->cleanTitle((string)($sub['name'] ?? $sub['category'] ?? $sub['title'] ?? ''))
+                ? $this->cleanTitle($this->fieldValue($sub, ['name', 'category', 'title', 'label']))
                 : $this->cleanTitle((string)$sub);
             if ($name !== '') {
-                $names[$name] = $name;
+                if ($normalizeAccount) {
+                    $name = $this->normalizeAccountSubcategory($name);
+                }
+                $id = is_array($sub) ? $this->fieldValue($sub, ['id', '_id', 'subcategory_id', 'subcategoryId', 'value']) : '';
+                $items[$name] = [
+                    'name' => $name,
+                    'id' => $id,
+                ];
             }
         }
 
-        return array_values($names);
+        return array_values($items);
     }
 
 
@@ -461,6 +546,182 @@ class Sync
         }
     }
 
+    public function normalizeAccountSubcategories(array $config = [], ?array &$stats = null): void
+    {
+        if ($stats === null) {
+            $stats = ['categories_updated' => 0, 'categories_deleted' => 0];
+        }
+        $stats['categories_updated'] ??= 0;
+        $stats['categories_deleted'] ??= 0;
+
+        $accountParents = Category::query()
+            ->where('owner', 0)
+            ->where(function ($query): void {
+                $query->whereNull('pid')->orWhere('pid', 0);
+            })
+            ->where(function ($query): void {
+                $query->where('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%')
+                    ->orWhere('name', '账户')
+                    ->orWhere('name', 'Accounts')
+                    ->orWhere('name', 'like', 'HStockPlus%账户%')
+                    ->orWhere('name', 'like', 'HStockPlus%Accounts%');
+            })
+            ->get();
+
+        foreach ($accountParents as $parent) {
+            $normalizedParentName = $this->normalizeTopCategory((string)$parent->name);
+            if ($normalizedParentName !== '账户' && $this->cleanTitle((string)$parent->name) !== '账户') {
+                continue;
+            }
+
+            /** @var Category|null $targetParent */
+            $targetParent = Category::query()
+                ->where('owner', 0)
+                ->where(function ($query): void {
+                    $query->whereNull('pid')->orWhere('pid', 0);
+                })
+                ->where('name', '账户')
+                ->where('id', '<>', $parent->id)
+                ->first();
+            if ($targetParent) {
+                $this->mergeCategoryInto($parent, $targetParent);
+                $parent = $targetParent;
+                $stats['categories_updated']++;
+                $stats['categories_deleted']++;
+            }
+
+            $parentChanged = false;
+            if ((string)$parent->name !== '账户') {
+                $parent->name = '账户';
+                $parentChanged = true;
+            }
+            $parentIcon = $this->categoryIcon('账户');
+            if ((string)$parent->icon !== $parentIcon) {
+                $parent->icon = $parentIcon;
+                $parentChanged = true;
+            }
+            $parentSort = $this->categorySort('账户');
+            if ((int)$parent->sort !== $parentSort) {
+                $parent->sort = $parentSort;
+                $parentChanged = true;
+            }
+            if ($parentChanged) {
+                $parent->save();
+                $stats['categories_updated']++;
+            }
+
+            $children = Category::query()
+                ->where('owner', 0)
+                ->where('pid', $parent->id)
+                ->orderBy('id', 'asc')
+                ->get();
+
+            foreach ($children as $child) {
+                $normalized = $this->normalizeAccountSubcategory((string)$child->name);
+                $targetName = $normalized !== '' ? $normalized : '其它';
+                $target = $this->accountSubcategoryTarget($parent, $child, $targetName);
+
+                if ((int)$target->id !== (int)$child->id) {
+                    $this->mergeCategoryInto($child, $target);
+                    $stats['categories_updated']++;
+                    $stats['categories_deleted']++;
+                    continue;
+                }
+
+                if ($this->applyAccountSubcategoryMeta($child, $targetName)) {
+                    $stats['categories_updated']++;
+                }
+            }
+        }
+    }
+
+    private function accountSubcategoryTarget(Category $parent, Category $source, string $targetName): Category
+    {
+        /** @var Category|null $target */
+        $target = Category::query()
+            ->where('owner', 0)
+            ->where('pid', $parent->id)
+            ->where('name', $targetName)
+            ->where('id', '<>', $source->id)
+            ->first();
+        if ($target) {
+            $this->applyAccountSubcategoryMeta($target, $targetName);
+            return $target;
+        }
+
+        if ((string)$source->name === $targetName) {
+            return $source;
+        }
+
+        $target = new Category();
+        $target->owner = 0;
+        $target->pid = $parent->id;
+        $target->name = $targetName;
+        $target->create_time = date('Y-m-d H:i:s');
+        $target->status = (int)$source->status;
+        $target->hide = 0;
+        $target->icon = $this->categoryIcon($targetName);
+        $target->sort = $this->categorySort($targetName);
+        $target->save();
+
+        return $target;
+    }
+
+    private function applyAccountSubcategoryMeta(Category $category, string $name): bool
+    {
+        $changed = false;
+        if ((string)$category->name !== $name) {
+            $category->name = $name;
+            $changed = true;
+        }
+        $icon = $this->categoryIcon($name);
+        if ((string)$category->icon !== $icon) {
+            $category->icon = $icon;
+            $changed = true;
+        }
+        $sort = $this->categorySort($name);
+        if ((int)$category->sort !== $sort) {
+            $category->sort = $sort;
+            $changed = true;
+        }
+        if ((int)$category->hide !== 0) {
+            $category->hide = 0;
+            $changed = true;
+        }
+        if ($changed) {
+            $category->save();
+        }
+
+        return $changed;
+    }
+
+    private function mergeCategoryInto(Category $source, Category $target): void
+    {
+        Commodity::query()
+            ->where('category_id', $source->id)
+            ->update(['category_id' => $target->id]);
+        Coupon::query()
+            ->where('category_id', $source->id)
+            ->update(['category_id' => $target->id]);
+        UserCategory::query()
+            ->where('category_id', $source->id)
+            ->update(['category_id' => $target->id]);
+        Category::query()
+            ->where('pid', $source->id)
+            ->update(['pid' => $target->id]);
+
+        $target->icon = $this->categoryIcon((string)$target->name);
+        $target->sort = $this->categorySort((string)$target->name);
+        $target->hide = 0;
+        $target->save();
+
+        $remaining = Commodity::query()->where('category_id', $source->id)->count();
+        $children = Category::query()->where('pid', $source->id)->count();
+        if ((int)$remaining === 0 && (int)$children === 0) {
+            $source->delete();
+        }
+    }
+
     public function reconcilePluginCategories(array $config = [], ?array &$stats = null): void
     {
         if ($stats === null) {
@@ -676,7 +937,7 @@ class Sync
 
     private function categoryName(array $service): string
     {
-        $value = $this->cleanTitle((string)($service['category'] ?? ''));
+        $value = $this->cleanTitle($this->fieldValue($service, ['category']));
         if ($value !== '') {
             return $value;
         }
@@ -694,12 +955,34 @@ class Sync
 
     private function categoryPath(array $service, array $categoryHints = []): array
     {
-        $category = $this->cleanTitle((string)($service['category'] ?? ''));
-        $subcategory = $this->cleanTitle((string)($service['subcategoryName'] ?? $service['subcategory_name'] ?? $service['subCategoryName'] ?? $service['subcategory'] ?? ''));
+        $category = $this->cleanTitle($this->fieldValue($service, ['category']));
+        $subcategory = $this->cleanTitle($this->fieldValue($service, ['subcategoryName', 'subcategory_name', 'subCategoryName', 'subcategory', 'sub_category']));
+        $subcategoryId = $this->fieldValue($service, ['subcategoryId', 'subcategory_id', 'subCategoryId']);
         $rawParts = $this->splitCategoryPath($category);
+
+        if ($subcategory === '' && $subcategoryId !== '') {
+            $subcategory = $this->cleanTitle((string)($categoryHints['child_by_id'][$subcategoryId] ?? ''));
+        }
+        if ($subcategory === '') {
+            $subcategory = $rawParts[1] ?? '';
+        }
+        if ($subcategory === '' && isset($rawParts[0]) && !$this->isTopCategoryLabel($rawParts[0])) {
+            $subcategory = $rawParts[0];
+        }
+
         $rawLeaf = $subcategory !== '' ? $subcategory : ($rawParts[1] ?? $rawParts[0] ?? '');
-        $parent = $this->hstockplusTopCategory($service, $category, $rawLeaf);
-        $child = $rawLeaf !== '' ? $rawLeaf : $parent;
+        $hintParent = '';
+        if ($subcategoryId !== '') {
+            $hintParent = $this->cleanTitle((string)($categoryHints['parent_by_child_id'][$subcategoryId] ?? ''));
+        }
+        if ($hintParent === '' && $rawLeaf !== '') {
+            $hintParent = $this->cleanTitle((string)($categoryHints['parent_by_child'][$this->categoryLookupKey($rawLeaf)] ?? ''));
+        }
+
+        $parent = $hintParent !== '' ? $this->normalizeTopCategory($hintParent) : $this->hstockplusTopCategory($service, $category, $rawLeaf);
+        $child = $parent === '账户'
+            ? $this->normalizeAccountSubcategory($rawLeaf !== '' ? $rawLeaf : (string)($service['name'] ?? ''))
+            : ($rawLeaf !== '' ? $rawLeaf : $parent);
 
         return [$parent, $child];
     }
@@ -737,6 +1020,25 @@ class Sync
         return '账户';
     }
 
+    private function normalizeTopCategory(string $category): string
+    {
+        $key = $this->categoryLookupKey($category);
+        return match ($key) {
+            'account', 'accounts', '账号', '账户' => '账户',
+            'email', 'emails', 'mail', '电子邮件', '邮箱', '邮件' => '电子邮件',
+            'smm', 'growth', 'growth service', 'growth services', '增长', '增长服务' => '增长服务',
+            'proxy', 'proxies', '代理', '代理服务' => '代理服务',
+            'sms', 'verification', '短信', '短信验证' => '短信验证',
+            'review', 'reviews', '评论', '评价' => '评论',
+            default => $category,
+        };
+    }
+
+    private function isTopCategoryLabel(string $category): bool
+    {
+        return in_array($this->normalizeTopCategory($category), ['账户', '电子邮件', '增长服务', '代理服务', '短信验证', '评论'], true);
+    }
+
     private function isEnabledTopCategory(string $category, array $config): bool
     {
         $enabled = $this->enabledTopCategories($config);
@@ -759,7 +1061,7 @@ class Sync
             return [];
         }
 
-        $parts = preg_split('/\s*(?:[-_\/|>＞:：]+)\s*/u', $category) ?: [];
+        $parts = preg_split('/\s*(?:[-_|>＞:：]+|\s+\/\s+)\s*/u', $category) ?: [];
         $parts = array_values(array_filter(array_map(fn(string $part): string => $this->cleanTitle($part), $parts), static fn(string $part): bool => $part !== ''));
 
         if (count($parts) <= 1) {
@@ -786,6 +1088,93 @@ class Sync
         return mb_strtolower($this->cleanTitle($value), 'UTF-8');
     }
 
+    private function normalizeAccountSubcategory(string $value): string
+    {
+        $value = $this->cleanTitle($value);
+        if ($value === '') {
+            return '其它';
+        }
+
+        $parts = $this->splitCategoryPath($value);
+        if (count($parts) >= 2 && $this->normalizeTopCategory($parts[0]) === '账户') {
+            $value = $parts[1];
+        }
+
+        $normalized = $this->accountSubcategoryAliases()[$this->subcategoryAliasKey($value)] ?? null;
+        if ($normalized !== null) {
+            return $normalized;
+        }
+
+        $text = $this->subcategoryAliasKey($value);
+        foreach ($this->accountSubcategoryAliases() as $needle => $category) {
+            if (mb_strlen($needle, 'UTF-8') >= 3 && str_contains($text, $needle)) {
+                return $category;
+            }
+        }
+
+        return '其它';
+    }
+
+    private function accountSubcategoryAliases(): array
+    {
+        $aliases = [];
+        foreach (self::ACCOUNT_SUBCATEGORIES as $category) {
+            $aliases[$this->subcategoryAliasKey($category)] = $category;
+        }
+
+        return $aliases + [
+                'tik tok' => 'TikTok',
+                'fb' => 'Facebook',
+                'twitter' => 'Twitter/X',
+                'x' => 'Twitter/X',
+                'x twitter' => 'Twitter/X',
+                'twitter x' => 'Twitter/X',
+                'tg' => 'Telegram',
+                'ig' => 'Instagram',
+                'ins' => 'Instagram',
+                'snap' => 'Snapchat',
+                'linkedin' => '领英',
+                'linked in' => '领英',
+                'outlook' => 'Microsoft',
+                'hotmail' => 'Microsoft',
+                'icloud' => 'Apple iCloud',
+                'apple icloud' => 'Apple iCloud',
+                'line' => '行项目',
+                'kick' => '踢出',
+                'trip advisor' => 'Tripadvisor',
+                'vk' => 'VKontakte',
+                'vkontakte' => 'VKontakte',
+                'ok' => 'Odnoklassniki',
+                'odnoklassniki' => 'Odnoklassniki',
+                'yt' => 'YouTube',
+                'youtube' => 'YouTube',
+                'bluesky' => '蓝空',
+                'blue sky' => '蓝空',
+                'appleid' => 'Apple ID',
+                'apple id' => 'Apple ID',
+                'pin' => 'Pinterest',
+                'bulk pre order' => '批量预订',
+                'bulk preorder' => '批量预订',
+                'gitlab' => 'GitLab',
+                'super' => '超级',
+                'education' => '教育科技',
+                'edtech' => '教育科技',
+                'vps' => 'Vps 云服务器',
+                'cloud server' => 'Vps 云服务器',
+                'cloud servers' => 'Vps 云服务器',
+                'other' => '其它',
+                'others' => '其它',
+            ];
+    }
+
+    private function subcategoryAliasKey(string $value): string
+    {
+        $value = mb_strtolower($this->cleanTitle($value), 'UTF-8');
+        $value = str_replace(['/', '-', '_', '|', '：', ':'], ' ', $value);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+        return trim($value);
+    }
+
     private function categoryIcon(string $category): string
     {
         $text = mb_strtolower($category, 'UTF-8');
@@ -809,7 +1198,39 @@ class Sync
             'linkedin' => 'linkedin',
             'github' => 'github',
             'whatsapp' => 'whatsapp',
+            'onlyfans' => 'other',
+            '领英' => 'linkedin',
+            'linkedin' => 'linkedin',
+            'microsoft' => 'other',
+            'icloud' => 'apple',
+            'apple id' => 'apple',
+            '行项目' => 'line',
+            'zalo' => 'other',
+            'fiverr' => 'other',
             'google' => 'google-maps',
+            'quora' => 'quora',
+            'tripadvisor' => 'trustpilot',
+            'tumblr' => 'other',
+            'vkontakte' => 'vk',
+            'vk' => 'vk',
+            'odnoklassniki' => 'other',
+            'pinterest' => 'pinterest',
+            'threads' => 'other',
+            'amazon' => 'other',
+            'ozon' => 'other',
+            'gitlab' => 'github',
+            'trovo' => 'other',
+            'deezer' => 'soundcloud',
+            'dropbox' => 'other',
+            'olx' => 'other',
+            'exitlag' => 'other',
+            'classmates' => 'other',
+            'bosslike' => 'other',
+            'tuta' => 'other',
+            'bereal' => 'other',
+            'mastodon' => 'other',
+            'clubhouse' => 'other',
+            'mewe' => 'other',
             'website' => 'website-traffic',
             'traffic' => 'website-traffic',
         ];
@@ -827,6 +1248,11 @@ class Sync
     {
         $order = ['账户', '电子邮件', '增长服务', '代理服务', '短信验证', '评论', '其他服务'];
         $position = array_search($category, $order, true);
+        if ($position !== false) {
+            return ($position + 1) * 10;
+        }
+
+        $position = array_search($this->normalizeAccountSubcategory($category), self::ACCOUNT_SUBCATEGORIES, true);
         return $position === false ? 9999 : ($position + 1) * 10;
     }
 
@@ -882,8 +1308,6 @@ class Sync
             '服务编号' => (string)($service['service'] ?? ''),
             '实体ID' => (string)($service['id'] ?? ''),
             '实体类型' => $entityType,
-            '采购报价' => (string)($service['rate'] ?? $service['price'] ?? '') . ' ' . $rateUnit,
-            '本地成本' => (string)$cost . ' CNY / 件',
             '本地售价' => (string)$price . ' CNY / 件',
             '库存' => (string)$this->stockValue($service['stock'] ?? null, $config),
             '最低订购' => (string)($service['min'] ?? ''),
@@ -908,12 +1332,101 @@ class Sync
 
     private function cover(array $service, string $fallback): string
     {
-        $image = trim((string)($service['imageUrl'] ?? $service['image'] ?? ''));
-        return $image !== '' ? $image : $fallback;
+        foreach ($this->imageCandidates($service) as $image) {
+            $image = $this->normalizeImageUrl($image);
+            if ($image !== '') {
+                return $image;
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function imageCandidates(array $service): array
+    {
+        $keys = [
+            'imageUrl', 'image_url', 'image',
+            'thumbnailUrl', 'thumbnail_url', 'thumbnail', 'thumb',
+            'coverUrl', 'cover_url', 'cover',
+            'picture', 'photo', 'icon', 'logo',
+        ];
+        $candidates = [];
+        foreach ($keys as $key) {
+            if (isset($service[$key])) {
+                $candidates[] = $service[$key];
+            }
+        }
+
+        foreach (['images', 'imageUrls', 'image_urls', 'gallery', 'media'] as $key) {
+            if (isset($service[$key])) {
+                $candidates[] = $service[$key];
+            }
+        }
+
+        return $this->flattenImageCandidates($candidates);
+    }
+
+    private function flattenImageCandidates(mixed $value): array
+    {
+        if (is_string($value) || is_numeric($value)) {
+            return [(string)$value];
+        }
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($value as $key => $item) {
+            if (is_string($key) && in_array($key, ['url', 'src', 'image', 'imageUrl', 'image_url', 'thumbnail', 'cover'], true)) {
+                array_push($items, ...$this->flattenImageCandidates($item));
+                continue;
+            }
+            if (is_array($item)) {
+                foreach (['url', 'src', 'image', 'imageUrl', 'image_url', 'thumbnail', 'cover'] as $imageKey) {
+                    if (isset($item[$imageKey])) {
+                        array_push($items, ...$this->flattenImageCandidates($item[$imageKey]));
+                    }
+                }
+                continue;
+            }
+            array_push($items, ...$this->flattenImageCandidates($item));
+        }
+
+        return $items;
+    }
+
+    private function normalizeImageUrl(string $image): string
+    {
+        $image = trim(html_entity_decode($image, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($image === '' || in_array(mb_strtolower($image, 'UTF-8'), ['null', 'undefined', 'false'], true)) {
+            return '';
+        }
+        if (str_starts_with($image, 'data:')) {
+            return '';
+        }
+        if (str_starts_with($image, '//')) {
+            return 'https:' . $image;
+        }
+        if (str_starts_with($image, '/uploads/')) {
+            return 'https://hstockplus.net' . $image;
+        }
+        if (str_starts_with($image, '/')) {
+            return 'https://hstockplus.com' . $image;
+        }
+        if (!preg_match('#^https?://#i', $image)) {
+            return '';
+        }
+
+        return str_replace(' ', '%20', $image);
     }
 
     private function serviceConfig(array $service): string
     {
+        $path = $this->categoryPath($service);
+        $category = $this->fieldValue($service, ['category']);
+        $subcategory = $this->fieldValue($service, ['subcategoryName', 'subcategory_name', 'subCategoryName', 'subcategory', 'sub_category']);
+        $subcategoryId = $this->fieldValue($service, ['subcategoryId', 'subcategory_id', 'subCategoryId']);
+
         return Ini::toConfig([
             'hstockplus_specs' => [
                 'id' => (string)($service['id'] ?? ''),
@@ -923,10 +1436,11 @@ class Sync
                 'stock' => (string)($service['stock'] ?? ''),
                 'minimum_order' => (string)max(0, (int)($service['min'] ?? 0)),
                 'maximum_order' => (string)max(0, (int)($service['max'] ?? 0)),
-                'category' => $this->configValue((string)($service['category'] ?? '')),
-                'subcategory' => $this->configValue((string)($service['subcategory'] ?? '')),
-                'subcategory_name' => $this->configValue((string)($service['subcategoryName'] ?? $service['subcategory_name'] ?? $service['subCategoryName'] ?? '')),
-                'subcategory_id' => $this->configValue((string)($service['subcategoryId'] ?? '')),
+                'category' => $this->configValue($category),
+                'top_category' => $this->configValue((string)($path[0] ?? '')),
+                'subcategory' => $this->configValue($subcategory),
+                'subcategory_name' => $this->configValue((string)($path[1] ?? '')),
+                'subcategory_id' => $this->configValue($subcategoryId),
                 'auto_delivery' => filter_var($service['autoDelivery'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             ],
         ]);
@@ -935,6 +1449,45 @@ class Sync
     private function configValue(string $value): string
     {
         return str_replace(["\r", "\n", '='], [' ', ' ', '-'], trim($value));
+    }
+
+    private function fieldValue(array $row, array $keys): string
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $row)) {
+                continue;
+            }
+
+            $value = $this->scalarFieldValue($row[$key]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function scalarFieldValue(mixed $value): string
+    {
+        if (is_string($value) || is_numeric($value)) {
+            return trim((string)$value);
+        }
+        if (!is_array($value)) {
+            return '';
+        }
+
+        foreach (['name', 'title', 'category', 'label', 'id', '_id', 'value'] as $key) {
+            if (!array_key_exists($key, $value)) {
+                continue;
+            }
+
+            $nested = $this->scalarFieldValue($value[$key]);
+            if ($nested !== '') {
+                return $nested;
+            }
+        }
+
+        return '';
     }
 
     private function cleanText(string $value): string

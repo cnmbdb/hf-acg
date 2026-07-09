@@ -98,6 +98,8 @@ abstract class User extends \App\Controller\Base\User
                 if ($theme == "0") {
                     $theme = $cfg['user_theme'];
                 }
+
+                $theme = "Xiaohu";
             } else {
                 $theme = $cfg['user_center_theme'] ?: "Cartoon";
             }

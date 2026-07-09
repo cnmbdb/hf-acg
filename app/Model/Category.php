@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $create_time
  * @property int $owner
  * @property string $icon
+ * @property string $source
  * @property int $status
  * @property int $hide
  */
@@ -31,7 +32,7 @@ class Category extends Model
     /**
      * @var array
      */
-    protected $casts = ['id' => 'integer', 'status' => 'integer', 'sort' => 'integer', 'owner' => 'integer'];
+    protected $casts = ['id' => 'integer', 'status' => 'integer', 'sort' => 'integer', 'owner' => 'integer', 'pid' => 'integer'];
 
 
     /*

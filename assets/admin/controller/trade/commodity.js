@@ -6,9 +6,33 @@
         {id: "hstockplus", name: "hstockplus平台"}
     ];
     const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
+    const categorySourceFromAssign = assign => {
+        const code = String(assign?.code ?? '').toUpperCase();
+        if (code.startsWith('FG_')) {
+            return 'fansgurus';
+        }
+        if (code.startsWith('HSP_')) {
+            return 'hstockplus';
+        }
+
+        if (assign?.category?.source) {
+            return assign.category.source;
+        }
+
+        const icon = String(assign?.category?.icon ?? '').toLowerCase();
+        if (icon.includes('/app/plugin/fansgurus/assets/icons/')) {
+            return 'fansgurus';
+        }
+        if (icon.includes('/app/plugin/hstockplus/assets/icons/')) {
+            return 'hstockplus';
+        }
+        return 'default';
+    };
     const modal = (title, assign = {}) => {
 
-        const owner = assign?.owner ? assign?.owner.id : 0;
+        const owner = assign?.owner && typeof assign.owner === "object" ? assign.owner.id : (assign?.owner ?? 0);
+        const categorySource = categorySourceFromAssign(assign);
+        const categoryDict = owner > 0 ? `category->owner=${owner},id,name,pid&tree=true` : platformCategoryDict(categorySource);
 
         component.popup({
             submit: '/admin/api/commodity/save',
@@ -16,14 +40,31 @@
                 {
                     name: title,
                     form: [
+                        ...(owner > 0 ? [] : [
+                            {
+                                title: "平台来源",
+                                name: "category_source",
+                                type: "select",
+                                placeholder: "请选择平台来源",
+                                dict: platformDict,
+                                default: categorySource,
+                                required: true,
+                                change: (_, value) => {
+                                    _.reloadCascader("category_id", platformCategoryDict(value || "default"));
+                                }
+                            }
+                        ]),
                         {
                             title: "商品分类",
                             name: "category_id",
-                            type: "treeSelect",
-                            placeholder: "请选择商品分类",
-                            dict: `category->owner=${owner},id,name,pid&tree=true`,
+                            type: "cascaderSelect",
+                            placeholder: owner > 0 ? "请选择商品分类" : "请选择二级分类",
+                            dict: categoryDict,
                             required: true,
-                            parent: false
+                            parent: false,
+                            leafOnly: owner <= 0,
+                            minLevel: owner <= 0 ? 2 : 1,
+                            maxLevel: owner <= 0 ? 2 : 0
                         },
                         {
                             title: "商品图标",

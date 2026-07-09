@@ -10,6 +10,7 @@ use App\Model\Order;
 use App\Model\Pay;
 use App\Plugin\HStockPlus\Service\Client;
 use App\Plugin\HStockPlus\Service\Sync;
+use App\Plugin\Support\UpstreamPriceRecalculator;
 use App\Util\Ini;
 use App\Util\Plugin;
 use Kernel\Annotation\Hook as HookPoint;
@@ -27,6 +28,7 @@ class Main
         $config = $this->config();
         $sync = new Sync();
         $sync->cleanupLegacyCategories();
+        $sync->normalizeAccountSubcategories($config);
         $sync->reconcilePluginCategories($config);
         $syncAction = (int)($config['sync_action'] ?? 0);
         if ($syncAction <= 0 && (int)($config['auto_sync_on_start'] ?? 0) === 1) {
@@ -87,6 +89,7 @@ class Main
         }
 
         $config = array_replace($this->config(), $map);
+        $priceConfigChanged = $this->priceConfigChanged($map);
         if ((int)($config['auto_sync_on_save'] ?? 0) === 1) {
             if ((int)($config['sync_action'] ?? 0) <= 0) {
                 $config['sync_action'] = '3';
@@ -102,7 +105,39 @@ class Main
                 $this->log('同步失败：' . $e->getMessage());
                 throw $e;
             }
+        } elseif ($priceConfigChanged) {
+            $this->recalculateSyncedPrices($config);
         }
+    }
+
+    private function priceConfigChanged(array $map): bool
+    {
+        foreach (['exchange_rate_auto', 'usd_to_cny', 'price_multiplier', 'price_plus', 'price_floor', 'smm_rate_per_1000'] as $key) {
+            if (array_key_exists($key, $map)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @throws JSONException
+     */
+    private function recalculateSyncedPrices(array $config): void
+    {
+        $result = UpstreamPriceRecalculator::recalculate(self::PLUGIN, $config);
+        $config = $result['config'];
+        $config['last_sync_at'] = date('Y-m-d H:i:s');
+        $config['last_sync_result'] = sprintf(
+            '汇率/价格配置已实时重算：商品更新%d，跳过%d',
+            (int)$result['updated'],
+            (int)$result['skipped']
+        );
+        $config['sync_action'] = '0';
+
+        setConfig($config, BASE_PATH . '/app/Plugin/' . self::PLUGIN . '/Config/Config.php');
+        $this->log($config['last_sync_result']);
     }
 
     #[HookPoint(point: Hook::SERVICE_SHOP_GET_ITEM_STOCK)]

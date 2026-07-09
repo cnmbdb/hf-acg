@@ -11,7 +11,7 @@ return array (
   'disable_products_on_stop' => '1',
   'enable_products_on_start' => '1',
   'auto_sync_on_start' => '0',
-  'auto_sync_on_save' => '0',
+  'auto_sync_on_save' => '1',
   'sync_action' => '0',
   'sync_source' => 'products',
   'entity_type' => '',
@@ -34,7 +34,7 @@ return array (
   'stock_value' => '999999',
   'timeout' => '60',
   'mapping' => '',
-  'last_sync_at' => '2026-07-07 21:39:53',
-  'last_sync_result' => '更新上游商品和价格：分类新增0/更新220，空分类删除0/恢复22，商品新增0/更新10049，价格更新10049，跳过3834',
+  'last_sync_at' => '2026-07-09 16:11:08',
+  'last_sync_result' => '更新上游商品分类：分类新增5517/更新5528，空分类删除5517/恢复0，商品新增0/更新0，价格更新0，跳过0',
   'top' => '1',
 );

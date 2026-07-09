@@ -146,10 +146,20 @@ class Plugin extends Manage
             $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
         }
 
+        $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
+        $beforeHookConfigHash = is_file($configFile) ? (string)md5_file($configFile) : '';
+
         hook(Hook::ADMIN_API_PLUGIN_SAVE_CONFIG, $id, $map); //12/09-重写HOOK逻辑
         \Kernel\Util\Plugin::runHookState($id, \Kernel\Annotation\Plugin::SAVE_CONFIG, $id, $map);//2022/01/12新增插件保存配置逻辑，无需启用插件也可以hook
 
-        $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
+        $afterHookConfigHash = is_file($configFile) ? (string)md5_file($configFile) : '';
+        if ($afterHookConfigHash !== '' && $afterHookConfigHash !== $beforeHookConfigHash) {
+            $plugin = \Kernel\Util\Plugin::getPlugin($id, false);
+            if ($plugin && isset($plugin[\App\Consts\Plugin::PLUGIN_CONFIG]) && is_array($plugin[\App\Consts\Plugin::PLUGIN_CONFIG])) {
+                $config = array_replace($config, $plugin[\App\Consts\Plugin::PLUGIN_CONFIG]);
+            }
+        }
+
         setConfig($config, $configFile);
         ManageLog::log($this->getManage(), "修改了插件({$id})的配置");
         return $this->json(200, '配置已生效');

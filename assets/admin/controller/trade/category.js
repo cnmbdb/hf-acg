@@ -1,6 +1,29 @@
 !function () {
     let table;
+    const platformDict = [
+        {id: "default", name: "默认平台"},
+        {id: "fansgurus", name: "fansgurus平台"},
+        {id: "hstockplus", name: "hstockplus平台"}
+    ];
+    const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
+    const categorySourceFromAssign = assign => {
+        if (assign?.source) {
+            return assign.source;
+        }
+
+        const icon = String(assign?.icon ?? '').toLowerCase();
+        if (icon.includes('/app/plugin/fansgurus/assets/icons/')) {
+            return 'fansgurus';
+        }
+        if (icon.includes('/app/plugin/hstockplus/assets/icons/')) {
+            return 'hstockplus';
+        }
+        return 'default';
+    };
     const modal = (title, assign = {}) => {
+        const categorySource = categorySourceFromAssign(assign);
+        const categoryLevel = Number(assign?.pid ?? 0) > 0 ? 'child' : 'root';
+
         component.popup({
             submit: '/admin/api/category/save',
             tab: [
@@ -13,12 +36,49 @@
                             hide: true
                         },
                         {
-                            title: "父级分类",
+                            title: "平台来源",
+                            name: "source",
+                            type: "select",
+                            placeholder: "请选择平台来源",
+                            dict: platformDict,
+                            default: categorySource,
+                            required: true,
+                            change: (form, value) => {
+                                form.reloadCascader("pid", platformCategoryDict(value || "default"));
+                            }
+                        },
+                        {
+                            title: "分类级别",
+                            name: "category_level",
+                            type: "radio",
+                            dict: [
+                                {id: "root", name: "添加一级分类"},
+                                {id: "child", name: "添加二级分类"}
+                            ],
+                            default: categoryLevel,
+                            submit: false,
+                            required: true,
+                            change: (form, value) => {
+                                if (value === "child") {
+                                    form.show("pid");
+                                } else {
+                                    form.hide("pid");
+                                    form.reloadCascader("pid", null, "");
+                                }
+                            },
+                            complete: (form, value) => {
+                                form.triggerOtherPopupChange("category_level", value);
+                            }
+                        },
+                        {
+                            title: "一级分类",
                             name: "pid",
-                            type: "treeSelect",
-                            dict: "category->owner=0,id,name,pid&tree=true",
-                            placeholder: "父级分类，可不选",
-                            parent: true
+                            type: "cascaderSelect",
+                            dict: platformCategoryDict(categorySource),
+                            placeholder: "请选择要挂载到哪个一级分类下",
+                            parent: false,
+                            maxLevel: 1,
+                            hide: categoryLevel !== "child"
                         },
                         {
                             title: "图标",

@@ -27,8 +27,32 @@
     "#{$static}/assets/index.css"
     ])}
     #{js("/assets/common/js/ready.js")}
-    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260708-1">
+    <link rel="stylesheet" href="#{$static}/assets/index.css?v=#{$app.version}-xiaohu-20260708-8">
     <style>
+        .xh-category-group .xh-subcategory > .xh-subcategory-icon {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex: 0 0 20px !important;
+            width: 20px !important;
+            height: 20px !important;
+            margin-right: 10px !important;
+            color: #9097a2 !important;
+            line-height: 1 !important;
+        }
+
+        .xh-category-group .xh-subcategory > .xh-subcategory-icon img {
+            display: block !important;
+            width: 18px !important;
+            height: 18px !important;
+            object-fit: contain !important;
+            filter: grayscale(1) opacity(.62) !important;
+        }
+
+        .xh-category-group .xh-subcategory > .xh-subcategory-gap {
+            display: none !important;
+        }
+
         .xh-tools {
             position: relative;
         }
@@ -174,10 +198,6 @@
     </button>
 
     <div class="xh-navlinks">
-        <a class="xh-navlink #{if $title != "订单查询" && !$shopSource}is-active#{/if}" href="/">
-            <i class="fa-duotone fa-regular fa-cart-shopping"></i>
-            <span data-i18n="shopping">购物</span>
-        </a>
         <a class="xh-navlink #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
@@ -282,10 +302,6 @@
             <button type="button" data-lang-option="ru">Русский</button>
             <button type="button" data-lang-option="ko">한국어</button>
         </div>
-        <a class="xh-mobile-link #{if $title != "订单查询" && !$shopSource}is-active#{/if}" href="/">
-            <i class="fa-duotone fa-regular fa-cart-shopping"></i>
-            <span data-i18n="shopping">购物</span>
-        </a>
         <a class="xh-mobile-link #{if $title == "订单查询"}is-active#{/if}" href="/user/index/query">
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>

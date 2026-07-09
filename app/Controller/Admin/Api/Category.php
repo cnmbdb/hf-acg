@@ -130,11 +130,17 @@ class Category extends Manage
             $manualCategoryIds = CategoryModel::query()
                 ->where('owner', 0)
                 ->where(function (Builder $builder) use ($pluginIconPrefixes): void {
-                    $builder->whereNull('icon')->orWhere(function (Builder $subQuery) use ($pluginIconPrefixes): void {
-                        foreach ($pluginIconPrefixes as $iconPrefix) {
-                            $subQuery->where('icon', 'not like', $iconPrefix);
-                        }
-                    });
+                    $builder->where('source', 'default')
+                        ->orWhereNull('source')
+                        ->orWhere('source', '');
+                })
+                ->where(function (Builder $builder) use ($pluginIconPrefixes): void {
+                    $builder->whereNull('icon')
+                        ->orWhere(function (Builder $subQuery) use ($pluginIconPrefixes): void {
+                            foreach ($pluginIconPrefixes as $iconPrefix) {
+                                $subQuery->where('icon', 'not like', $iconPrefix);
+                            }
+                        });
                 })
                 ->pluck('id')
                 ->map(static fn($id): int => (int)$id)
@@ -146,7 +152,10 @@ class Category extends Manage
         }
 
         $pluginCategoryIds = CategoryModel::query()
-            ->where('icon', 'like', self::SOURCE_ICON_PREFIX[$source])
+            ->where(function (Builder $builder) use ($source): void {
+                $builder->where('source', $source)
+                    ->orWhere('icon', 'like', self::SOURCE_ICON_PREFIX[$source]);
+            })
             ->pluck('id')
             ->map(static fn($id): int => (int)$id)
             ->filter(static fn(int $id): bool => $id > 0)
@@ -291,6 +300,7 @@ class Category extends Manage
     public function save(Request $request): array
     {
         $map = $request->post(flags: Filter::NORMAL);
+        $map['source'] = $this->normalizeSource((string)($map['source'] ?? 'default')) ?? 'default';
         $this->guardCategoryParent($map);
 
         $save = new Save(CategoryModel::class);
@@ -300,6 +310,8 @@ class Category extends Manage
         if (!$save) {
             throw new JSONException("保存失败，请检查信息填写是否完整");
         }
+
+        $this->syncChildrenSource((int)$save->id, (string)$save->source);
 
         ManageLog::log($this->getManage(), "[新增/修改]商品分类");
         return $this->json(200, '（＾∀＾）保存成功');
@@ -311,7 +323,25 @@ class Category extends Manage
         $pid = (int)($map['pid'] ?? 0);
         $map['pid'] = $pid > 0 ? $pid : 0;
 
-        if ($id <= 0 || $pid <= 0) {
+        if ($pid <= 0) {
+            return;
+        }
+
+        $parent = CategoryModel::query()->find($pid);
+        if (!$parent) {
+            throw new JSONException('父级分类不存在');
+        }
+
+        if ((int)$parent->pid > 0) {
+            throw new JSONException('只能选择一级分类作为父级分类');
+        }
+
+        $parentSource = $this->categorySource($parent);
+        if (($map['source'] ?? 'default') !== $parentSource) {
+            throw new JSONException('父级分类必须和平台来源一致');
+        }
+
+        if ($id <= 0) {
             return;
         }
 
@@ -322,6 +352,35 @@ class Category extends Manage
         if (in_array($pid, $this->categoryDescendantIds([$id]), true)) {
             throw new JSONException('父级分类不能选择自己的下级分类');
         }
+    }
+
+    private function categorySource(CategoryModel $category): string
+    {
+        $source = $this->normalizeSource((string)($category->source ?? ''));
+        if ($source) {
+            return $source;
+        }
+
+        $icon = strtolower((string)($category->icon ?? ''));
+        foreach (self::SOURCE_ICON_PREFIX as $source => $prefix) {
+            $prefix = strtolower(rtrim($prefix, '%'));
+            if ($prefix !== '' && str_starts_with($icon, $prefix)) {
+                return $source;
+            }
+        }
+
+        return 'default';
+    }
+
+    private function syncChildrenSource(int $categoryId, string $source): void
+    {
+        if ($categoryId <= 0) {
+            return;
+        }
+
+        CategoryModel::query()
+            ->where('pid', $categoryId)
+            ->update(['source' => $source]);
     }
 
 

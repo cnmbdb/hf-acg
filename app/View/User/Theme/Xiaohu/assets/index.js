@@ -159,11 +159,20 @@
     const $categoryGroup = $(".xh-category-group");
     const $list = $(".item-list");
     const $currentCategory = $(".xh-current-category");
+    const $instockFilter = $(".xh-instock-filter");
+    const $sortFilter = $(".xh-sort-filter");
+    const $sortToggle = $(".xh-sort-toggle");
+    const $sortCurrent = $(".xh-sort-current");
     const categoryId = getVar("CAT_ID");
     const shopSource = getVar("SHOP_SOURCE");
     const categoryUrl = getVar("SHOP_CATEGORY_URL") || "/cat";
     const $noticeModal = $("[data-notice-modal]");
     const noticeStorageKey = "xiaohu_notice_read_until";
+    const currentState = {
+        categoryId: null,
+        subcategory: "",
+        keywords: ""
+    };
 
     function openNotice() {
         if (window.XhMobileMenu) {
@@ -225,6 +234,9 @@
         if (event.key === "Escape" && $noticeModal.hasClass("is-open")) {
             closeNotice();
         }
+        if (event.key === "Escape") {
+            closeSortMenu();
+        }
         if (event.key === "Escape" && window.XhMobileMenu) {
             window.XhMobileMenu.close();
         }
@@ -258,6 +270,9 @@
     }
 
     function renderProducts(data) {
+        data = $instockFilter.length && $instockFilter.is(":checked")
+            ? (data || []).filter(item => !isSoldOut(item))
+            : data;
         $list.html("");
 
         if (!data || data.length === 0) {
@@ -269,6 +284,8 @@
             const soldOut = isSoldOut(item);
             const itemUrl = soldOut ? "javascript:void(0);" : `/item/${item.id}`;
             const deliveryText = item.delivery_way === 0 ? t("autoDelivery") : t("onlineDelivery");
+            const cover = item.cover || item.cover_fallback || "/favicon.ico";
+            const coverFallback = item.cover_fallback || "/favicon.ico";
             const userPrice = item.user_price && item.user_price !== item.price
                 ? `<div class="xh-user-price">${t("userPrice")} ¥ ${price(item.user_price)}</div>`
                 : "";
@@ -276,7 +293,7 @@
             $list.append(`
                 <div class="xh-table-row xh-product-row" data-id="${item.id}">
                     <a class="xh-product-main" href="${itemUrl}">
-                        <img class="xh-product-cover" src="${escapeHtml(item.cover || "/favicon.ico")}" alt="${escapeHtml(item.name)}">
+                        <img class="xh-product-cover" src="${escapeHtml(cover)}" alt="${escapeHtml(item.name)}" data-fallback="${escapeHtml(coverFallback)}" onerror="this.onerror=null;this.src=this.dataset.fallback||'/favicon.ico';this.classList.add('is-fallback');">
                         <div>
                             <p class="xh-product-title">${escapeHtml(item.name)}</p>
                             <div class="xh-tags">
@@ -299,23 +316,60 @@
         });
     }
 
+    function currentFilters() {
+        const $activeSort = $sortFilter.find(".xh-sort-menu button.is-active");
+        return {
+            sort: $activeSort.data("sort") || "recommend"
+        };
+    }
+
+    function loadProducts(params) {
+        $list.html(`<div class="xh-empty">${t("loading")}</div>`);
+        trade.getCommodityList(Object.assign({}, params, currentFilters(), {
+            source: shopSource,
+            done: renderProducts
+        }));
+    }
+
+    function reloadCurrentProducts() {
+        if (currentState.keywords) {
+            loadProducts({keywords: currentState.keywords});
+            return;
+        }
+        loadProducts({
+            categoryId: currentState.categoryId || ($category.filter(".is-active").data("id") || $category.first().data("id")),
+            subcategory: currentState.subcategory || undefined
+        });
+    }
+
+    function closeSortMenu() {
+        $sortFilter.removeClass("is-open");
+        $sortToggle.attr("aria-expanded", "false");
+        $sortFilter.find(".xh-sort-menu").attr("aria-hidden", "true");
+    }
+
+    function toggleSortMenu() {
+        const open = !$sortFilter.hasClass("is-open");
+        $sortFilter.toggleClass("is-open", open);
+        $sortToggle.attr("aria-expanded", open ? "true" : "false");
+        $sortFilter.find(".xh-sort-menu").attr("aria-hidden", open ? "false" : "true");
+    }
+
     function setCategoryState(id, updateUrl = false) {
         const $active = $category.filter(`[data-id="${id}"]`);
         $category.removeClass("is-active");
         $active.addClass("is-active");
         $currentCategory.text($active.find(".xh-category-name").text() || t("item"));
+        currentState.categoryId = id;
+        currentState.subcategory = "";
+        currentState.keywords = "";
         setSubcategoryState(id, "", false, true);
 
         if (updateUrl) {
             history.pushState(null, "", categoryUrl === "/cat" ? `/cat/${id}` : `${categoryUrl}?cid=${id}`);
         }
 
-        $list.html(`<div class="xh-empty">${t("loading")}</div>`);
-        trade.getCommodityList({
-            categoryId: id,
-            source: shopSource,
-            done: renderProducts
-        });
+        loadProducts({categoryId: id});
     }
 
     function setSubcategoryState(categoryId, value, load = false, open = true) {
@@ -333,21 +387,21 @@
         const $active = $items.filter(`[data-subcategory="${value}"]`).first();
         if (value !== "") {
             $active.addClass("is-active");
-            $currentCategory.text($active.text() || $category.filter(`[data-id="${categoryId}"]`).find(".xh-category-name").text() || t("item"));
+            $currentCategory.text($active.find(".xh-subcategory-name").text() || $active.text() || $category.filter(`[data-id="${categoryId}"]`).find(".xh-category-name").text() || t("item"));
         }
 
         if (!load) {
             return;
         }
+        currentState.categoryId = categoryId;
+        currentState.subcategory = value;
+        currentState.keywords = "";
 
         history.pushState(null, "", categoryUrl === "/cat" ? `/cat/${categoryId}` : `${categoryUrl}?cid=${categoryId}&subcategory=${encodeURIComponent(value)}`);
 
-        $list.html(`<div class="xh-empty">${t("loading")}</div>`);
-        trade.getCommodityList({
+        loadProducts({
             categoryId: categoryId,
-            source: shopSource,
-            subcategory: value,
-            done: renderProducts
+            subcategory: value
         });
     }
 
@@ -360,16 +414,20 @@
 
         $category.removeClass("is-active");
         $currentCategory.text(t("searchResult"));
-        $list.html(`<div class="xh-empty">${t("loading")}</div>`);
-        trade.getCommodityList({
-            keywords: keyword,
-            source: shopSource,
-            done: renderProducts
-        });
+        currentState.categoryId = null;
+        currentState.subcategory = "";
+        currentState.keywords = keyword;
+        loadProducts({keywords: keyword});
     }
 
     const firstCategory = $category.first().data("id");
-    setCategoryState(categoryId > 0 ? categoryId : firstCategory);
+    const initialCategory = categoryId > 0 ? categoryId : firstCategory;
+    const initialSubcategory = new URLSearchParams(window.location.search).get("subcategory") || "";
+    if (initialSubcategory) {
+        setSubcategoryState(initialCategory, initialSubcategory, true, true);
+    } else {
+        setCategoryState(initialCategory);
+    }
 
     $category.on("click", function (event) {
         event.preventDefault();
@@ -398,6 +456,33 @@
 
     $(".xh-search-button").on("click", function () {
         search($(".item-search-input").val());
+    });
+
+    $instockFilter.on("change", function () {
+        reloadCurrentProducts();
+    });
+
+    $sortToggle.on("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleSortMenu();
+    });
+
+    $sortFilter.find(".xh-sort-menu button").on("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const $button = $(this);
+        $sortFilter.find(".xh-sort-menu button").removeClass("is-active");
+        $button.addClass("is-active");
+        $sortCurrent.text($button.text());
+        closeSortMenu();
+        reloadCurrentProducts();
+    });
+
+    $(document).on("click", function (event) {
+        if (!$(event.target).closest(".xh-sort-filter").length) {
+            closeSortMenu();
+        }
     });
 
     $(document).on("xiaohu:i18n", function () {

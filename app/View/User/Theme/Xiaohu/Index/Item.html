@@ -3,7 +3,7 @@
 <main class="xh-shell xh-item-page">
     <section class="xh-panel xh-item-card">
         <div class="xh-item-cover-wrap">
-            <img src="#{$item.cover}" alt="#{$item.name}" class="xh-item-cover">
+            <img src="#{$item.cover}" alt="#{$item.name}" class="xh-item-cover" data-fallback="#{$item.cover_fallback}" onerror="this.onerror=null;this.src=this.dataset.fallback||'/favicon.ico';this.classList.add('is-fallback');">
             <a class="xh-origin-btn" href="#{$item.cover}" target="_blank" rel="noopener">
                 <i class="fa-duotone fa-regular fa-expand"></i>
                 <span data-i18n="viewOriginal">查看原图</span>
@@ -131,6 +131,6 @@
         </div>
     </section>
 </main>
-#{ready("#{$static}/assets/index.js?xh=20260620-4")}
+#{ready("#{$static}/assets/index.js?xh=20260708-2")}
 #{ready("/assets/user/controller/index/item.js")}
 #{include file="./Footer.html"}

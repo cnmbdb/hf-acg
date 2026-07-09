@@ -35,6 +35,11 @@ class Commodity extends Manage
         'hstockplus' => 'HSP_',
     ];
 
+    private const SOURCE_ICON_PREFIX = [
+        'fansgurus' => '/app/Plugin/FansGurus/Assets/icons/%',
+        'hstockplus' => '/app/Plugin/HStockPlus/Assets/icons/%',
+    ];
+
     #[Inject]
     private Query $query;
 
@@ -176,6 +181,13 @@ class Commodity extends Manage
     public function save(Request $request): array
     {
         $map = $request->post(flags: Filter::NORMAL);
+        $hasCategorySource = array_key_exists('category_source', $map);
+        $categorySource = $this->normalizeSource((string)($map['category_source'] ?? 'default')) ?? 'default';
+        unset($map['category_source']);
+
+        if ($hasCategorySource) {
+            $this->guardCommodityCategory((int)($map['category_id'] ?? 0), $categorySource);
+        }
 
         //create new
         if ((int)$map['id'] == 0) {
@@ -190,7 +202,10 @@ class Commodity extends Manage
 
             //--init
             $map['owner'] = 0;
-            $map['code'] = strtoupper(Str::generateRandStr(16));
+            $map['code'] = $this->applySourceCodePrefix($categorySource, strtoupper(Str::generateRandStr(16)));
+        } elseif ($hasCategorySource) {
+            $commodity = \App\Model\Commodity::query()->find((int)$map['id']);
+            $map['code'] = $this->applySourceCodePrefix($categorySource, (string)($commodity->code ?? strtoupper(Str::generateRandStr(16))));
         }
 
         //如果选择了别人平台
@@ -232,6 +247,66 @@ class Commodity extends Manage
 
         ManageLog::log($this->getManage(), "[修改/新增]商品");
         return $this->json(200, '（＾∀＾）保存成功');
+    }
+
+    private function guardCommodityCategory(int $categoryId, string $source): void
+    {
+        if ($categoryId <= 0) {
+            throw new JSONException("请选择商品分类");
+        }
+
+        $category = Category::query()->find($categoryId);
+        if (!$category) {
+            throw new JSONException("商品分类不存在");
+        }
+
+        if ((int)$category->pid <= 0) {
+            throw new JSONException("商品必须添加到二级分类下");
+        }
+
+        $parent = Category::query()->find((int)$category->pid);
+        if (!$parent) {
+            throw new JSONException("商品分类父级不存在");
+        }
+
+        if ($this->categorySource($parent) !== $source || $this->categorySource($category) !== $source) {
+            throw new JSONException("商品分类必须和平台来源一致");
+        }
+    }
+
+    private function applySourceCodePrefix(string $source, string $code): string
+    {
+        $code = $this->stripSourceCodePrefix($code);
+        return (self::SOURCE_CODE_PREFIX[$source] ?? '') . $code;
+    }
+
+    private function stripSourceCodePrefix(string $code): string
+    {
+        foreach (self::SOURCE_CODE_PREFIX as $prefix) {
+            if ($prefix !== '' && str_starts_with($code, $prefix)) {
+                return substr($code, strlen($prefix));
+            }
+        }
+
+        return $code;
+    }
+
+    private function categorySource(Category $category): string
+    {
+        $source = $this->normalizeSource((string)($category->source ?? ''));
+        if ($source) {
+            return $source;
+        }
+
+        $icon = strtolower((string)($category->icon ?? ''));
+        foreach (self::SOURCE_ICON_PREFIX as $source => $prefix) {
+            $prefix = strtolower(rtrim($prefix, '%'));
+            if ($prefix !== '' && str_starts_with($icon, $prefix)) {
+                return $source;
+            }
+        }
+
+        return 'default';
     }
 
 

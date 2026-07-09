@@ -31,6 +31,13 @@ interface Shop
     public function getSourceVisibleCategoryIds(?string $source = null): array;
 
     /**
+     * @param int $parentId
+     * @param string $subcategory
+     * @return array
+     */
+    public function getHStockPlusAccountSubcategoryIds(int $parentId, string $subcategory): array;
+
+    /**
      * @param int|string $commodityId
      * @param User|null $user
      * @param UserGroup|null $group

@@ -130,26 +130,6 @@ class Shop implements \App\Service\Shop
         $this->hydrateCategoryTreeMeta($array, $source);
         $this->normalizeSourceTopCategories($array, $source);
 
-        $commodityRecommend = Config::get("commodity_recommend");
-        if ($commodityRecommend == 1 && $master) {
-            $recommend = Commodity::query()->where("status", 1)->where("recommend", 1);
-            $this->applySourceFilter($recommend, $source);
-            array_unshift($array, [
-                "id" => 'recommend',
-                "name" => Config::get("commodity_name"),
-                "sort" => 1,
-                "create_time" => "-",
-                "owner" => 0,
-                "pid" => null,
-                "icon" => "/assets/static/images/recommend.png",
-                "status" => 1,
-                "hide" => 0,
-                "user_level_config" => null,
-                "commodity_count" => $recommend->count(),
-                "subcategories" => [],
-            ]);
-        }
-
         return $array;
     }
 
@@ -185,6 +165,32 @@ class Shop implements \App\Service\Shop
         unset($category);
 
         if ($source === 'hstockplus') {
+            $topById = [];
+            foreach ($categories as $category) {
+                if (!is_numeric($category['id'] ?? null)) {
+                    continue;
+                }
+                if ((int)($category['pid'] ?? 0) === 0) {
+                    $topById[(int)$category['id']] = $this->cleanCategoryName((string)($category['name'] ?? ''));
+                }
+            }
+
+            foreach ($categories as &$category) {
+                if (!is_numeric($category['id'] ?? null)) {
+                    continue;
+                }
+                $pid = (int)($category['pid'] ?? 0);
+                if ($pid <= 0 || ($topById[$pid] ?? '') !== '账户') {
+                    continue;
+                }
+
+                $name = $this->normalizeHStockPlusAccountSubcategory((string)($category['name'] ?? ''));
+                $category['name'] = $name;
+                $category['sort'] = $this->hstockplusAccountSubcategorySort($name);
+                $category['icon'] = $this->hstockplusAccountSubcategoryIcon($name);
+            }
+            unset($category);
+
             $enabled = array_flip($this->hstockplusEnabledTopCategories());
             $existing = [];
             foreach ($categories as $category) {
@@ -270,6 +276,168 @@ class Shop implements \App\Service\Shop
         ];
     }
 
+    private function hstockplusAccountSubcategories(): array
+    {
+        return [
+            'TikTok',
+            'Facebook',
+            'Twitter/X',
+            'Telegram',
+            'Instagram',
+            'Discord',
+            'Snapchat',
+            'Spotify',
+            'WhatsApp',
+            'OnlyFans',
+            '领英',
+            'Microsoft',
+            'Apple iCloud',
+            '行项目',
+            'Zalo',
+            'Twitch',
+            'Reddit',
+            'Fiverr',
+            '踢出',
+            'GitHub',
+            'Quora',
+            'Tripadvisor',
+            'Tumblr',
+            'VKontakte',
+            'Odnoklassniki',
+            'YouTube',
+            '蓝空',
+            'Apple ID',
+            'Pinterest',
+            'Threads',
+            'Amazon',
+            'Ozon',
+            '批量预订',
+            'GitLab',
+            '超级',
+            'Trovo',
+            'Deezer',
+            'Dropbox',
+            'OLX',
+            'ExitLag',
+            '教育科技',
+            'Classmates',
+            'Bosslike',
+            'Tuta',
+            'Vps 云服务器',
+            'BeReal',
+            'Mastodon',
+            'Clubhouse',
+            'MeWe',
+            '其它',
+        ];
+    }
+
+    private function normalizeHStockPlusAccountSubcategory(string $name): string
+    {
+        $name = $this->cleanCategoryName($name);
+        if ($name === '' || in_array($this->hstockplusAccountAliasKey($name), ['account', 'accounts', '账户', '账号'], true)) {
+            return '其它';
+        }
+
+        $aliases = [];
+        foreach ($this->hstockplusAccountSubcategories() as $category) {
+            $aliases[$this->hstockplusAccountAliasKey($category)] = $category;
+        }
+        $aliases += [
+            'twitter x' => 'Twitter/X',
+            'x twitter' => 'Twitter/X',
+            'twitter' => 'Twitter/X',
+            'linkedin' => '领英',
+            'linked in' => '领英',
+            'whatsapp' => 'WhatsApp',
+            'blue sky' => '蓝空',
+            'bluesky' => '蓝空',
+            'other' => '其它',
+            'others' => '其它',
+            '其他' => '其它',
+        ];
+
+        $key = $this->hstockplusAccountAliasKey($name);
+        return $aliases[$key] ?? '其它';
+    }
+
+    private function hstockplusAccountSubcategorySort(string $name): int
+    {
+        $position = array_search($this->normalizeHStockPlusAccountSubcategory($name), $this->hstockplusAccountSubcategories(), true);
+        return $position === false ? 9999 : ($position + 1) * 10;
+    }
+
+    private function hstockplusAccountSubcategoryIcon(string $name): string
+    {
+        return $this->hstockplusCategoryIcon($this->normalizeHStockPlusAccountSubcategory($name));
+    }
+
+    private function hstockplusAccountSubcategoryIconClass(string $name): string
+    {
+        $icons = [
+            'TikTok' => 'fa-brands fa-tiktok',
+            'Facebook' => 'fa-brands fa-facebook',
+            'Twitter/X' => 'fa-brands fa-twitter',
+            'Telegram' => 'fa-brands fa-telegram',
+            'Instagram' => 'fa-brands fa-instagram',
+            'Discord' => 'fa-brands fa-discord',
+            'Snapchat' => 'fa-brands fa-snapchat',
+            'Spotify' => 'fa-brands fa-spotify',
+            'WhatsApp' => 'fa-brands fa-whatsapp',
+            'OnlyFans' => 'fa-duotone fa-regular fa-user-lock',
+            '领英' => 'fa-brands fa-linkedin-in',
+            'Microsoft' => 'fa-brands fa-microsoft',
+            'Apple iCloud' => 'fa-duotone fa-solid fa-cloud',
+            '行项目' => 'fa-duotone fa-regular fa-comments',
+            'Zalo' => 'fa-duotone fa-regular fa-message',
+            'Twitch' => 'fa-brands fa-twitch',
+            'Reddit' => 'fa-brands fa-reddit',
+            'Fiverr' => 'fa-duotone fa-regular fa-user-tie',
+            '踢出' => 'fa-duotone fa-regular fa-tower-broadcast',
+            'GitHub' => 'fa-brands fa-github',
+            'Quora' => 'fa-brands fa-quora',
+            'Tripadvisor' => 'fa-duotone fa-solid fa-star',
+            'Tumblr' => 'fa-brands fa-tumblr',
+            'VKontakte' => 'fa-brands fa-vk',
+            'Odnoklassniki' => 'fa-brands fa-odnoklassniki',
+            'YouTube' => 'fa-brands fa-youtube',
+            '蓝空' => 'fa-brands fa-yahoo',
+            'Apple ID' => 'fa-brands fa-apple',
+            'Pinterest' => 'fa-brands fa-pinterest',
+            'Threads' => 'fa-brands fa-threads',
+            'Amazon' => 'fa-brands fa-amazon',
+            'Ozon' => 'fa-duotone fa-solid fa-bag-shopping',
+            '批量预订' => 'fa-duotone fa-solid fa-building',
+            'GitLab' => 'fa-brands fa-gitlab',
+            '超级' => 'fa-duotone fa-solid fa-cloud',
+            'Trovo' => 'fa-duotone fa-solid fa-video',
+            'Deezer' => 'fa-brands fa-deezer',
+            'Dropbox' => 'fa-brands fa-dropbox',
+            'OLX' => 'fa-duotone fa-solid fa-store',
+            'ExitLag' => 'fa-duotone fa-solid fa-gamepad',
+            '教育科技' => 'fa-duotone fa-solid fa-graduation-cap',
+            'Classmates' => 'fa-duotone fa-solid fa-user-group',
+            'Bosslike' => 'fa-duotone fa-solid fa-bullhorn',
+            'Tuta' => 'fa-duotone fa-solid fa-shield-halved',
+            'Vps 云服务器' => 'fa-duotone fa-solid fa-server',
+            'BeReal' => 'fa-duotone fa-solid fa-camera',
+            'Mastodon' => 'fa-brands fa-mastodon',
+            'Clubhouse' => 'fa-duotone fa-solid fa-microphone',
+            'MeWe' => 'fa-duotone fa-solid fa-circle-user',
+            '其它' => 'fa-duotone fa-solid fa-globe',
+        ];
+
+        return $icons[$this->normalizeHStockPlusAccountSubcategory($name)] ?? 'fa-duotone fa-solid fa-globe';
+    }
+
+    private function hstockplusAccountAliasKey(string $name): string
+    {
+        $name = mb_strtolower($this->cleanCategoryName($name), 'UTF-8');
+        $name = str_replace(['/', '-', '_', '|', '：', ':'], ' ', $name);
+        $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+        return trim($name);
+    }
+
     private function hstockplusEnabledTopCategories(): array
     {
         $configFile = BASE_PATH . '/app/Plugin/HStockPlus/Config/Config.php';
@@ -322,6 +490,56 @@ class Shop implements \App\Service\Shop
             '代理服务' => 'website-traffic',
             '短信验证' => 'other',
             '评论' => 'other',
+            'TikTok' => 'tiktok',
+            'Facebook' => 'facebook',
+            'Twitter/X' => 'twitter',
+            'Telegram' => 'telegram',
+            'Instagram' => 'instagram',
+            'Discord' => 'discord',
+            'Snapchat' => 'snapchat',
+            'Spotify' => 'spotify',
+            'WhatsApp' => 'whatsapp',
+            'OnlyFans' => 'other',
+            'Microsoft' => 'other',
+            '领英' => 'linkedin',
+            'Apple iCloud' => 'apple',
+            '行项目' => 'line',
+            'Zalo' => 'other',
+            'Twitch' => 'twitch',
+            'Reddit' => 'reddit',
+            'Fiverr' => 'other',
+            '踢出' => 'other',
+            'GitHub' => 'github',
+            'Quora' => 'quora',
+            'Tripadvisor' => 'trustpilot',
+            'Tumblr' => 'other',
+            'VKontakte' => 'vk',
+            'Odnoklassniki' => 'other',
+            'YouTube' => 'youtube',
+            '蓝空' => 'other',
+            'Apple ID' => 'apple',
+            'Pinterest' => 'pinterest',
+            'Threads' => 'other',
+            'Amazon' => 'other',
+            'Ozon' => 'other',
+            '批量预订' => 'other',
+            'GitLab' => 'github',
+            '超级' => 'other',
+            'Trovo' => 'other',
+            'Deezer' => 'soundcloud',
+            'Dropbox' => 'other',
+            'OLX' => 'other',
+            'ExitLag' => 'other',
+            '教育科技' => 'other',
+            'Classmates' => 'other',
+            'Bosslike' => 'other',
+            'Tuta' => 'other',
+            'Vps 云服务器' => 'other',
+            'BeReal' => 'other',
+            'Mastodon' => 'other',
+            'Clubhouse' => 'other',
+            'MeWe' => 'other',
+            '其它' => 'other',
         ];
 
         return '/app/Plugin/HStockPlus/Assets/icons/' . ($icons[$category] ?? 'other') . '.svg';
@@ -364,6 +582,28 @@ class Shop implements \App\Service\Shop
 
         if ($source === 'hstockplus') {
             $ids = $this->filterHStockPlusEnabledCategoryIds($ids);
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    public function getHStockPlusAccountSubcategoryIds(int $parentId, string $subcategory): array
+    {
+        $target = $this->normalizeHStockPlusAccountSubcategory($subcategory);
+        if ($target === '') {
+            return [];
+        }
+
+        $ids = [];
+        $rows = Category::query()
+            ->where('owner', 0)
+            ->where('pid', $parentId)
+            ->get(['id', 'name']);
+
+        foreach ($rows as $row) {
+            if ($this->normalizeHStockPlusAccountSubcategory((string)$row->name) === $target) {
+                $ids[] = (int)$row->id;
+            }
         }
 
         return array_values(array_unique($ids));
@@ -496,7 +736,7 @@ class Shop implements \App\Service\Shop
             return [];
         }
 
-        $parts = preg_split('/\s*(?:[-_\/|>＞:：]+)\s*/u', $value) ?: [];
+        $parts = preg_split('/\s*(?:[-_|>＞:：]+|\s+\/\s+)\s*/u', $value) ?: [];
         $parts = array_values(array_filter(array_map([self::class, 'cleanSourceLabel'], $parts), static fn(string $part): bool => $part !== ''));
         if (count($parts) <= 1) {
             return $parts;
@@ -667,28 +907,81 @@ class Shop implements \App\Service\Shop
         foreach ($category as &$item) {
             $children = isset($item['children']) && is_array($item['children']) ? $this->normalizeCategoryTree($item['children']) : [];
             $item['children'] = $children;
+            $isHStockPlusAccount = $this->isHStockPlusAccountCategoryName((string)($item['name'] ?? ''));
 
             $subcategories = [];
             foreach ($children as $child) {
                 if (!is_numeric($child['id'] ?? null)) {
                     continue;
                 }
+                $name = $this->cleanCategoryName((string)($child['name'] ?? ''));
                 $subcategories[] = [
                     'id' => (int)$child['id'],
-                    'name' => $this->cleanCategoryName((string)($child['name'] ?? '')),
+                    'name' => $name,
                     'value' => (string)$child['id'],
                     'count' => (int)($child['commodity_count'] ?? 0),
+                    'sort' => (int)($child['sort'] ?? 9999),
+                    'icon' => (string)($child['icon'] ?? ''),
+                    'icon_class' => $isHStockPlusAccount
+                        ? $this->hstockplusAccountSubcategoryIconClass($name)
+                        : '',
                 ];
             }
 
             if (!$subcategories && isset($item['subcategories']) && is_array($item['subcategories'])) {
                 $subcategories = $item['subcategories'];
             }
+            if ($isHStockPlusAccount) {
+                $subcategories = $this->dedupeHStockPlusAccountSubcategories($subcategories);
+                $item['children'] = [];
+            }
             $item['subcategories'] = $subcategories;
         }
         unset($item);
 
         return $category;
+    }
+
+    private function isHStockPlusAccountCategoryName(string $name): bool
+    {
+        $name = $this->cleanCategoryName($name);
+        $name = preg_replace('/^[\p{So}\p{Sk}\p{C}\s]+/u', '', $name) ?? $name;
+        return in_array($name, ['账户', '账号', 'Account', 'Accounts'], true);
+    }
+
+    private function dedupeHStockPlusAccountSubcategories(array $subcategories): array
+    {
+        $items = [];
+        foreach ($this->hstockplusAccountSubcategories() as $name) {
+            $key = $this->hstockplusAccountAliasKey($name);
+            $items[$key] = [
+                'id' => 'hspacc-' . md5($name),
+                'name' => $name,
+                'value' => 'hspacc:' . rawurlencode($name),
+                'count' => 0,
+                'sort' => $this->hstockplusAccountSubcategorySort($name),
+                'icon' => $this->hstockplusAccountSubcategoryIcon($name),
+                'icon_class' => '',
+            ];
+        }
+
+        foreach ($subcategories as $subcategory) {
+            $name = $this->normalizeHStockPlusAccountSubcategory((string)($subcategory['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $key = $this->hstockplusAccountAliasKey($name);
+            if (!isset($items[$key])) {
+                continue;
+            }
+            $items[$key]['count'] += (int)($subcategory['count'] ?? 0);
+        }
+
+        $items = array_values($items);
+        usort($items, static fn(array $a, array $b): int => ((int)($a['sort'] ?? 9999) <=> (int)($b['sort'] ?? 9999)) ?: strcmp((string)$a['name'], (string)$b['name']));
+
+        return $items;
     }
 
     private function fallbackSourceSubcategories(array $categoryIds, ?string $source): array
@@ -796,6 +1089,8 @@ class Shop implements \App\Service\Shop
 
         $commodity = Commodity::query()->with(['owner' => function (Relation $relation) {
             $relation->select(["id", "username", "avatar"]);
+        }, 'category' => function (Relation $relation) {
+            $relation->select(["id", "name", "icon"]);
         }])
             ->select(["id", "name", "description",
                 "only_user", "purchase_count", "category_id", "cover", "price", "user_price",
@@ -903,6 +1198,7 @@ class Shop implements \App\Service\Shop
         if (!$array['cover']) {
             $array['cover'] = "/favicon.ico";
         }
+        $array['cover_fallback'] = (string)($array['category']['icon'] ?? '') ?: '/favicon.ico';
 
         $array['share_url'] = Client::getUrl() . "/item/{$array['id']}";
         $array['login'] = (bool)$user;

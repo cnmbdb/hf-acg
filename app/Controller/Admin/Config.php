@@ -39,6 +39,10 @@ class Config extends Manage
      */
     public function index(): string
     {
+        if (CFG::get("user_theme") !== "Xiaohu") {
+            CFG::put("user_theme", "Xiaohu");
+        }
+
         if (CFG::get("user_center_theme") === "Xiaohu") {
             CFG::put("user_center_theme", "Cartoon");
         }

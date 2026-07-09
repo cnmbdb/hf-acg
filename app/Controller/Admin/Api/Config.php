@@ -50,6 +50,9 @@ class Config extends Manage
         $keys = ["closed_message", "background_mobile_url", "closed", "username_len", "user_theme", "user_mobile_theme", "user_center_theme", "background_url", "shop_name", "title", "description", "keywords", "registered_state", "registered_type", "registered_verification", "registered_phone_verification", "registered_email_verification", "login_verification", "forget_type", "notice", "trade_verification", "session_expire", "request_log", "admin_entrance"]; //全部字段
         $inits = ["closed", "registered_state", "registered_type", "registered_verification", "registered_phone_verification", "registered_email_verification", "login_verification", "forget_type", "trade_verification", "session_expire", "request_log"]; //需要初始化的字段
 
+        $post['user_theme'] = "Xiaohu";
+        $post['user_mobile_theme'] = "0";
+
         if (($post['user_mobile_theme'] ?? null) === "Xiaohu") {
             $post['user_mobile_theme'] = "0";
         }
@@ -58,7 +61,7 @@ class Config extends Manage
             $post['user_center_theme'] = "Cartoon";
         }
 
-        if (empty($post['user_theme']) || empty(Theme::getConfig((string)$post['user_theme']))) {
+        if (empty(Theme::getConfig("Xiaohu"))) {
             throw new JSONException("PC模板不存在");
         }
 

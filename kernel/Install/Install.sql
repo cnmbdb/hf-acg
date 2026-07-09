@@ -112,6 +112,7 @@ CREATE TABLE `__PREFIX__category`  (
                                        `create_time` datetime NOT NULL COMMENT '创建时间',
                                        `owner` int UNSIGNED NOT NULL DEFAULT 0 COMMENT '所属会员：0=系统，其他等于会员UID',
                                        `icon` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '分类图标',
+                                       `source` varchar(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'default' COMMENT '平台来源：default/fansgurus/hstockplus',
                                        `status` tinyint UNSIGNED NOT NULL DEFAULT 0 COMMENT '状态：0=停用，1=启用',
                                        `hide` tinyint UNSIGNED NOT NULL DEFAULT 0 COMMENT '隐藏：1=隐藏，0=不隐藏',
                                        `user_level_config` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT '会员配置',
@@ -119,12 +120,13 @@ CREATE TABLE `__PREFIX__category`  (
                                        PRIMARY KEY (`id`) USING BTREE,
                                        INDEX `owner`(`owner` ASC) USING BTREE,
                                        INDEX `idx_category_pid`(`pid`) USING BTREE,
+                                       INDEX `idx_category_source`(`source`) USING BTREE,
                                        INDEX `sort`(`sort` ASC) USING BTREE,
                                        CONSTRAINT `ibfk_category_pid_in_id` FOREIGN KEY (`pid`) REFERENCES `__PREFIX__category`(`id`) ON DELETE CASCADE
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = DYNAMIC;
 
 
-INSERT INTO `__PREFIX__category` VALUES (1, 'DEMO', 1, '2021-11-26 17:59:45', 0, '/favicon.ico', 1, 0, NULL , NULL);
+INSERT INTO `__PREFIX__category` VALUES (1, 'DEMO', 1, '2021-11-26 17:59:45', 0, '/favicon.ico', 'default', 1, 0, NULL , NULL);
 
 
 DROP TABLE IF EXISTS `__PREFIX__commodity`;

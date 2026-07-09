@@ -123,14 +123,7 @@
                                     <!--begin::Input-->
                                     <select name="user_theme" class="form-select form-select-solid form-select-lg"
                                             data-control="select2" data-hide-search="true">
-                                        #{foreach $themes as $theme}
-                                            <option value="#{$theme.info.KEY}" #{if $theme.info.KEY== $config.user_theme} selected #{/if}>
-                                                #{$theme.info.NAME} (v#{$theme.info.VERSION})
-                                                #{if $theme.have_update === true}
-                                                    -> 有更新(v#{$theme.update_version}) ‹ 请前往应用商店更新 ›
-                                                #{/if}
-                                            </option>
-                                        #{/foreach}
+                                        <option value="Xiaohu" selected>小虎清爽模板</option>
                                     </select>
                                     <!--end::Input-->
                                 </div>
@@ -577,5 +570,5 @@
 </div>
 <!--end::Content-->
 
-#{ready("/assets/admin/controller/config/index.js?v=2026070701")}
+#{ready("/assets/admin/controller/config/index.js?v=2026070801")}
 #{include file="../Footer.html"}

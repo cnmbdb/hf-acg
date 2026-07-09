@@ -38,7 +38,17 @@
                     <div class="xh-subcategory-list" aria-label="#{$cate.name}二级商品类目">
                         #{if !empty($cate.subcategories)}
                             #{foreach $cate.subcategories as $sub}
-                                <button type="button" class="switch-subcategory xh-subcategory" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">#{$sub.name}</button>
+                                <button type="button" class="switch-subcategory xh-subcategory" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">
+                                    <span class="xh-subcategory-icon">
+                                        #{if !empty($sub.icon)}
+                                            <img src="#{$sub.icon}" alt="#{$sub.name}">
+                                        #{elseif !empty($sub.icon_class)}
+                                            <i class="#{$sub.icon_class}"></i>
+                                        #{/if}
+                                    </span>
+                                    <span class="xh-subcategory-gap" aria-hidden="true">&nbsp;</span>
+                                    <span class="xh-subcategory-name">#{$sub.name}</span>
+                                </button>
                             #{/foreach}
                         #{/if}
                     </div>
@@ -49,10 +59,7 @@
 
     <section class="xh-panel xh-catalog" aria-label="商品目录">
         <div class="xh-catalog-head">
-            <div>
-                <span class="xh-eyebrow">Catalog</span>
-                <h2 class="xh-current-category" data-i18n="recommend">推荐</h2>
-            </div>
+            <span class="xh-eyebrow">Catalog</span>
             <div class="xh-search" role="search">
                 <i class="fa-duotone fa-regular fa-magnifying-glass"></i>
                 <input class="item-search-input" type="search" placeholder="搜索商品关键词" aria-label="搜索商品关键词" data-i18n-placeholder="searchPlaceholder" data-i18n-aria-label="searchPlaceholder">
@@ -61,6 +68,29 @@
                     <span data-i18n="search">搜索</span>
                 </button>
             </div>
+            <div class="xh-catalog-filters" aria-label="商品筛选排序">
+                <label class="xh-stock-filter">
+                    <input class="xh-instock-filter" type="checkbox" checked>
+                    <span>仅限现货</span>
+                </label>
+                <div class="xh-sort-filter">
+                    <span>按排序:</span>
+                    <button type="button" class="xh-sort-toggle" aria-haspopup="true" aria-expanded="false">
+                        <span class="xh-sort-current">推荐</span>
+                        <i class="fa-duotone fa-regular fa-chevron-down"></i>
+                    </button>
+                    <div class="xh-sort-menu" role="menu" aria-hidden="true">
+                        <button type="button" class="is-active" data-sort="recommend" role="menuitem">推荐</button>
+                        <button type="button" data-sort="price_asc" role="menuitem">价格：从低到高</button>
+                        <button type="button" data-sort="price_desc" role="menuitem">价格：从高到低</button>
+                        <button type="button" data-sort="newest" role="menuitem">最新上架</button>
+                        <button type="button" data-sort="stock_desc" role="menuitem">库存：从高到低</button>
+                        <button type="button" data-sort="sales_desc" role="menuitem">销量：从高到低</button>
+                        <button type="button" data-sort="rating_desc" role="menuitem">评分：从高到低</button>
+                    </div>
+                </div>
+            </div>
+            <h2 class="xh-current-category">商品</h2>
         </div>
 
         <div class="xh-table">
@@ -76,5 +106,5 @@
         </div>
     </section>
 </main>
-#{ready("#{$static}/assets/index.js?xh=20260707-1")}
+#{ready("#{$static}/assets/index.js?xh=20260708-5")}
 #{include file="./Footer.html"}

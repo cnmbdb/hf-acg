@@ -1,4 +1,4 @@
-class Form {
+Form = class Form {
 
     constructor(opt) {
         this.widget = {num: 0};
@@ -83,6 +83,9 @@ class Form {
                         break;
                     case 'treeSelect':
                         d += this.treeSelectHtml(form);
+                        break;
+                    case 'cascaderSelect':
+                        d += this.cascaderSelectHtml(form);
                         break;
                     case 'custom':
                         d += this.getBlockHtml(form);
@@ -202,6 +205,10 @@ class Form {
 
     treeSelectHtml(form) {
         return this.getBlockHtml(form, `<input type="text" lay-filter="${this.unique + form.name}" class="layui-input tree-select"><input name="${form.name}"  type="hidden" class="layui-input" value="${form.default ?? ""}">`);
+    }
+
+    cascaderSelectHtml(form) {
+        return this.getBlockHtml(form, `<span class="cascader-select"></span><input name="${form.name}" type="hidden" class="layui-input" value="${form.default ?? ""}">`);
     }
 
 
@@ -760,6 +767,9 @@ class Form {
                     case 'treeSelect':
                         this.treeSelectRegister(form);
                         break;
+                    case 'cascaderSelect':
+                        this.cascaderSelectRegister(form);
+                        break;
                     case 'widget':
                         this.widgetRegister(form);
                         break;
@@ -1260,6 +1270,106 @@ class Form {
         layui.form.render();
     }
 
+    normalizeCascaderData(items, form) {
+        const disabledParent = form?.parent === false;
+        const leafOnly = form?.leafOnly === true;
+        const maxLevel = Number(form?.maxLevel ?? 0);
+        const selected = String(form.default ?? "");
+        const handle = (list, level = 1) => {
+            return (list ?? []).map(item => {
+                let children = maxLevel > 0 && level >= maxLevel ? [] : handle(item.children ?? [], level + 1);
+                let node = {
+                    id: item.id,
+                    name: item.name,
+                    selected: selected !== "" && String(item.id) === selected
+                };
+
+                if (children.length > 0) {
+                    node.children = children;
+                }
+
+                if ((disabledParent && children.length > 0) || (leafOnly && children.length <= 0 && level < (form.minLevel ?? 1))) {
+                    node.disabled = true;
+                }
+
+                return node;
+            });
+        };
+
+        return handle(items);
+    }
+
+    cascaderSelectRegister(form) {
+        let _this = this;
+        let container = $('.' + this.unique + ' .component-' + form.name + ' .cascader-select');
+        let input = $('.' + this.unique + ' .component-' + form.name + ' input[name=' + form.name + ']');
+
+        container.html('');
+        _Dict.advanced(form.dict, res => {
+            xmSelect.render({
+                el: '.' + _this.unique + ' .component-' + form.name + ' .cascader-select',
+                name: form.name,
+                radio: true,
+                clickClose: true,
+                autoRow: true,
+                filterable: true,
+                language: 'zn',
+                tips: form.placeholder ?? i18n('请选择'),
+                searchTips: form.placeholder ?? i18n('请选择'),
+                height: form.height ?? '320px',
+                prop: {
+                    name: 'name',
+                    value: 'id',
+                    children: 'children',
+                    disabled: 'disabled'
+                },
+                model: {
+                    label: {
+                        type: 'text',
+                        text: {
+                            separator: ' / '
+                        }
+                    }
+                },
+                cascader: {
+                    show: true,
+                    indent: form.indent ?? 220
+                },
+                data: _this.normalizeCascaderData(res, form),
+                on: function (arr) {
+                    if (arr.change.length <= 0) {
+                        return;
+                    }
+                    const value = arr.isAdd ? arr.change[0].id : '';
+                    input.val(value);
+                    _this.setData(form.name, value);
+                    form.change && form.change(_this, value, arr);
+                }
+            });
+
+            if (form.default) {
+                input.val(form.default);
+                _this.setData(form.name, form.default);
+            }
+
+            form.complete && form.complete(_this, form.default);
+            layui.form.render();
+        });
+    }
+
+    reloadCascader(name, dict = null, value = '') {
+        name = util.replaceDotWithHyphen(name);
+        let form = this.form[name];
+        if (!form) {
+            return;
+        }
+        dict && (form.dict = dict);
+        form.default = value;
+        $('.' + this.unique + ' .component-' + name + ' input[name=' + name + ']').val(value);
+        this.setData(name, value);
+        this.cascaderSelectRegister(form);
+    }
+
 
     widgetRegister(form) {
         this.clearComponent(form.name);
@@ -1349,6 +1459,9 @@ class Form {
             case 'treeSelect':
                 d = this.treeSelectHtml(form);
                 break;
+            case 'cascaderSelect':
+                d = this.cascaderSelectHtml(form);
+                break;
             case 'widget':
                 d = this.getBlockHtml(form);
                 break;
@@ -1406,6 +1519,9 @@ class Form {
                 break;
             case 'treeSelect':
                 this.treeSelectRegister(form);
+                break;
+            case 'cascaderSelect':
+                this.cascaderSelectRegister(form);
                 break;
             case 'widget':
                 this.widgetRegister(form);

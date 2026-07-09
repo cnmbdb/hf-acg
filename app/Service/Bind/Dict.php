@@ -43,15 +43,15 @@ class Dict implements \App\Service\Dict
                     $notPluginIconWhere .= " and icon not like '" . addslashes($iconPrefix) . "'";
                 }
                 $select = DB::select(
-                    "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (icon is null or (1=1{$notPluginIconWhere})){$keywordWhere} order by sort asc,id asc"
+                    "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (source is null or source='' or source='default') and (icon is null or (1=1{$notPluginIconWhere})){$keywordWhere} order by sort asc,id asc"
                 );
 
                 return array_map('get_object_vars', $select);
             }
 
             $select = DB::select(
-                "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and icon like ?{$keywordWhere} order by sort asc,id asc",
-                [$icons[$source]]
+                "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (source=? or icon like ?){$keywordWhere} order by sort asc,id asc",
+                [$source, $icons[$source]]
             );
 
             return array_map('get_object_vars', $select);

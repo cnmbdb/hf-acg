@@ -43,6 +43,14 @@ const trade = new class {
             params.subcategory = opt.subcategory;
         }
 
+        if (opt.sort) {
+            params.sort = opt.sort;
+        }
+
+        if (opt.inStock !== undefined) {
+            params.inStock = opt.inStock ? 1 : 0;
+        }
+
         util.get("/user/api/index/commodity" + (!util.isEmptyOrNotJson(params) ? "?" + util.objectToQueryString(params) : ""), data => {
             typeof opt.done === "function" && opt.done(data);
         });
