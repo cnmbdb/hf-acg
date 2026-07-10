@@ -31,12 +31,12 @@
                             #{/if}
                         </span>
                         <span class="xh-category-name">#{$cate.name}</span>
-                        #{if !empty($cate.subcategories)}
+                        #{if $shopSource != 'default' && !empty($cate.subcategories)}
                             <i class="fa-duotone fa-regular fa-chevron-down xh-category-arrow"></i>
                         #{/if}
                     </a>
-                    <div class="xh-subcategory-list" aria-label="#{$cate.name}二级商品类目">
-                        #{if !empty($cate.subcategories)}
+                    #{if $shopSource != 'default' && !empty($cate.subcategories)}
+                        <div class="xh-subcategory-list" aria-label="#{$cate.name}二级商品类目">
                             #{foreach $cate.subcategories as $sub}
                                 <button type="button" class="switch-subcategory xh-subcategory" data-parent-id="#{$cate.id}" data-subcategory="#{$sub.value}">
                                     <span class="xh-subcategory-icon">
@@ -50,8 +50,8 @@
                                     <span class="xh-subcategory-name">#{$sub.name}</span>
                                 </button>
                             #{/foreach}
-                        #{/if}
-                    </div>
+                        </div>
+                    #{/if}
                 </div>
             #{/foreach}
         </div>

@@ -580,11 +580,33 @@ class Shop implements \App\Service\Shop
             $frontier = $parents;
         }
 
+        if ($source === 'default') {
+            return $this->topLevelCategoryIds($ids);
+        }
+
         if ($source === 'hstockplus') {
             $ids = $this->filterHStockPlusEnabledCategoryIds($ids);
         }
 
         return array_values(array_unique($ids));
+    }
+
+    private function topLevelCategoryIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) {
+            return [];
+        }
+
+        return Category::query()
+            ->whereIn('id', $ids)
+            ->where(function (Builder $builder): void {
+                $builder->whereNull('pid')->orWhere('pid', 0);
+            })
+            ->pluck('id')
+            ->map(static fn($id): int => (int)$id)
+            ->values()
+            ->all();
     }
 
     public function getHStockPlusAccountSubcategoryIds(int $parentId, string $subcategory): array

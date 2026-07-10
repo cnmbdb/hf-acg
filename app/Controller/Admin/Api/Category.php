@@ -129,6 +129,9 @@ class Category extends Manage
             $pluginIconPrefixes = array_values(self::SOURCE_ICON_PREFIX);
             $manualCategoryIds = CategoryModel::query()
                 ->where('owner', 0)
+                ->where(function (Builder $builder): void {
+                    $builder->whereNull('pid')->orWhere('pid', 0);
+                })
                 ->where(function (Builder $builder) use ($pluginIconPrefixes): void {
                     $builder->where('source', 'default')
                         ->orWhereNull('source')
@@ -148,7 +151,7 @@ class Category extends Manage
                 ->values()
                 ->all();
 
-            return $this->categoryAncestorIds(array_values(array_unique(array_merge($categoryIds, $manualCategoryIds))));
+            return $this->topLevelCategoryIds(array_values(array_unique(array_merge($categoryIds, $manualCategoryIds))));
         }
 
         $pluginCategoryIds = CategoryModel::query()
@@ -163,6 +166,24 @@ class Category extends Manage
             ->all();
 
         return $this->categoryAncestorIds(array_values(array_unique(array_merge($categoryIds, $pluginCategoryIds))));
+    }
+
+    private function topLevelCategoryIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) {
+            return [];
+        }
+
+        return CategoryModel::query()
+            ->whereIn('id', $ids)
+            ->where(function (Builder $builder): void {
+                $builder->whereNull('pid')->orWhere('pid', 0);
+            })
+            ->pluck('id')
+            ->map(static fn($id): int => (int)$id)
+            ->values()
+            ->all();
     }
 
     private function categoryAncestorIds(array $ids): array
@@ -321,7 +342,7 @@ class Category extends Manage
     {
         $id = (int)($map['id'] ?? 0);
         $pid = (int)($map['pid'] ?? 0);
-        $map['pid'] = $pid > 0 ? $pid : 0;
+        $map['pid'] = $pid > 0 ? $pid : null;
 
         if ($pid <= 0) {
             return;
@@ -334,11 +355,6 @@ class Category extends Manage
 
         if ((int)$parent->pid > 0) {
             throw new JSONException('只能选择一级分类作为父级分类');
-        }
-
-        $parentSource = $this->categorySource($parent);
-        if (($map['source'] ?? 'default') !== $parentSource) {
-            throw new JSONException('父级分类必须和平台来源一致');
         }
 
         if ($id <= 0) {

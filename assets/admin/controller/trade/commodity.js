@@ -6,6 +6,22 @@
         {id: "hstockplus", name: "hstockplus平台"}
     ];
     const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
+    const isDefaultSource = source => (source || "default") === "default";
+    const applyCategoryPickerMode = (form, source, owner = 0) => {
+        if (owner > 0) {
+            return;
+        }
+        const categoryForm = form.form?.category_id;
+        if (!categoryForm) {
+            return;
+        }
+        const defaultSource = isDefaultSource(source);
+        categoryForm.placeholder = defaultSource ? "请选择一级分类" : "请选择二级分类";
+        categoryForm.parent = defaultSource;
+        categoryForm.leafOnly = !defaultSource;
+        categoryForm.minLevel = defaultSource ? 1 : 2;
+        categoryForm.maxLevel = defaultSource ? 1 : 2;
+    };
     const categorySourceFromAssign = assign => {
         const code = String(assign?.code ?? '').toUpperCase();
         if (code.startsWith('FG_')) {
@@ -33,6 +49,7 @@
         const owner = assign?.owner && typeof assign.owner === "object" ? assign.owner.id : (assign?.owner ?? 0);
         const categorySource = categorySourceFromAssign(assign);
         const categoryDict = owner > 0 ? `category->owner=${owner},id,name,pid&tree=true` : platformCategoryDict(categorySource);
+        const defaultSource = isDefaultSource(categorySource);
 
         component.popup({
             submit: '/admin/api/commodity/save',
@@ -50,7 +67,9 @@
                                 default: categorySource,
                                 required: true,
                                 change: (_, value) => {
-                                    _.reloadCascader("category_id", platformCategoryDict(value || "default"));
+                                    const source = value || "default";
+                                    applyCategoryPickerMode(_, source, owner);
+                                    _.reloadCascader("category_id", platformCategoryDict(source));
                                 }
                             }
                         ]),
@@ -58,13 +77,13 @@
                             title: "商品分类",
                             name: "category_id",
                             type: "cascaderSelect",
-                            placeholder: owner > 0 ? "请选择商品分类" : "请选择二级分类",
+                            placeholder: owner > 0 ? "请选择商品分类" : (defaultSource ? "请选择一级分类" : "请选择二级分类"),
                             dict: categoryDict,
                             required: true,
-                            parent: false,
-                            leafOnly: owner <= 0,
-                            minLevel: owner <= 0 ? 2 : 1,
-                            maxLevel: owner <= 0 ? 2 : 0
+                            parent: owner > 0 || defaultSource,
+                            leafOnly: owner <= 0 && !defaultSource,
+                            minLevel: owner <= 0 && !defaultSource ? 2 : 1,
+                            maxLevel: owner <= 0 ? (defaultSource ? 1 : 2) : 0
                         },
                         {
                             title: "商品图标",

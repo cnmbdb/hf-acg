@@ -1271,8 +1271,8 @@ Form = class Form {
     }
 
     normalizeCascaderData(items, form) {
-        const disabledParent = form?.parent === false;
         const leafOnly = form?.leafOnly === true;
+        const disabledParent = form?.parent === false && !leafOnly;
         const maxLevel = Number(form?.maxLevel ?? 0);
         const selected = String(form.default ?? "");
         const handle = (list, level = 1) => {
@@ -1281,6 +1281,7 @@ Form = class Form {
                 let node = {
                     id: item.id,
                     name: item.name,
+                    pid: item.pid ?? 0,
                     selected: selected !== "" && String(item.id) === selected
                 };
 
@@ -1288,7 +1289,7 @@ Form = class Form {
                     node.children = children;
                 }
 
-                if ((disabledParent && children.length > 0) || (leafOnly && children.length <= 0 && level < (form.minLevel ?? 1))) {
+                if ((disabledParent && children.length > 0) || (leafOnly && children.length <= 0 && level < (form.minLevel ?? 1) && Number(item.pid ?? 0) <= 0)) {
                     node.disabled = true;
                 }
 
@@ -1333,7 +1334,8 @@ Form = class Form {
                 },
                 cascader: {
                     show: true,
-                    indent: form.indent ?? 220
+                    indent: form.indent ?? 220,
+                    strict: form.strict ?? false
                 },
                 data: _this.normalizeCascaderData(res, form),
                 on: function (arr) {

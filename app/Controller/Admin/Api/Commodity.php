@@ -260,6 +260,17 @@ class Commodity extends Manage
             throw new JSONException("商品分类不存在");
         }
 
+        if ($this->categorySource($category) !== $source) {
+            throw new JSONException("商品分类必须和平台来源一致");
+        }
+
+        if ($source === 'default') {
+            if ((int)$category->pid > 0) {
+                throw new JSONException("默认平台商品必须添加到一级分类下");
+            }
+            return;
+        }
+
         if ((int)$category->pid <= 0) {
             throw new JSONException("商品必须添加到二级分类下");
         }
@@ -267,10 +278,6 @@ class Commodity extends Manage
         $parent = Category::query()->find((int)$category->pid);
         if (!$parent) {
             throw new JSONException("商品分类父级不存在");
-        }
-
-        if ($this->categorySource($parent) !== $source || $this->categorySource($category) !== $source) {
-            throw new JSONException("商品分类必须和平台来源一致");
         }
     }
 

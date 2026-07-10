@@ -6,6 +6,7 @@
         {id: "hstockplus", name: "hstockplus平台"}
     ];
     const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
+    const isDefaultSource = source => (source || "default") === "default";
     const categorySourceFromAssign = assign => {
         if (assign?.source) {
             return assign.source;
@@ -22,7 +23,7 @@
     };
     const modal = (title, assign = {}) => {
         const categorySource = categorySourceFromAssign(assign);
-        const categoryLevel = Number(assign?.pid ?? 0) > 0 ? 'child' : 'root';
+        const categoryLevel = isDefaultSource(categorySource) ? 'root' : (Number(assign?.pid ?? 0) > 0 ? 'child' : 'root');
 
         component.popup({
             submit: '/admin/api/category/save',
@@ -44,7 +45,17 @@
                             default: categorySource,
                             required: true,
                             change: (form, value) => {
-                                form.reloadCascader("pid", platformCategoryDict(value || "default"));
+                                const source = value || "default";
+                                form.reloadCascader("pid", platformCategoryDict(source));
+                                if (isDefaultSource(source)) {
+                                    form.setRadio("category_level", "root", true);
+                                    form.hide("category_level");
+                                    form.hide("pid");
+                                    form.reloadCascader("pid", null, "");
+                                    return;
+                                }
+                                form.show("category_level");
+                                form.triggerOtherPopupChange("category_level", form.getData("category_level") || "root");
                             }
                         },
                         {
@@ -58,6 +69,7 @@
                             default: categoryLevel,
                             submit: false,
                             required: true,
+                            hide: isDefaultSource(categorySource),
                             change: (form, value) => {
                                 if (value === "child") {
                                     form.show("pid");
@@ -78,7 +90,7 @@
                             placeholder: "请选择要挂载到哪个一级分类下",
                             parent: false,
                             maxLevel: 1,
-                            hide: categoryLevel !== "child"
+                            hide: isDefaultSource(categorySource) || categoryLevel !== "child"
                         },
                         {
                             title: "图标",

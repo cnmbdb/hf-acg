@@ -10,6 +10,7 @@ use App\Entity\Query\Get;
 use App\Interceptor\UserVisitor;
 use App\Interceptor\Waf;
 use App\Model\Card;
+use App\Model\Category;
 use App\Model\Commodity;
 use App\Model\Config;
 use App\Model\Order;
@@ -94,11 +95,13 @@ class Index extends User
             $commodity = $commodity->whereRaw("1=0");
         }
         ShopBind::applySourceFilter($commodity, $source);
-        $sourceCategoryIds = $this->shop->getSourceVisibleCategoryIds($source);
-        if ($sourceCategoryIds) {
-            $commodity = $commodity->whereIn('category_id', $sourceCategoryIds);
-        } elseif ($source) {
-            $commodity = $commodity->whereRaw("1=0");
+        if ($source !== 'default') {
+            $sourceCategoryIds = $this->shop->getSourceVisibleCategoryIds($source);
+            if ($sourceCategoryIds) {
+                $commodity = $commodity->whereIn('category_id', $sourceCategoryIds);
+            } elseif ($source) {
+                $commodity = $commodity->whereRaw("1=0");
+            }
         }
 
         if ($keywords != "") {
@@ -267,6 +270,10 @@ class Index extends User
 
     private function categoryAndDescendantIds(int $categoryId, ?string $source): array
     {
+        if ($source === 'default') {
+            return $this->categoryAndDescendantIdsFromDatabase($categoryId);
+        }
+
         $ids = [$categoryId];
         $visibleIds = array_flip($this->shop->getSourceVisibleCategoryIds($source));
         $categories = $this->shop->getCategory($this->getUserGroup(), $source);
@@ -282,6 +289,33 @@ class Index extends User
             }
             $pid = (int)($category['pid'] ?? 0);
             $childrenByParent[$pid][] = $id;
+        }
+
+        $walk = static function (int $id) use (&$walk, &$ids, $childrenByParent): void {
+            foreach ($childrenByParent[$id] ?? [] as $childId) {
+                $ids[] = (int)$childId;
+                $walk((int)$childId);
+            }
+        };
+        $walk($categoryId);
+
+        return array_values(array_unique($ids));
+    }
+
+    private function categoryAndDescendantIdsFromDatabase(int $categoryId): array
+    {
+        $ids = [$categoryId];
+        $childrenByParent = [];
+        $categories = Category::query()
+            ->where('owner', 0)
+            ->get(['id', 'pid']);
+
+        foreach ($categories as $category) {
+            $pid = (int)($category->pid ?? 0);
+            if ($pid <= 0) {
+                continue;
+            }
+            $childrenByParent[$pid][] = (int)$category->id;
         }
 
         $walk = static function (int $id) use (&$walk, &$ids, $childrenByParent): void {

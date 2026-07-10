@@ -42,19 +42,19 @@ class Dict implements \App\Service\Dict
                 foreach ($icons as $iconPrefix) {
                     $notPluginIconWhere .= " and icon not like '" . addslashes($iconPrefix) . "'";
                 }
-                $select = DB::select(
-                    "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (source is null or source='' or source='default') and (icon is null or (1=1{$notPluginIconWhere})){$keywordWhere} order by sort asc,id asc"
+                $matched = DB::select(
+                    "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (pid is null or pid=0) and (source is null or source='' or source='default') and (icon is null or (1=1{$notPluginIconWhere})){$keywordWhere} order by sort asc,id asc"
                 );
 
-                return array_map('get_object_vars', $select);
+                return array_map('get_object_vars', $matched);
             }
 
-            $select = DB::select(
+            $matched = DB::select(
                 "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (source=? or icon like ?){$keywordWhere} order by sort asc,id asc",
                 [$source, $icons[$source]]
             );
 
-            return array_map('get_object_vars', $select);
+            return $this->withCategoryAncestors($prefix, array_map('get_object_vars', $matched));
         }
 
         $dictLength = count($dict);
@@ -92,5 +92,62 @@ class Dict implements \App\Service\Dict
         }
 
         return [];
+    }
+
+    private function withCategoryAncestors(string $prefix, array $rows): array
+    {
+        $byId = [];
+        $frontier = [];
+
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $row['pid'] = (int)($row['pid'] ?? 0);
+            $byId[$id] = $row;
+            if ($row['pid'] > 0) {
+                $frontier[] = $row['pid'];
+            }
+        }
+
+        while ($frontier) {
+            $frontier = array_values(array_unique(array_filter(array_map('intval', $frontier))));
+            $frontier = array_values(array_diff($frontier, array_keys($byId)));
+            if (!$frontier) {
+                break;
+            }
+
+            $placeholders = implode(',', array_fill(0, count($frontier), '?'));
+            $parents = DB::select(
+                "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and id in ({$placeholders}) order by sort asc,id asc",
+                $frontier
+            );
+
+            $frontier = [];
+            foreach (array_map('get_object_vars', $parents) as $parent) {
+                $id = (int)($parent['id'] ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+                $parent['pid'] = (int)($parent['pid'] ?? 0);
+                $byId[$id] = $parent;
+                if ($parent['pid'] > 0) {
+                    $frontier[] = $parent['pid'];
+                }
+            }
+        }
+
+        $rows = array_values($byId);
+        usort($rows, static function (array $a, array $b): int {
+            $aPid = (int)($a['pid'] ?? 0);
+            $bPid = (int)($b['pid'] ?? 0);
+            if ($aPid !== $bPid) {
+                return $aPid <=> $bPid;
+            }
+            return (int)$a['id'] <=> (int)$b['id'];
+        });
+
+        return $rows;
     }
 }
