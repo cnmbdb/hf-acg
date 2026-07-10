@@ -79,6 +79,14 @@
                                 </div>
                             #{/if}
 
+                            #{if $isFansGurusItem}
+                                <div>
+                                    <label class="form-label mb-1">目标链接</label>
+                                    <input type="url" name="target_link" class="form-control" required
+                                           placeholder="请输入需要充值/增长的主页、帖子或视频链接">
+                                </div>
+                            #{/if}
+
                             #{if $item.coupon == 1}
                                 <div>
                                     <label class="form-label mb-1">优惠券</label>

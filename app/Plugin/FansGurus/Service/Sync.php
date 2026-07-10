@@ -526,9 +526,16 @@ class Sync
 
     private function mappingValue(string $serviceId, array $config): array
     {
+        $linkSource = trim((string)($config['default_link_source'] ?? ''));
+        // 同步商品统一使用独立目标链接。旧配置仍可能是 contact；下单时也会
+        // 优先读取 target_link，因此升级后不需要手动改每一条映射。
+        if ($linkSource === '' || $linkSource === 'contact') {
+            $linkSource = 'widget:target_link';
+        }
+
         return [
             'service' => is_numeric($serviceId) ? (int)$serviceId : $serviceId,
-            'link_source' => (string)($config['default_link_source'] ?? 'contact'),
+            'link_source' => $linkSource,
             'quantity' => 'order_num',
             'stock' => (string)($config['stock_value'] ?? '999999'),
         ];

@@ -29,10 +29,10 @@ return [
         'placeholder' => '开启|关闭',
     ],
     [
-        'title' => '保存时自动同步',
+        'title' => '保存时自动同步（请用列表同步按钮）',
         'name' => 'auto_sync_on_save',
         'type' => 'switch',
-        'placeholder' => '开启|关闭',
+        'placeholder' => '保存配置不会全量同步，避免后台卡顿',
     ],
     [
         'title' => '同步动作',
@@ -118,7 +118,7 @@ return [
         'title' => '默认链接来源',
         'name' => 'default_link_source',
         'type' => 'input',
-        'placeholder' => 'contact 或 widget:字段名',
+        'placeholder' => 'widget:target_link（默认）或 contact / widget:字段名',
     ],
     [
         'title' => '库存显示值',

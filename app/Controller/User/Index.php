@@ -141,6 +141,7 @@ class Index extends User
             'user' => $this->getUser(),
             'from' => (int)$_GET['from'],
             "commodityId" => (int)$_GET['mid'],
+            'isFansGurusItem' => str_starts_with((string)($item['code'] ?? ''), 'FG_'),
             'item' => $item
         ]);
     }

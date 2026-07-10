@@ -76,6 +76,20 @@
                     </div>
                 #{/if}
 
+                #{if $isFansGurusItem}
+                    <div class="xh-form-block">
+                        <label class="xh-link-label">
+                            <span>目标链接</span><em>必填</em>
+                        </label>
+                        <div class="xh-link-input">
+                            <i class="fa-duotone fa-regular fa-link"></i>
+                            <input type="url" name="target_link" required autocomplete="url"
+                                   placeholder="粘贴主页、帖子或视频链接">
+                        </div>
+                        <small class="xh-link-hint"><i class="fa-duotone fa-regular fa-circle-info"></i>请确认链接公开且有效，订单将提交至该链接。</small>
+                    </div>
+                #{/if}
+
                 #{if $item.coupon == 1}
                     <div class="xh-form-block">
                         <label data-i18n="coupon">优惠券</label>

@@ -566,6 +566,23 @@ class Order implements \App\Service\Order
             }
         }
 
+        // 上游粉丝服务需要一个与账号联系方式分离的目标链接。该字段由 /fans
+        // 商品详情页提交，写入订单 widget 后可供相应上游插件读取。
+        $targetLink = trim((string)($map['target_link'] ?? ''));
+        if ($targetLink !== '') {
+            if (mb_strlen($targetLink) > 2048) {
+                throw new JSONException('目标链接不能超过 2048 个字符');
+            }
+            $widget['target_link'] = [
+                'value' => $targetLink,
+                'cn' => '目标链接',
+            ];
+        }
+
+        if (str_starts_with((string)$commodity->code, 'FG_') && $targetLink === '') {
+            throw new JSONException('请输入 FansGurus 商品的目标链接');
+        }
+
         $widget = json_encode($widget, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         //预选卡密

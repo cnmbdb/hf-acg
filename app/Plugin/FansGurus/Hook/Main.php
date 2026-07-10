@@ -47,12 +47,27 @@ class Main
         }
 
         $config = array_replace($this->config(), $map);
+
+        // 配置保存与同步是两个独立动作。先保存新配置，避免新 Key 校验失败时
+        // 控制器因异常提前返回，导致管理员看到“保存不了”。
+        setConfig($config, BASE_PATH . '/app/Plugin/' . self::PLUGIN . '/Config/Config.php');
+
+        $requestedSyncAction = (int)($map['sync_action'] ?? 0);
         $priceConfigChanged = $this->priceConfigChanged($map);
-        if ((int)($config['auto_sync_on_save'] ?? 0) === 1) {
-            if ((int)($config['sync_action'] ?? 0) <= 0) {
-                $config['sync_action'] = '3';
+        // 全量同步会请求全部上游服务并更新本地商品。它必须由后台的同步按钮
+        // 显式触发，不能因为保存 Key 等普通配置而阻塞页面。
+        if ($requestedSyncAction > 0) {
+            $config['sync_action'] = (string)$requestedSyncAction;
+            try {
+                (new Sync())->run($config);
+            } catch (\Throwable $e) {
+                // Key 已经写入配置。同步失败不能再把“保存配置”变成失败。
+                $config['sync_action'] = '0';
+                $config['last_sync_at'] = date('Y-m-d H:i:s');
+                $config['last_sync_result'] = '配置已保存，但同步失败：' . $e->getMessage();
+                setConfig($config, BASE_PATH . '/app/Plugin/' . self::PLUGIN . '/Config/Config.php');
+                $this->log($config['last_sync_result']);
             }
-            (new Sync())->run($config);
         } elseif ($priceConfigChanged) {
             $this->recalculateSyncedPrices($config);
         }
@@ -284,12 +299,15 @@ class Main
     private function resolveLink(array $mapping, array $config, Order $order): string
     {
         $source = trim((string)($mapping['link_source'] ?? $config['default_link_source'] ?? 'contact'));
+        $widget = (array)json_decode((string)$order->widget, true);
+        $targetLink = trim((string)($widget['target_link']['value'] ?? ''));
 
         if ($source === '' || $source === 'contact') {
-            $link = (string)$order->contact;
+            // 历史映射默认使用 contact；新页面会提交独立目标链接，优先使用它，
+            // 保留 contact 作为兼容旧订单和旧商品的回退。
+            $link = $targetLink !== '' ? $targetLink : (string)$order->contact;
         } elseif (str_starts_with($source, 'widget:')) {
             $name = substr($source, 7);
-            $widget = (array)json_decode((string)$order->widget, true);
             $link = (string)($widget[$name]['value'] ?? '');
         } elseif (str_starts_with($source, 'fixed:')) {
             $link = substr($source, 6);
