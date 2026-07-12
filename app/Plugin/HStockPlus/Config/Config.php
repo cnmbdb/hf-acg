@@ -23,7 +23,7 @@ return array (
   'price_multiplier' => '1.2',
   'exchange_rate_auto' => '0',
   'usd_to_cny' => '7.3000',
-  'exchange_rate_last_sync_at' => '2026-07-07 21:39:38',
+  'exchange_rate_last_sync_at' => '2026-07-12 19:40:17',
   'exchange_rate_last_sync_result' => '手动汇率生效：1 USD = 7.3000 CNY',
   'smm_rate_per_1000' => '1',
   'price_plus' => '0',
@@ -34,7 +34,7 @@ return array (
   'stock_value' => '999999',
   'timeout' => '60',
   'mapping' => '',
-  'last_sync_at' => '2026-07-10 00:07:23',
-  'last_sync_result' => '更新上游商品分类：分类新增5525/更新5526，空分类删除5525/恢复0，商品新增0/更新0，价格更新0，跳过0',
+  'last_sync_at' => '2026-07-12 19:40:39',
+  'last_sync_result' => '批量重算价格浮动：分类新增0/更新0，空分类删除0/恢复0，商品新增0/更新0，价格更新10072，跳过0',
   'top' => '1',
 );

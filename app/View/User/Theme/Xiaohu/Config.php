@@ -22,6 +22,13 @@ interface Config
             "name" => "icp",
             "type" => "input",
             "placeholder" => "填写后将会在店铺底部显示ICP备案号，不填写则不显示。"
+        ],
+        [
+            "title" => "商品详情页面 - 购买提醒",
+            "name" => "item_purchase_notice",
+            "type" => "textarea",
+            "height" => 260,
+            "placeholder" => "支持基础 HTML：p、br、ul、ol、li、strong、em、a 超链接。"
         ]
     ];
 

@@ -1,7 +1,54 @@
 !function () {
     const _item = getVar("_var_item");
-    let _price = 0, _available = false;
+    let _price = 0, _available = false, _selectedPayId = null;
     const $vstack = $(`.vstack`), $cashPay = $(`.cash-pay`);
+    const $submitOrder = $(`.xh-submit-order`);
+    const $estimateValue = $(`.xh-estimate-value`);
+
+    function _GetFallbackEstimate() {
+        const quantity = Math.max(1, Number($(`input[name=num]`).val()) || 1);
+        let unitPrice = Number($(`.xh-item-price .price`).data("base-price")) || Number(_item.price) || 0;
+
+        if (!util.isEmptyOrNotJson(_item?.config?.category)) {
+            unitPrice = Number($(`.switch-race.is-primary`).data("price")) || unitPrice;
+            const race = $(`.switch-race.is-primary`).data("sku");
+            const wholesale = _item?.config?.category_wholesale?.[race];
+            if (wholesale && typeof wholesale === "object") {
+                Object.keys(wholesale).sort((a, b) => Number(b) - Number(a)).some(minimum => {
+                    if (quantity >= Number(minimum)) {
+                        unitPrice = Number(wholesale[minimum]) || unitPrice;
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        } else if (_item?.config?.wholesale && typeof _item.config.wholesale === "object") {
+            Object.keys(_item.config.wholesale).sort((a, b) => Number(b) - Number(a)).some(minimum => {
+                if (quantity >= Number(minimum)) {
+                    unitPrice = Number(_item.config.wholesale[minimum]) || unitPrice;
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        if (!util.isEmptyOrNotJson(_item?.config?.sku)) {
+            $(`.switch-sku.is-primary`).each(function () {
+                unitPrice += Number($(this).data("price")) || 0;
+            });
+        }
+
+        return unitPrice * quantity;
+    }
+
+    function _SetEstimatedPrice(price = null) {
+        const estimatedPrice = price === null ? _GetFallbackEstimate() : Number(price);
+        if (!Number.isFinite(estimatedPrice)) {
+            $estimateValue.text(`--`);
+            return;
+        }
+        $estimateValue.text(format.amountRemoveTrailingZeros(estimatedPrice));
+    }
 
     function _getPostData() {
         let post = util.arrayToObject($vstack.serializeArray());
@@ -30,6 +77,7 @@
         const $price = $(`.abacus .price`);
         //远程加载价格
         $price.html(`<i class="fa-duotone fa-regular fa-spinner-third icon-spin fs-6"></i>`);
+        _SetEstimatedPrice();
 
         util.post({
             url: "/user/api/index/valuation",
@@ -38,6 +86,7 @@
                 $price.html(`<span class="unit">¥</span>${format.amountRemoveTrailingZeros(res.data.price)}`);
                 _price = res.data.price;
                 _available = true;
+                _SetEstimatedPrice(_price);
             },
             loader: false,
             error: d => {
@@ -177,12 +226,17 @@
             done: res => {
                 if (res.data.stock_state <= 0) {
                     $cashPay.fadeOut(150);
+                    $submitOrder.prop("disabled", true);
                     $itemStock.removeClass("badge-soft-success").addClass("badge-soft-danger").html(`已售罄`);
                     return;
                 }
                 
                 $itemStock.removeClass("badge-soft-danger").addClass('badge-soft-success').html(`库存 ${res.data.stock}`);
-                $cashPay.fadeIn(150);
+                if ($cashPay.hasClass("xh-pay-card")) {
+                    $cashPay.stop(true, true).css({display: "grid", opacity: 0}).animate({opacity: 1}, 150);
+                } else {
+                    $cashPay.fadeIn(150);
+                }
             },
             loader: false
         });
@@ -200,33 +254,64 @@
     }
 
 
+    function _SubmitOrder(payId) {
+        let post = _getPostData();
+        post["pay_id"] = payId;
+        util.post("/user/api/order/trade", post, res => {
+            if (post["pay_id"] == 1) {
+                //余额购买，直接反馈
+                treasure.show(res.data.tradeNo, res.data.secret);
+                return;
+            }
+
+            window.location.href = res.data.url;
+        }, error => {
+            message.error(error.msg);
+            _CaptchaRefresh();
+        });
+    }
+
     function _SetPayList() {
         const $payList = $(`.pay-list`);
         util.post({
             url: `/user/api/index/pay?itemId=${_item.id}`,
             done: res => {
-                res.data.forEach(item => {
-                    $payList.append(`<a class="pay" data-id="${item.id}"><img src="${item.icon}"><span>${item.name}</span></a>`);
+                const usePaymentCards = $cashPay.hasClass("xh-pay-card");
+                res.data.forEach((item, index) => {
+                    const selected = usePaymentCards && index === 0 ? " is-primary" : "";
+                    const radio = usePaymentCards ? '<span class="xh-pay-radio" aria-hidden="true"></span>' : "";
+                    $payList.append(`<a class="pay${selected}" data-id="${item.id}">${radio}<img src="${item.icon}"><span>${item.name}</span></a>`);
+                    if (usePaymentCards && index === 0) {
+                        _selectedPayId = item.id;
+                    }
                 });
+
+                if (usePaymentCards && _selectedPayId !== null) {
+                    $submitOrder.prop("disabled", false);
+                }
             },
             loader: false
         });
 
         $(document).on("click", `.pay-list .pay`, function () {
-            let post = _getPostData();
-            post["pay_id"] = $(this).data("id");
-            util.post("/user/api/order/trade", post, res => {
-                if (post["pay_id"] == 1) {
-                    //余额购买，直接反馈
-                    treasure.show(res.data.tradeNo, res.data.secret);
-                    return;
-                }
+            const $pay = $(this);
+            if ($cashPay.hasClass("xh-pay-card")) {
+                $payList.find(".pay").removeClass("is-primary active selected");
+                $pay.addClass("is-primary");
+                _selectedPayId = $pay.data("id");
+                $submitOrder.prop("disabled", false);
+                return;
+            }
 
-                window.location.href = res.data.url;
-            }, error => {
-                message.error(error.msg);
-                _CaptchaRefresh();
-            });
+            _SubmitOrder($pay.data("id"));
+        });
+
+        $submitOrder.on("click", function () {
+            if (_selectedPayId === null) {
+                message.error("请选择支付方式");
+                return;
+            }
+            _SubmitOrder(_selectedPayId);
         });
     }
 

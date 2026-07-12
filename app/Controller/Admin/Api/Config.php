@@ -51,7 +51,6 @@ class Config extends Manage
         $inits = ["closed", "registered_state", "registered_type", "registered_verification", "registered_phone_verification", "registered_email_verification", "login_verification", "forget_type", "trade_verification", "session_expire", "request_log"]; //需要初始化的字段
 
         $post['user_theme'] = "Xiaohu";
-        $post['user_mobile_theme'] = "0";
 
         if (($post['user_mobile_theme'] ?? null) === "Xiaohu") {
             $post['user_mobile_theme'] = "0";

@@ -186,6 +186,11 @@ class Plugin extends Manage
         if (empty($theme)) {
             throw new JSONException("模板不存在");
         }
+
+        if ($id === 'Xiaohu' && array_key_exists('item_purchase_notice', $map)) {
+            $map['item_purchase_notice'] = $this->sanitizeXiaohuPurchaseNotice((string)$map['item_purchase_notice']);
+        }
+
         $config = $theme["setting"];
         foreach ($map as $k => $v) {
             $config[$k] = is_scalar($v) ? urldecode((string)$v) : $v;
@@ -193,6 +198,23 @@ class Plugin extends Manage
         setConfig($config, BASE_PATH . "/app/View/User/Theme/{$id}/Setting.php");
         ManageLog::log($this->getManage(), "修改了主题({$id})的配置");
         return $this->json(200, '模板设置已生效');
+    }
+
+    /**
+     * Keep the public product reminder limited to simple, safe formatting.
+     */
+    private function sanitizeXiaohuPurchaseNotice(string $html): string
+    {
+        $config = \HTMLPurifier_Config::createDefault();
+        $config->set('HTML.Allowed', 'a[href|target|rel],p,br,ul,ol,li,strong,b,em,i,u,span');
+        $config->set('URI.AllowedSchemes', [
+            'http' => true,
+            'https' => true,
+            'mailto' => true,
+            'tel' => true,
+        ]);
+
+        return trim((new \HTMLPurifier($config))->purify($html));
     }
 
     /**

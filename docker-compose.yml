@@ -30,6 +30,10 @@ services:
     command:
       - tunnel
       - --no-autoupdate
+      - --protocol
+      - http2
+      - --edge-ip-version
+      - "4"
       - run
       - --token
       - eyJhIjoiZGRjYjE0ODA2ZmQ3MWUxOWE0ZTgxZWI4ZGI5N2RmYzUiLCJ0IjoiOWIyZmQ5NzYtNzRkMC00MjkzLWEwZjEtOWQ2MGI1N2JlMjc2IiwicyI6Ik5URmtOVGt5WVRNdFpURXlOaTAwTm1abUxUZ3dNVFV0T0RjeU1UazJZakEzWldKbSJ9

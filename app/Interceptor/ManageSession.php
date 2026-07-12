@@ -72,12 +72,13 @@ class ManageSession implements InterceptorInterface
 
         if (
             $jwt->expire <= time() ||
-            $manage->login_time != $jwt->loginTime ||
-            $manage->login_ip != Client::getAddress() ||
             $manage->status != 1
         ) {
             $this->kick($type);
         }
+
+        // 登录时间和 IP 仅用于记录登录信息，不能作为会话校验条件；
+        // 否则同一管理员在另一台设备登录会使已有后台会话全部失效。
 
         if (!file_exists(BASE_PATH . "/config/terms")) {
             if (\Kernel\Util\Context::get(Base::ROUTE) == "/admin/dashboard/index" && $_GET['agree'] == 1) {
