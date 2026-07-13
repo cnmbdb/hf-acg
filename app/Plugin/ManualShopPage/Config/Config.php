@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 return array (
-  'STATUS' => 1,
+  'STATUS' => '1',
   'nav_label' => '手动上架资源',
+  'nav_icon' => 'fa-duotone fa-regular fa-box-open',
   'top' => '1',
 );

@@ -4,5 +4,5 @@ declare(strict_types=1);
 /**
  * 开启DEBUG
  */
-const DEBUG = false;
+defined('DEBUG') || define('DEBUG', false);
 require("kernel/Kernel.php");

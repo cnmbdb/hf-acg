@@ -422,6 +422,10 @@
 
     const firstCategory = $category.first().data("id");
     const initialCategory = categoryId > 0 ? categoryId : firstCategory;
+    if (initialCategory === undefined || initialCategory === null || initialCategory === "" || initialCategory === 0) {
+        renderProducts([]);
+        return;
+    }
     const initialSubcategory = new URLSearchParams(window.location.search).get("subcategory") || "";
     if (initialSubcategory) {
         setSubcategoryState(initialCategory, initialSubcategory, true, true);

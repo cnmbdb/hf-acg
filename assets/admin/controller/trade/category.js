@@ -2,11 +2,23 @@
     let table;
     const platformDict = [
         {id: "default", name: "默认平台"},
-        {id: "fansgurus", name: "fansgurus平台"},
-        {id: "hstockplus", name: "hstockplus平台"}
+        {id: "fansgurus", name: "FansGurus 平台"},
+        {id: "hstockplus", name: "HStockPlus 平台"}
     ];
     const platformCategoryDict = source => `commodity_platform_category->source=${source || "default"},id,name,pid&tree=true`;
     const isDefaultSource = source => (source || "default") === "default";
+    const reloadTreeSelect = (form, name, dict = null, value = "") => {
+        const item = form.form?.[name];
+        if (!item) {
+            return;
+        }
+        if (dict) {
+            item.dict = dict;
+        }
+        item.default = value;
+        $(`.${form.getUnique()} .component-${name}`).html(`<input type="text" lay-filter="${form.getUnique() + name}" class="layui-input tree-select"><input name="${name}" type="hidden" class="layui-input" value="${value ?? ""}">`);
+        form.treeSelectRegister(item);
+    };
     const categorySourceFromAssign = assign => {
         if (assign?.source) {
             return assign.source;
@@ -46,12 +58,12 @@
                             required: true,
                             change: (form, value) => {
                                 const source = value || "default";
-                                form.reloadCascader("pid", platformCategoryDict(source));
+                                reloadTreeSelect(form, "pid", platformCategoryDict(source));
                                 if (isDefaultSource(source)) {
                                     form.setRadio("category_level", "root", true);
                                     form.hide("category_level");
                                     form.hide("pid");
-                                    form.reloadCascader("pid", null, "");
+                                    reloadTreeSelect(form, "pid", null, "");
                                     return;
                                 }
                                 form.show("category_level");
@@ -75,7 +87,7 @@
                                     form.show("pid");
                                 } else {
                                     form.hide("pid");
-                                    form.reloadCascader("pid", null, "");
+                                    reloadTreeSelect(form, "pid", null, "");
                                 }
                             },
                             complete: (form, value) => {
@@ -85,7 +97,7 @@
                         {
                             title: "一级分类",
                             name: "pid",
-                            type: "cascaderSelect",
+                            type: "treeSelect",
                             dict: platformCategoryDict(categorySource),
                             placeholder: "请选择要挂载到哪个一级分类下",
                             parent: false,
@@ -194,7 +206,7 @@
         {checkbox: true},
         {field: 'icon', title: '', type: "image", style: "border-radius:25%;", width: 28},
         {
-            field: 'owner', title: '创建者', formatter: format.owner
+            field: 'owner', title: '创建者', formatter: (_, __) => mdOwnerCell(_)
         },
         {
             field: 'name', title: '分类名称'
@@ -205,12 +217,8 @@
                 return `<span class="badge ${className}">${value || (row.pid > 0 ? "二级分类" : "一级分类")}</span>`;
             }
         }
-        , {
-            field: 'children_count', title: '下级数', class: "nowrap"
-        }
-        , {
-            field: 'commodity_count', title: '商品数', class: "nowrap"
-        }
+        , {field: 'children_count', title: '下级数', class: "nowrap"}
+        , {field: 'commodity_count', title: '商品数', class: "nowrap"}
         , {field: 'sort', title: '排序(越小越前)', sort: true, type: "input", reload: true}
         , {
             field: 'share_url', title: '推广链接', type: "button", buttons: [
@@ -244,8 +252,7 @@
                 {
                     icon: 'fa-duotone fa-regular fa-trash-can text-danger',
                     click: (event, value, row, index) => {
-                        const tips = row.children_count > 0 ? `此分类包含 ${row.children_count} 个下级分类，删除会一并删除下级分类和商品，是否继续？` : "是否删除此分类？";
-                        message.ask(tips, () => {
+                        message.ask("是否删除此分类？", () => {
                             util.post('/admin/api/category/del', {list: [row.id]}, res => {
                                 message.success("删除成功");
                                 table.refresh();
@@ -261,11 +268,7 @@
             title: "平台来源",
             name: "source",
             type: "select",
-            dict: [
-                {id: "default", name: "默认平台"},
-                {id: "fansgurus", name: "fansgurus平台"},
-                {id: "hstockplus", name: "hstockplus平台"}
-            ],
+            dict: platformDict,
             default: "default",
             change: () => table.reload({pageNumber: 1})
         },
@@ -287,7 +290,7 @@
             return;
         }
 
-        message.ask("注意，删除一级分类会同时删除它下面的二级分类和商品，删除后无法恢复", () => {
+        message.ask("注意，删除分类后无法恢复", () => {
             util.post("/admin/api/category/del", {list: data}, res => {
                 message.success("删除成功")
                 table.refresh();
@@ -301,7 +304,7 @@
             layer.msg("请至少勾选1个分类进行操作！");
             return;
         }
-        message.ask("启用一级分类会同时启用它下面的二级分类，是否继续？", () => {
+        message.ask(null, () => {
             util.post("/admin/api/category/status", {list: data, status: 1}, res => {
                 message.success("启用成功");
                 table.refresh();
@@ -315,7 +318,7 @@
             layer.msg("请至少勾选1个分类进行操作！");
             return;
         }
-        message.ask("停用一级分类会同时停用它下面的二级分类，是否继续？", () => {
+        message.ask(null, () => {
             util.post("/admin/api/category/status", {list: data, status: 0}, res => {
                 message.success("停用成功");
                 table.refresh();

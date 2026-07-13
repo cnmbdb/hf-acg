@@ -6,8 +6,9 @@ namespace App\Controller\Base\View;
 use App\Consts\Render;
 use App\Model\Business;
 use App\Model\Config;
+use App\Plugin\ManualShopPage\Service\Navigation as ManualShopNavigation;
+use App\Plugin\XiaohuGuard\Service\ThemeLock;
 use App\Util\Client;
-use App\Util\Plugin;
 use App\Util\Theme;
 use Kernel\Exception\JSONException;
 use Kernel\Exception\ViewException;
@@ -72,17 +73,14 @@ abstract class User extends \App\Controller\Base\User
             $data['title'] = $title;
             $data['app']['version'] = \config("app")['version'];
             $data['favicon'] = "/favicon.ico";
-            $GLOBALS['shopSource'] = $data['shopSource'] ?? null;
-            $GLOBALS['shopCategoryUrl'] = $data['shopCategoryUrl'] ?? "/cat";
 
+            ThemeLock::enforce();
             $cfg = Config::list();
 
             foreach ($cfg as $k => $v) {
                 $data["config"][$k] = $v;
             }
-            $manualShopPage = Plugin::getConfig('ManualShopPage', false);
-            $data['manualShopPage'] = $manualShopPage;
-            $data['manualShopPageNavLabel'] = trim(strip_tags((string)($manualShopPage['nav_label'] ?? ''))) ?: '更多购买';
+            $data = array_replace($data, ManualShopNavigation::viewData());
 
             if (in_array($template, $this->indexTemplateList)) {
                 if (Client::isMobile()) {
@@ -98,9 +96,17 @@ abstract class User extends \App\Controller\Base\User
                 if ($theme == "0") {
                     $theme = $cfg['user_theme'];
                 }
-
             } else {
-                $theme = $cfg['user_center_theme'] ?: "Cartoon";
+                $centerTheme = $cfg['user_center_theme'] ?? "Cartoon";
+                if (Client::isMobile()) {
+                    $theme = $cfg['user_center_mobile_theme'] ?? "0";
+                    if ($theme === "" || $theme === "0") {
+                        $theme = $centerTheme;
+                    }
+                } else {
+                    $theme = $centerTheme;
+                }
+                $theme = $theme ?: "Cartoon";
             }
 
             //模板静态路径

@@ -8,7 +8,10 @@ use App\Consts\Hook;
 use App\Controller\Base\View\User;
 use App\Interceptor\UserVisitor;
 use App\Interceptor\Waf;
+use App\Model\Category;
+use App\Model\Commodity;
 use App\Model\Config;
+use App\Service\Bind\Shop as ShopBind;
 use App\Service\Shop;
 use App\Util\Tree;
 use Kernel\Annotation\Inject;
@@ -32,7 +35,66 @@ class Index extends User
      */
     public function index(): string
     {
-        return $this->shopPage('fansgurus', "INDEX", "Index/Index.html", "/fans");
+        $source = $this->requestedCategorySource();
+        return match ($source) {
+            'default' => $this->shopPage('default', "INDEX3", "Index/Index.html", "/cat"),
+            'hstockplus' => $this->shopPage('hstockplus', "INDEX2", "Index/Index2.html", "/cat"),
+            default => $this->shopPage('fansgurus', "INDEX", "Index/Index.html", "/cat"),
+        };
+    }
+
+    /**
+     * Legacy /cat/{id} links predate the three-platform storefront. Resolve
+     * the owning platform from the category and its active products so old
+     * shared links do not always fall into the FansGurus page.
+     */
+    private function requestedCategorySource(): string
+    {
+        $requested = $_GET['cid'] ?? null;
+        if (!is_numeric($requested) || (int)$requested <= 0) {
+            return 'fansgurus';
+        }
+
+        $categoryId = (int)$requested;
+        $category = Category::query()->find($categoryId, ['id', 'source']);
+        if (!$category) {
+            return 'fansgurus';
+        }
+
+        $ids = [$categoryId];
+        $frontier = [$categoryId];
+        while ($frontier) {
+            $children = Category::query()
+                ->whereIn('pid', $frontier)
+                ->pluck('id')
+                ->map(static fn($id): int => (int)$id)
+                ->all();
+            $children = array_values(array_diff($children, $ids));
+            if (!$children) {
+                break;
+            }
+            array_push($ids, ...$children);
+            $frontier = $children;
+        }
+
+        $base = Commodity::query()->where('status', 1)->whereIn('category_id', $ids);
+        $counts = [
+            'default' => (clone $base)
+                ->where('code', 'not like', 'FG_%')
+                ->where('code', 'not like', 'HSP_%')
+                ->count(),
+            'fansgurus' => (clone $base)->where('code', 'like', 'FG_%')->count(),
+            'hstockplus' => (clone $base)->where('code', 'like', 'HSP_%')->count(),
+        ];
+
+        $declared = ShopBind::normalizeSource((string)$category->source) ?: 'default';
+        if (($counts[$declared] ?? 0) > 0) {
+            return $declared;
+        }
+
+        arsort($counts);
+        $detected = (string)array_key_first($counts);
+        return ($counts[$detected] ?? 0) > 0 ? $detected : $declared;
     }
 
     /**
@@ -56,7 +118,7 @@ class Index extends User
      */
     public function three(): string
     {
-        return $this->shopPage('default', "INDEX3", "Index/Index3.html", "/3");
+        return $this->shopPage('default', "INDEX3", "Index/Index.html", "/3");
     }
 
     /**
@@ -79,6 +141,8 @@ class Index extends User
 
         $categoryId = $this->resolveCategoryId($_GET['cid'] ?? Config::get("default_category"), $category);
         $_GET['cid'] = $categoryId;
+        $GLOBALS['shopSource'] = $source;
+        $GLOBALS['shopCategoryUrl'] = $categoryUrl;
 
         return $this->theme("购物", $template, $default, [
             'user' => $this->getUser(),

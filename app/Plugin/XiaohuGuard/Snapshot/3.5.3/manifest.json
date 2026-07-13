@@ -1,0 +1,144 @@
+{
+    "format": 1,
+    "theme": "Xiaohu",
+    "version": "3.5.3",
+    "captured_at": "2026-07-13T08:12:48+00:00",
+    "files": {
+        "app/Controller/Admin/Api/Category.php": {
+            "sha256": "dfff0243720c17b1c9d1cc2a3e0d108412d50183dfff65f132859ee4fe5de66d",
+            "size": 15642
+        },
+        "app/Controller/Admin/Api/Commodity.php": {
+            "sha256": "5076b6af2e6d01f3c60c5f4bb1dab6713c7b57ec5a87549151d339fc4327a09f",
+            "size": 13002
+        },
+        "app/Controller/Admin/Api/Config.php": {
+            "sha256": "52b36fd2c38bee207b715cf008137f66519fc456103b62e912ca6f4ca58baaf7",
+            "size": 7947
+        },
+        "app/Controller/Admin/Api/Plugin.php": {
+            "sha256": "d986bc13f95a4303b365d7eda89e50e4d7ff5b61c83331f165fcea065c6f7f56",
+            "size": 9661
+        },
+        "app/Controller/Admin/Config.php": {
+            "sha256": "bc46116b52d228dc112bf981f798f12daae0f789fc82d8e4349eff6898022ad5",
+            "size": 3786
+        },
+        "app/Controller/Base/View/User.php": {
+            "sha256": "4b0f7ffee8ad6378648c25d43ca5a1bfc463cc187f8e35670c132462428de13a",
+            "size": 5792
+        },
+        "app/Controller/User/Api/Category.php": {
+            "sha256": "5b4f7ff48e30449b8352202b543acf3c415765939de04f0a53e473b803200ae3",
+            "size": 3048
+        },
+        "app/Controller/User/Api/Index.php": {
+            "sha256": "1547035ab1bb907f2a08a98e81f079e1f1922e25abf7fcd27854dad7ba8ff08d",
+            "size": 21663
+        },
+        "app/Controller/User/Index.php": {
+            "sha256": "48145eaa9828be25b126448edefb39d14320d5bc350cff5a4d80069f612e95ca",
+            "size": 7273
+        },
+        "app/Model/Category.php": {
+            "sha256": "ad2f968e2184864cc9a8a32d52525cac3890a29da170d43d8b12479e60243ff6",
+            "size": 3335
+        },
+        "app/Plugin/ManualShopPage/Config/Info.php": {
+            "sha256": "2b862d4121f1628125623de0dc454e4f89c89cdd93b72dae05ac24f571b7c2a0",
+            "size": 249
+        },
+        "app/Plugin/ManualShopPage/Config/Submit.php": {
+            "sha256": "cef051a82002c4225aedaeba050093ef5bb93ac1e1fa580fe47a0217289a79a1",
+            "size": 448
+        },
+        "app/Plugin/ManualShopPage/Service/Navigation.php": {
+            "sha256": "1db5ec178c52a281abd3246da9780cae2b1576788b8cbca677aa8bb3712992b1",
+            "size": 1220
+        },
+        "app/Plugin/ManualShopPage/Wiki/README.md": {
+            "sha256": "b2a40b822a0ed3207187d9a50724791b2fc260cd5041379ed32e13c5b0ab53e3",
+            "size": 368
+        },
+        "app/Service/Bind/Dict.php": {
+            "sha256": "1f421ddedef42bbf8bf9e2d7b72705d191264da67215ebd384f0abc7df097893",
+            "size": 5282
+        },
+        "app/Service/Bind/Shop.php": {
+            "sha256": "05297f627400b8e39fc1abfc864706a09458a573ef5aabc41d9f56bb380ff7a0",
+            "size": 53756
+        },
+        "app/View/Admin/Config/Plugin.html": {
+            "sha256": "a3b5f86e4972cf46bd9e82bbb37e50e2b83f2b5ec05f8fe7f5d3cdbd95c8ec9c",
+            "size": 2172
+        },
+        "app/View/User/Helper.php": {
+            "sha256": "63a09ed21f544c741dbb2182d802e48c07c900604ad434b2f8ab3df6c6d7556d",
+            "size": 3966
+        },
+        "app/View/User/Theme/Cartoon/Index/Header.html": {
+            "sha256": "f38a1bdc1cbbccffd0f4f0a612dc5b51d82ce3ba7f7235283c922a89309b23d0",
+            "size": 6864
+        },
+        "app/View/User/Theme/Xiaohu/Config.php": {
+            "sha256": "b33d0e7b061d0a89731c8cab36ac25748e6ad093f50979329d94434add6d2cf7",
+            "size": 1199
+        },
+        "app/View/User/Theme/Xiaohu/Index/Footer.html": {
+            "sha256": "9b81247cc56c409d342f8268542fac2cfc009c9a3a1a88ef9f81fad0dd0248f4",
+            "size": 2706
+        },
+        "app/View/User/Theme/Xiaohu/Index/Header.html": {
+            "sha256": "c3077225ddaf783fb9f69b4042b4e48dd7475f3ae2d9f6339851979bc22182cb",
+            "size": 22463
+        },
+        "app/View/User/Theme/Xiaohu/Index/Index.html": {
+            "sha256": "37d447398cd771bb10ec4c47fcc4bc057dee5fe3640cc19b544df091ad7e56c9",
+            "size": 6106
+        },
+        "app/View/User/Theme/Xiaohu/Index/Index2.html": {
+            "sha256": "37d447398cd771bb10ec4c47fcc4bc057dee5fe3640cc19b544df091ad7e56c9",
+            "size": 6106
+        },
+        "app/View/User/Theme/Xiaohu/Index/Item.html": {
+            "sha256": "de06d7d876bcd0a150c2647cfa3e4e50669a3c7fe79591b54b438f546c62960b",
+            "size": 9352
+        },
+        "app/View/User/Theme/Xiaohu/Index/Query.html": {
+            "sha256": "2a26bd08ef99626872ad3afb832a2bb4da84a9cdf498cea1444411fbeda4354d",
+            "size": 2244
+        },
+        "app/View/User/Theme/Xiaohu/assets/index.css": {
+            "sha256": "60bd957738f63976d08a9c43b0c0338c878500455e8a2804de1b0d9f86e1083c",
+            "size": 53011
+        },
+        "app/View/User/Theme/Xiaohu/assets/index.js": {
+            "sha256": "383e546887552d3c5fe24669e29130e738b153d2d6681c8a3908b82044e1b088",
+            "size": 26496
+        },
+        "assets/admin/controller/config/plugin.js": {
+            "sha256": "39b7f9b219f7088a07ecd27093bc382d37c7396a1e38ec557c0f14eeccf7f693",
+            "size": 19912
+        },
+        "assets/admin/controller/trade/category.js": {
+            "sha256": "1e97b6109bb12be6e697fe98e29091196bdef23d3670eb084f0693f0593d95ff",
+            "size": 14180
+        },
+        "assets/admin/controller/trade/commodity.js": {
+            "sha256": "6bf8b70748361e5f84875caf24879127acfa237e4c28edbed58eb796529605aa",
+            "size": 54138
+        },
+        "assets/user/controller/index/index.js": {
+            "sha256": "a06a74eafd3fb7247f1effed4ba63ad026021a08463679562aa96b1db5862dec",
+            "size": 5265
+        },
+        "assets/user/js/trade.js": {
+            "sha256": "df8ee5c380429eeaf42c4b125e6efff00ed095aebed0a27b61f73809de48f4fa",
+            "size": 1631
+        },
+        "kernel/Kernel.php": {
+            "sha256": "84855c3c1de715044a4638e5eda0b66c8f7ab6aa3241ce3fe62288878290ea97",
+            "size": 6561
+        }
+    }
+}

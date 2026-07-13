@@ -55,8 +55,10 @@
                                 class="fa-duotone fa-regular fa-users nav-icon"></i>粉丝服务</a></li>
                 <li class="nav-item"><a class="nav-link #{if $shopSource == "hstockplus"}active#{/if}" href="/2"><i
                                 class="fa-duotone fa-regular fa-id-card nav-icon"></i>海外账号购买</a></li>
+                #{if $manualShopPageNavEnabled}
                 <li class="nav-item"><a class="nav-link #{if $shopSource == "default"}active#{/if}" href="/3"><i
-                                class="fa-duotone fa-regular fa-box-open nav-icon"></i>#{$manualShopPageNavLabel}</a></li>
+                                class="#{$manualShopPageNavIcon} nav-icon"></i>#{$manualShopPageNavLabel}</a></li>
+                #{/if}
             </ul>
             <div class="d-none d-lg-flex search-input" role="search">
                 <div class="input-group">

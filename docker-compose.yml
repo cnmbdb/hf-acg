@@ -24,6 +24,7 @@ services:
   cftun:
     image: cloudflare/cloudflared:latest
     container_name: acg-faka-cftun
+    profiles: ["cftun"]
     restart: unless-stopped
     depends_on:
       - app
@@ -36,7 +37,7 @@ services:
       - "4"
       - run
       - --token
-      - eyJhIjoiZGRjYjE0ODA2ZmQ3MWUxOWE0ZTgxZWI4ZGI5N2RmYzUiLCJ0IjoiOWIyZmQ5NzYtNzRkMC00MjkzLWEwZjEtOWQ2MGI1N2JlMjc2IiwicyI6Ik5URmtOVGt5WVRNdFpURXlOaTAwTm1abUxUZ3dNVFV0T0RjeU1UazJZakEzWldKbSJ9
+      - ${CFTUN_TOKEN:?Set CFTUN_TOKEN in .env before enabling the cftun profile}
 
   mysql:
     image: mysql:8.0

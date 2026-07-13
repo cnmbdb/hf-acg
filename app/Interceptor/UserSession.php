@@ -62,7 +62,7 @@ class UserSession implements InterceptorInterface
         }
 
 
-        if ($jwt->expire <= time() || $user->login_time != $jwt->loginTime || $user->status != 1) {
+        if ($jwt->expire <= time() || $user->status != 1) {
             $this->kick($type);
         }
 

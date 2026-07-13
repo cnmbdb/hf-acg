@@ -40,8 +40,6 @@ interface Config
      */
     const THEME = [
         "INDEX" => "Index/Index.html", //卡网首页
-        "INDEX2" => "Index/Index2.html", //备用首页
-        "INDEX3" => "Index/Index.html", //默认平台商品页
         "CLOSED" => "Index/Closed.html", //维护页面
         "QUERY" => "Index/Query.html", //订单查询
         "LOGIN" => "Authentication/Login.html", //用户登录
@@ -62,6 +60,10 @@ interface Config
         "PHONE" => "User/Phone.html", //会员-手机
         "PASSWORD" => "User/Password.html", //会员-密码设置
         "ORDER" => "User/Order.html", //会员-密码设置
+        "TICKET" => "User/Ticket.html", //会员-我的工单
+        "TICKET_CREATE" => "User/TicketCreate.html", //会员-创建工单
+        "TICKET_DETAIL" => "User/TicketDetail.html", //会员-工单详情
+        "MESSAGE" => "User/Message.html", //会员-消息中心
         "AGENT_MEMBER" => "Agent/Member.html", //推广代理-我的下级
     ];
 

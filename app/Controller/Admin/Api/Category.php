@@ -88,7 +88,12 @@ class Category extends Manage
             if (isset($item['name']) && is_scalar($item['name'])) {
                 $item['name'] = $this->cleanHStockPlusTitle((string)$item['name']);
             }
-            $item['share_url'] = Client::getUrl() . "/cat/{$item['id']}";
+            $shopPath = match ($source) {
+                'fansgurus' => '/fans',
+                'hstockplus' => '/2',
+                default => '/3',
+            };
+            $item['share_url'] = Client::getUrl() . $shopPath . "?cid={$item['id']}";
         }
 
         return $this->json(data: $data);

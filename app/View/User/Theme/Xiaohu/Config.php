@@ -5,6 +5,8 @@ namespace App\View\User\Theme\Xiaohu;
 
 use App\Consts\Render;
 
+\App\Plugin\XiaohuGuard\Service\ThemeBootstrap::boot();
+
 interface Config
 {
     const INFO = [

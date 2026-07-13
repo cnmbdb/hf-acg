@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 return array (
-  'STATUS' => 1,
+  'STATUS' => '1',
   'api_url' => 'https://hstockplus.com/api/v2',
   'api_key' => '4e135f059ec289efca52172677606a25',
   'enabled_trade' => '1',

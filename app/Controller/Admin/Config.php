@@ -5,7 +5,7 @@ namespace App\Controller\Admin;
 
 use App\Controller\Base\View\Manage;
 use App\Interceptor\ManageSession;
-use App\Model\Config as CFG;
+use App\Plugin\XiaohuGuard\Service\ThemeLock;
 use App\Util\Client;
 use App\Util\Theme;
 use Kernel\Annotation\Interceptor;
@@ -39,17 +39,7 @@ class Config extends Manage
      */
     public function index(): string
     {
-        if (CFG::get("user_theme") !== "Xiaohu") {
-            CFG::put("user_theme", "Xiaohu");
-        }
-
-        if (CFG::get("user_center_theme") === "Xiaohu") {
-            CFG::put("user_center_theme", "Cartoon");
-        }
-
-        if (CFG::get("user_mobile_theme") === "Xiaohu") {
-            CFG::put("user_mobile_theme", "0");
-        }
+        ThemeLock::enforce();
 
         $modes = [
             'REMOTE_ADDR',
@@ -90,6 +80,7 @@ class Config extends Manage
         return $this->render("网站设置", "Config/Setting.html", [
             "toolbar" => $this->TOOLBAR,
             "themes" => $themes,
+            "user_center_mobile_theme" => \App\Model\Config::get("user_center_mobile_theme") ?: "0",
             "ip_get_mode" => $modes,
             "ip_mode" => Client::getClientMode()
         ]);

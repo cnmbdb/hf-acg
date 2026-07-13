@@ -39,7 +39,7 @@ class Category extends User
         });
 
         foreach ($data['list'] as &$item) {
-            $item['share_url'] = Client::getUrl() . "/cat/{$item['id']}";
+            $item['share_url'] = Client::getUrl() . "/3?cid={$item['id']}";
         }
 
         return $this->json(data: $data);

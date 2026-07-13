@@ -26,7 +26,7 @@ const trade = new class {
         if (opt.limit && opt.page) {
             params.limit = opt.limit;
             params.page = opt.page;
-        } else if (source === "hstockplus") {
+        } else if (source === "hstockplus" || source === "fansgurus") {
             params.limit = 100;
             params.page = 1;
         }

@@ -74,6 +74,10 @@ class Index extends User
         $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
         $sort = (string)($_GET['sort'] ?? 'recommend');
         $inStock = (int)($_GET['inStock'] ?? 0) === 1;
+        if ($limit <= 0 && in_array($source, ['fansgurus', 'hstockplus'], true)) {
+            $limit = 100;
+            $page = max(1, $page);
+        }
 
         $commodity = Commodity::query()
             ->with(['owner' => function (Relation $relation) {

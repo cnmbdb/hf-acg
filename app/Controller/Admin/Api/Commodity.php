@@ -60,10 +60,9 @@ class Commodity extends Manage
         $data = $this->query->get($get, function (Builder $builder) use ($map, $source) {
             if ($source === 'default') {
                 foreach (self::SOURCE_CODE_PREFIX as $prefix) {
-                    if ($prefix === '') {
-                        continue;
+                    if ($prefix !== '') {
+                        $builder = $builder->where('code', 'not like', $prefix . '%');
                     }
-                    $builder = $builder->where('code', 'not like', $prefix . '%');
                 }
             } elseif ($source) {
                 $builder = $builder->where('code', 'like', self::SOURCE_CODE_PREFIX[$source] . '%');
@@ -112,7 +111,8 @@ class Commodity extends Manage
         });
 
         $clientUrl = Client::getUrl();
-        $parentCategoryMap = $this->parentCategoryMap($data['list']);
+        //无限极分类完整路径：一次性加载分类扁平映射，循环内复用避免 N+1
+        $categoryFlatMap = $data['list'] ? \App\Model\Category::flatMap() : [];
         foreach ($data['list'] as &$val) {
             $url = $clientUrl;
             if ($val['owner'] && $val['owner']['business']) {
@@ -124,7 +124,8 @@ class Commodity extends Manage
                 }
             }
             $val['share_url'] = $url . "/item/{$val['id']}";
-            $val['category_path'] = $this->categoryPath($val['category'] ?? null, $parentCategoryMap);
+            //顶级分类 -> 子分类 -> 商品所属分类
+            $val['category_path'] = \App\Model\Category::resolvePath((int)($val['category_id'] ?? 0), $categoryFlatMap);
         }
 
 
@@ -135,41 +136,6 @@ class Commodity extends Manage
     {
         $source = strtolower(trim($source));
         return array_key_exists($source, self::SOURCE_CODE_PREFIX) ? $source : null;
-    }
-
-    private function parentCategoryMap(array $rows): array
-    {
-        $parentIds = [];
-        foreach ($rows as $row) {
-            $pid = (int)($row['category']['pid'] ?? 0);
-            if ($pid > 0) {
-                $parentIds[] = $pid;
-            }
-        }
-
-        if (!$parentIds) {
-            return [];
-        }
-
-        return Category::query()
-            ->whereIn('id', array_values(array_unique($parentIds)))
-            ->pluck('name', 'id')
-            ->all();
-    }
-
-    private function categoryPath(?array $category, array $parentCategoryMap): string
-    {
-        if (!$category) {
-            return '-';
-        }
-
-        $name = (string)($category['name'] ?? '-');
-        $pid = (int)($category['pid'] ?? 0);
-        if ($pid <= 0 || !isset($parentCategoryMap[$pid])) {
-            return $name;
-        }
-
-        return $parentCategoryMap[$pid] . ' / ' . $name;
     }
 
 
@@ -275,16 +241,14 @@ class Commodity extends Manage
             throw new JSONException("商品必须添加到二级分类下");
         }
 
-        $parent = Category::query()->find((int)$category->pid);
-        if (!$parent) {
+        if (!Category::query()->find((int)$category->pid)) {
             throw new JSONException("商品分类父级不存在");
         }
     }
 
     private function applySourceCodePrefix(string $source, string $code): string
     {
-        $code = $this->stripSourceCodePrefix($code);
-        return (self::SOURCE_CODE_PREFIX[$source] ?? '') . $code;
+        return (self::SOURCE_CODE_PREFIX[$source] ?? '') . $this->stripSourceCodePrefix($code);
     }
 
     private function stripSourceCodePrefix(string $code): string

@@ -704,3 +704,14 @@ auto_delivery=0))
 [2026-07-12 22:26:15]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
 [2026-07-13 13:43:10]:/var/www/html/kernel/Util/Decimal.php:47<br>Call to undefined function Kernel\Util\bcsub()
 [2026-07-13 13:43:10]:/var/www/html/kernel/Util/Decimal.php:47<br>Call to undefined function Kernel\Util\bcsub()
+[2026-07-13 14:11:28]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-07-13 14:13:43]:/var/www/html/app/Controller/Base/View/User.php<br>Unable to load template 'file:User/Theme/Cartoon/Index/Index3.html'
+[2026-07-13 14:14:24]:/var/www/html/app/Controller/Base/View/User.php<br>Unable to load template 'file:User/Theme/Cartoon/Index/Index3.html'
+[2026-07-13 14:15:40]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-07-13 14:15:49]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-07-13 14:17:26]:/var/www/html/app/Controller/Base/View/User.php<br>Unable to load template 'file:User/Theme/Cartoon/Index/Index3.html'
+[2026-07-13 14:17:44]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-07-13 14:18:31]:/var/www/html/kernel/Util/Decimal.php:47<br>Call to undefined function Kernel\Util\bcsub()
+[2026-07-13 14:18:31]:/var/www/html/kernel/Util/Decimal.php:47<br>Call to undefined function Kernel\Util\bcsub()
+[2026-07-13 14:24:09]:/var/www/html/kernel/Util/Decimal.php:58<br>Call to undefined function Kernel\Util\bcmul()
+[2026-07-13 14:36:58]:/Users/a2333/IDE/edi-acg-faka/kernel/Context/Request.php:11<br>strtoupper(): Argument #1 ($string) must be of type string, null given

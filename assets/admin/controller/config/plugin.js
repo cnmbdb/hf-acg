@@ -72,19 +72,17 @@
     }
 
     const upstreamSyncPlugins = ['FansGurus', 'HStockPlus'];
-
-    const isUpstreamSyncPlugin = item => {
-        return upstreamSyncPlugins.includes(item.id) || upstreamSyncPlugins.includes(item.PLUGIN_NAME) || upstreamSyncPlugins.some(name => (item.NAME || '').includes(name));
-    }
-
+    const isUpstreamSyncPlugin = item => upstreamSyncPlugins.includes(item.id);
     const upstreamSync = (row, action, label) => {
-        util.post('/admin/api/plugin/setConfig?id=' + row.id, {
-            auto_sync_on_save: 1,
-            sync_action: action
-        }, res => {
-            table.refresh();
-            layer.msg(label + '已执行：' + res.msg);
-        });
+        message.ask(`确定要${label}吗？同步期间请不要重复点击。`, () => {
+            util.post('/admin/api/plugin/setConfig?id=' + row.id, {
+                auto_sync_on_save: 1,
+                sync_action: action
+            }, res => {
+                table.refresh();
+                layer.msg(label + '已执行：' + res.msg);
+            });
+        }, label);
     }
 
     table = new Table("/admin/api/plugin/getPlugins", "#plugin-table");
@@ -92,7 +90,7 @@
         {checkbox: true},
         {
             field: 'plugin_name', title: '插件名称', formatter: function (val, item) {
-                return `<span class="table-item"><img src="${item?.icon}" class="table-item-icon"><span class="table-item-name">${item?.NAME}</span></span>`;
+                return `<div class="md-plugin"><img src="${item?.icon}" class="md-plugin__icon" alt=""><span class="md-plugin__name">${item?.NAME ?? ''}</span></div>`;
             }
         }
         , {
@@ -230,7 +228,7 @@
             class: "nowrap",
             title: '<span id="updateNum">版本号</span>',
             formatter: function (val, item) {
-                return '<span class="badge badge-light">' + item.VERSION + '</span>' + pluginUpdate.renderButton(item.id, item.VERSION);
+                return '<span class="md-version">v' + item.VERSION + '</span>' + pluginUpdate.renderButton(item.id, item.VERSION);
             }
             ,
             events: {
@@ -285,7 +283,7 @@
                 if (item.AUTHOR == "#" || !item.AUTHOR) {
                     return '-';
                 }
-                return '<span class="badge badge-light"><i class="fa-duotone fa-regular fa-circle-user"></i> ' + item.AUTHOR + '</span>';
+                return '<span class="md-author"><i class="fa-duotone fa-regular fa-user"></i>' + item.AUTHOR + '</span>';
             }
         }
         , {

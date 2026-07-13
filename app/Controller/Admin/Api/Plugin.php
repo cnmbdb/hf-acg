@@ -133,10 +133,12 @@ class Plugin extends Manage
         if (isset($map['STATUS'])) {
             if ((int)$config['STATUS'] == 0 && $map['STATUS'] == 1) {
                 _plugin_start($id);
+                $this->persistPluginStatus((string)$id, 1);
                 ManageLog::log($this->getManage(), "启动了插件({$id})");
                 return $this->json(200, "插件已启动");
             } else if ((int)$config['STATUS'] == 1 && $map['STATUS'] == 0) {
                 _plugin_stop($id);
+                $this->persistPluginStatus((string)$id, 0);
                 ManageLog::log($this->getManage(), "停止了插件({$id})");
                 return $this->json(200, "插件已停止");
             }
@@ -163,6 +165,32 @@ class Plugin extends Manage
         setConfig($config, $configFile);
         ManageLog::log($this->getManage(), "修改了插件({$id})的配置");
         return $this->json(200, '配置已生效');
+    }
+
+    /**
+     * 3.5.3 的插件启动/停止函数会执行状态钩子，但部分环境不会把 STATUS
+     * 稳定写回插件配置。管理接口在钩子成功后补写并回读校验，避免页面提示
+     * 成功、刷新后却仍显示原状态。
+     *
+     * @throws JSONException
+     */
+    private function persistPluginStatus(string $id, int $status): void
+    {
+        $plugin = \Kernel\Util\Plugin::getPlugin($id, false);
+        if (!$plugin || !is_array($plugin[\App\Consts\Plugin::PLUGIN_CONFIG] ?? null)) {
+            throw new JSONException('插件状态写入失败');
+        }
+
+        $config = $plugin[\App\Consts\Plugin::PLUGIN_CONFIG];
+        $config['STATUS'] = (string)$status;
+        $configFile = BASE_PATH . '/app/Plugin/' . $id . '/Config/Config.php';
+        setConfig($config, $configFile);
+        @unlink(BASE_PATH . '/runtime/plugin/plugin.cache');
+
+        $saved = \Kernel\Util\Plugin::getPlugin($id, false);
+        if ((int)($saved[\App\Consts\Plugin::PLUGIN_CONFIG]['STATUS'] ?? -1) !== $status) {
+            throw new JSONException('插件状态写入失败');
+        }
     }
 
     /**
