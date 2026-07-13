@@ -2,7 +2,7 @@
     "format": 1,
     "theme": "Xiaohu",
     "version": "3.5.3",
-    "captured_at": "2026-07-13T08:12:48+00:00",
+    "captured_at": "2026-07-13T08:30:16+00:00",
     "files": {
         "app/Controller/Admin/Api/Category.php": {
             "sha256": "dfff0243720c17b1c9d1cc2a3e0d108412d50183dfff65f132859ee4fe5de66d",
@@ -136,9 +136,21 @@
             "sha256": "df8ee5c380429eeaf42c4b125e6efff00ed095aebed0a27b61f73809de48f4fa",
             "size": 1631
         },
+        "config/redis.php": {
+            "sha256": "8e3a7a8c64cd2b7fcd261a20346bfa81645be78a8bb9d10ca5d7abf598f450d1",
+            "size": 1260
+        },
+        "kernel/Cache/Cache.php": {
+            "sha256": "5889834a18004e47e198fc08e80bc5cf8f791c5f8a9314b5a609ff1afda9700e",
+            "size": 3904
+        },
         "kernel/Kernel.php": {
-            "sha256": "84855c3c1de715044a4638e5eda0b66c8f7ab6aa3241ce3fe62288878290ea97",
-            "size": 6561
+            "sha256": "89680226f5a52bfe9e475c9b10524d83fe5a74e85b96897308cf5a2ac8712bcf",
+            "size": 6623
+        },
+        "kernel/Util/RedisClient.php": {
+            "sha256": "35019e913a30e17046429771732c5f488b150a68cf8d6b5d362544b8d469aa4a",
+            "size": 3223
         }
     }
 }

@@ -10,6 +10,7 @@ use Kernel\Exception\NotFoundException;
 use Kernel\Plugin\Hook;
 use Kernel\Util\Context;
 use Kernel\Util\Plugin;
+use Kernel\Util\RedisClient;
 use Kernel\Util\RequestLogger;
 use Kernel\Waf\Firewall;
 
@@ -29,6 +30,7 @@ define("BASE_APP_SERVER", match ((int)config("store")['server']) {
 define("APP_VERSION", config('app')['version']);
 
 //session
+RedisClient::configureSession();
 session_name("ACG-SHOP");
 //session_start();
 //session_write_close();

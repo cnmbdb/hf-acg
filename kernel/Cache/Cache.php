@@ -5,12 +5,15 @@ namespace Kernel\Cache;
 
 use Kernel\Exception\RuntimeException;
 use Kernel\Util\File;
+use Kernel\Util\RedisClient;
 
 class Cache
 {
 
     private string $cacheDir;
     private int $resolve;
+    private ?\Redis $redis;
+    private string $redisKeyPrefix;
 
     public const OPTIONS_SERIALIZE = 0;
     public const OPTIONS_JSON = 1;
@@ -24,6 +27,11 @@ class Cache
 
         $this->cacheDir = rtrim($path, "/") . "/";
         $this->resolve = $resolve;
+        $redisConfig = config('redis');
+        $this->redis = RedisClient::connection((int)($redisConfig['cache_database'] ?? 2));
+        $namespace = str_replace('\\', '/', str_replace(BASE_PATH, '', $this->cacheDir));
+        $this->redisKeyPrefix = (string)($redisConfig['cache_prefix'] ?? 'acg_cache:')
+            . sha1($namespace) . ':';
     }
 
 
@@ -35,13 +43,20 @@ class Cache
      */
     public function set(string $name, mixed $value): void
     {
+        $encoded = $this->encode($value);
+        if ($this->redis !== null) {
+            try {
+                if ($this->redis->set($this->redisKey($name), $encoded)) {
+                    return;
+                }
+            } catch (\Throwable) {
+                $this->redis = null;
+            }
+        }
+
         $hashFile = $this->cacheDir . md5($name);
-        File::writeForLock($hashFile, function (string $contents) use ($value) {
-            return match ($this->resolve) {
-                self::OPTIONS_SERIALIZE => base64_encode(serialize($value)),
-                self::OPTIONS_JSON => base64_encode(json_encode($value)),
-                default => base64_encode($value),
-            };
+        File::writeForLock($hashFile, function (string $contents) use ($encoded) {
+            return $encoded;
         });
     }
 
@@ -51,6 +66,14 @@ class Cache
      */
     public function has(string $name): bool
     {
+        if ($this->redis !== null) {
+            try {
+                return $this->redis->exists($this->redisKey($name)) > 0;
+            } catch (\Throwable) {
+                $this->redis = null;
+            }
+        }
+
         return file_exists($this->cacheDir . md5($name));
     }
 
@@ -61,8 +84,17 @@ class Cache
      */
     public function del(string $name): void
     {
-        if ($this->has($name)) {
-            unlink($this->cacheDir . md5($name));
+        if ($this->redis !== null) {
+            try {
+                $this->redis->del($this->redisKey($name));
+            } catch (\Throwable) {
+                $this->redis = null;
+            }
+        }
+
+        $file = $this->cacheDir . md5($name);
+        if (file_exists($file)) {
+            unlink($file);
         }
     }
 
@@ -72,12 +104,40 @@ class Cache
      */
     public function get(string $name): mixed
     {
+        if ($this->redis !== null) {
+            try {
+                $contents = $this->redis->get($this->redisKey($name));
+                return $contents === false ? null : $this->decode((string)$contents);
+            } catch (\Throwable) {
+                $this->redis = null;
+            }
+        }
+
         return File::read($this->cacheDir . md5($name), function (string $contents) {
-            return match ($this->resolve) {
-                self::OPTIONS_SERIALIZE => unserialize(base64_decode($contents)),
-                self::OPTIONS_JSON => json_decode(base64_decode($contents, true)),
-                default => base64_decode($contents),
-            };
+            return $this->decode($contents);
         });
+    }
+
+    private function redisKey(string $name): string
+    {
+        return $this->redisKeyPrefix . md5($name);
+    }
+
+    private function encode(mixed $value): string
+    {
+        return match ($this->resolve) {
+            self::OPTIONS_SERIALIZE => base64_encode(serialize($value)),
+            self::OPTIONS_JSON => base64_encode((string)json_encode($value)),
+            default => base64_encode((string)$value),
+        };
+    }
+
+    private function decode(string $contents): mixed
+    {
+        return match ($this->resolve) {
+            self::OPTIONS_SERIALIZE => unserialize((string)base64_decode($contents, true)),
+            self::OPTIONS_JSON => json_decode((string)base64_decode($contents, true)),
+            default => base64_decode($contents, true),
+        };
     }
 }

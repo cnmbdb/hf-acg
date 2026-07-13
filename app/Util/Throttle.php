@@ -7,9 +7,8 @@ use Kernel\Cache\Cache;
 
 /**
  * 轻量限流器（服务端计数，按 key 独立窗口）。
- * 基于文件缓存实现，无需 Redis；用于挡住未登录接口的暴力枚举/爆破
- * （如卡密查询密码爆破、后台登录爆破）。计数存于项目内 runtime/throttle，
- * 不含任何敏感信息，且受 nginx /runtime 拦截保护。
+ * 默认使用 Redis 缓存，并在 Redis 不可用时回退到 runtime/throttle 文件缓存；
+ * 用于挡住未登录接口的暴力枚举/爆破（如卡密查询密码爆破、后台登录爆破）。
  */
 class Throttle
 {
