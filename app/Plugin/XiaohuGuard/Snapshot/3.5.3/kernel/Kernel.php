@@ -56,6 +56,10 @@ try {
         $_GET['s'] = '/user/index/three';
     }
 
+    if (($_GET['s'] ?? '') === '/2') {
+        $_GET['s'] = '/plugin/HStockPlus/index/index';
+    }
+
     //waf install -> 2025-07-26
     $routePath = $_GET['s'] = $_GET['s'] ?? "/user/index/three";
     Context::set(\Kernel\Context\Interface\Request::class, new Request());
