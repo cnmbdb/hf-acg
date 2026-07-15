@@ -49,6 +49,29 @@ class Dict implements \App\Service\Dict
                 return array_map('get_object_vars', $matched);
             }
 
+            if ($source === 'hstockplus') {
+                $root = DB::selectOne(
+                    "select c.id as id from {$prefix}category c where c.owner=0 and (c.pid is null or c.pid=0) and c.name='账户' and (c.source=? or exists (select 1 from {$prefix}commodity x where x.category_id=c.id and left(x.code,4)='HSP_') or exists (select 1 from {$prefix}category ch inner join {$prefix}commodity x on x.category_id=ch.id where ch.pid=c.id and left(x.code,4)='HSP_')) order by (c.source=?) desc,c.id asc limit 1",
+                    [$source, $source]
+                );
+                if (!$root) {
+                    return [];
+                }
+
+                $rootId = (int)$root->id;
+                $hstockPlusKeywordWhere = $keywords !== '' ? ' and c.name like ?' : '';
+                $hstockPlusBindings = [$rootId, $rootId, $source];
+                if ($keywords !== '') {
+                    $hstockPlusBindings[] = "%{$keywords}%";
+                }
+                $matched = DB::select(
+                    "select c.id as id,c.name as name,c.pid as pid from {$prefix}category c where c.owner=0 and (c.id=? or (c.pid=? and (c.source=? or exists (select 1 from {$prefix}commodity x where x.category_id=c.id and left(x.code,4)='HSP_')){$hstockPlusKeywordWhere})) order by c.sort asc,c.id asc",
+                    $hstockPlusBindings
+                );
+
+                return array_map('get_object_vars', $matched);
+            }
+
             $matched = DB::select(
                 "select id as id,name as name,pid as pid from {$prefix}category where owner=0 and (source=? or icon like ?){$keywordWhere} order by sort asc,id asc",
                 [$source, $icons[$source]]

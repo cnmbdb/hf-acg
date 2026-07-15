@@ -61,8 +61,8 @@
             "size": 368
         },
         "app/Service/Bind/Dict.php": {
-            "sha256": "1f421ddedef42bbf8bf9e2d7b72705d191264da67215ebd384f0abc7df097893",
-            "size": 5282
+            "sha256": "75a21c4075820673dc23e1838000686d96e35d8a1965905deab3ccc4f0ff2e72",
+            "size": 6739
         },
         "app/Service/Bind/Shop.php": {
             "sha256": "05297f627400b8e39fc1abfc864706a09458a573ef5aabc41d9f56bb380ff7a0",

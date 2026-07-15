@@ -17,6 +17,8 @@ use Kernel\Exception\JSONException;
 class Sync
 {
     private const PLUGIN = 'HStockPlus';
+    private const CATEGORY_SOURCE = 'hstockplus';
+    private const CATEGORY_ROOT = '账户';
     private const DESCRIPTION_MAX_BYTES = 50000;
     private const STOCK_MAX = 2147483647;
     private const ACCOUNT_SUBCATEGORIES = [
@@ -220,9 +222,11 @@ class Sync
 
     private function syncCategoryTree(array $rows, array $config, array &$stats): void
     {
+        $this->syncCategoryPath([self::CATEGORY_ROOT], $config, $stats);
         foreach ($rows as $row) {
             if (is_string($row) || is_numeric($row)) {
-                $this->syncCategoryPath([(string)$row], $config, $stats);
+                $child = $this->normalizeAccountSubcategory((string)$row);
+                $this->syncCategoryPath([self::CATEGORY_ROOT, $child], $config, $stats);
                 continue;
             }
 
@@ -230,18 +234,15 @@ class Sync
                 continue;
             }
 
-            $parent = $this->normalizeTopCategory($this->cleanTitle($this->fieldValue($row, ['category', 'name', 'title'])));
-            if ($parent === '') {
+            $upstreamParent = $this->normalizeTopCategory($this->cleanTitle($this->fieldValue($row, ['category', 'name', 'title'])));
+            if ($upstreamParent !== self::CATEGORY_ROOT) {
                 continue;
             }
-            $parentCategory = $this->syncCategoryPath([$parent], $config, $stats);
-            foreach ($this->extractSubcategoryNames($row, $this->normalizeTopCategory($parent) === '账户') as $index => $child) {
-                $category = $this->syncCategoryPath([$parent, $child], $config, $stats);
+            foreach ($this->extractSubcategoryNames($row, true) as $child) {
+                $category = $this->syncCategoryPath([self::CATEGORY_ROOT, $child], $config, $stats);
                 $category->sort = $this->categorySort($child);
                 $category->save();
             }
-            $parentCategory->sort = $this->categorySort($parent);
-            $parentCategory->save();
         }
     }
 
@@ -437,7 +438,13 @@ class Sync
             $name = trim($prefix . $cleanCategory);
         }
 
-        $query = Category::query()->where('owner', 0)->where('name', $name);
+        $query = Category::query()
+            ->where('owner', 0)
+            ->where('name', $name)
+            ->where(function ($builder): void {
+                $builder->where('source', self::CATEGORY_SOURCE)
+                    ->orWhere('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%');
+            });
         if ($parent) {
             $query->where('pid', $parent->id);
         } else {
@@ -452,7 +459,21 @@ class Sync
             if ($category || $oldName === $name) {
                 continue;
             }
-            $category = Category::query()->where('owner', 0)->where('name', $oldName)->first();
+            $legacyQuery = Category::query()
+                ->where('owner', 0)
+                ->where('name', $oldName)
+                ->where(function ($builder): void {
+                    $builder->where('source', self::CATEGORY_SOURCE)
+                        ->orWhere('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%');
+                });
+            if ($parent) {
+                $legacyQuery->where('pid', $parent->id);
+            } else {
+                $legacyQuery->where(function ($builder): void {
+                    $builder->whereNull('pid')->orWhere('pid', 0);
+                });
+            }
+            $category = $legacyQuery->first();
         }
         $created = false;
         if (!$category) {
@@ -468,6 +489,7 @@ class Sync
         $category->pid = $parent?->id;
         $category->sort = $sort ?: $this->categorySort($cleanCategory);
         $category->icon = $this->categoryIcon($upstreamCategory);
+        $category->source = self::CATEGORY_SOURCE;
         $category->status = (int)($config['default_category_status'] ?? 1);
         $category->hide = 0;
         $category->save();
@@ -516,6 +538,10 @@ class Sync
                 ->where('owner', (int)$legacyCategory->owner)
                 ->where('name', $newName)
                 ->where('id', '<>', $legacyCategory->id)
+                ->where(function ($query): void {
+                    $query->where('source', self::CATEGORY_SOURCE)
+                        ->orWhere('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%');
+                })
                 ->first();
 
             if ($target) {
@@ -554,15 +580,16 @@ class Sync
         $stats['categories_updated'] ??= 0;
         $stats['categories_deleted'] ??= 0;
 
+        $this->restoreForeignCategoryMarkers($stats);
+
         $accountParents = Category::query()
             ->where('owner', 0)
             ->where(function ($query): void {
                 $query->whereNull('pid')->orWhere('pid', 0);
             })
             ->where(function ($query): void {
-                $query->where('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%')
-                    ->orWhere('name', '账户')
-                    ->orWhere('name', 'Accounts')
+                $query->where('source', self::CATEGORY_SOURCE)
+                    ->orWhere('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%')
                     ->orWhere('name', 'like', 'HStockPlus%账户%')
                     ->orWhere('name', 'like', 'HStockPlus%Accounts%');
             })
@@ -582,6 +609,10 @@ class Sync
                 })
                 ->where('name', '账户')
                 ->where('id', '<>', $parent->id)
+                ->where(function ($query): void {
+                    $query->where('source', self::CATEGORY_SOURCE)
+                        ->orWhere('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%');
+                })
                 ->first();
             if ($targetParent) {
                 $this->mergeCategoryInto($parent, $targetParent);
@@ -593,6 +624,10 @@ class Sync
             $parentChanged = false;
             if ((string)$parent->name !== '账户') {
                 $parent->name = '账户';
+                $parentChanged = true;
+            }
+            if ((string)$parent->source !== self::CATEGORY_SOURCE) {
+                $parent->source = self::CATEGORY_SOURCE;
                 $parentChanged = true;
             }
             $parentIcon = $this->categoryIcon('账户');
@@ -660,6 +695,7 @@ class Sync
         $target->create_time = date('Y-m-d H:i:s');
         $target->status = (int)$source->status;
         $target->hide = 0;
+        $target->source = self::CATEGORY_SOURCE;
         $target->icon = $this->categoryIcon($targetName);
         $target->sort = $this->categorySort($targetName);
         $target->save();
@@ -688,11 +724,64 @@ class Sync
             $category->hide = 0;
             $changed = true;
         }
+        if ((string)$category->source !== self::CATEGORY_SOURCE) {
+            $category->source = self::CATEGORY_SOURCE;
+            $changed = true;
+        }
         if ($changed) {
             $category->save();
         }
 
         return $changed;
+    }
+
+    /**
+     * Older name-only category matching could mark FansGurus trees as HStockPlus.
+     * Restore those trees before pruning HStockPlus categories so their products
+     * and parent/child relationships remain untouched.
+     */
+    private function restoreForeignCategoryMarkers(array &$stats): void
+    {
+        $candidates = Category::query()
+            ->where('owner', 0)
+            ->where('source', self::CATEGORY_SOURCE)
+            ->get();
+        if ($candidates->isEmpty()) {
+            return;
+        }
+
+        $childrenByParent = Category::query()
+            ->where('owner', 0)
+            ->get(['id', 'pid'])
+            ->groupBy('pid')
+            ->map(static fn($items) => $items->pluck('id')->map(static fn($id): int => (int)$id)->all())
+            ->all();
+
+        foreach ($candidates as $category) {
+            $scopeIds = array_merge([(int)$category->id], $this->descendantCategoryIds((int)$category->id, $childrenByParent));
+            $hasHStockPlusProducts = Commodity::query()
+                ->whereIn('category_id', $scopeIds)
+                ->where('code', 'like', 'HSP\_%')
+                ->exists();
+            if ($hasHStockPlusProducts) {
+                continue;
+            }
+
+            $hasFansGurusContent = Commodity::query()
+                ->whereIn('category_id', $scopeIds)
+                ->where('code', 'like', 'FG\_%')
+                ->exists()
+                || Category::query()->whereIn('id', $scopeIds)->where('source', 'fansgurus')->exists();
+
+            $category->source = $hasFansGurusContent ? 'fansgurus' : 'default';
+            if (str_starts_with((string)$category->icon, '/app/Plugin/HStockPlus/Assets/icons/')) {
+                $category->icon = $hasFansGurusContent
+                    ? str_replace('/HStockPlus/', '/FansGurus/', (string)$category->icon)
+                    : '/favicon.ico';
+            }
+            $category->save();
+            $stats['categories_updated']++;
+        }
     }
 
     private function mergeCategoryInto(Category $source, Category $target): void
@@ -740,9 +829,7 @@ class Sync
         $categories = Category::query()
             ->where('owner', 0)
             ->where(function ($query) use ($productCategoryIds): void {
-                $query->where('icon', 'like', '/app/Plugin/HStockPlus/Assets/icons/%')
-                    ->orWhere('name', 'like', 'HStockPlus%');
-
+                $query->where('source', self::CATEGORY_SOURCE);
                 if ($productCategoryIds) {
                     $query->orWhereIn('id', $productCategoryIds);
                 }
@@ -767,6 +854,7 @@ class Sync
         $allCategoryIds = array_values(array_unique($allCategoryIds));
         $commodityCounts = Commodity::query()
             ->whereIn('category_id', $allCategoryIds)
+            ->where('code', 'like', 'HSP\_%')
             ->selectRaw('category_id, count(*) as aggregate')
             ->groupBy('category_id')
             ->pluck('aggregate', 'category_id')
@@ -971,53 +1059,9 @@ class Sync
         }
 
         $rawLeaf = $subcategory !== '' ? $subcategory : ($rawParts[1] ?? $rawParts[0] ?? '');
-        $hintParent = '';
-        if ($subcategoryId !== '') {
-            $hintParent = $this->cleanTitle((string)($categoryHints['parent_by_child_id'][$subcategoryId] ?? ''));
-        }
-        if ($hintParent === '' && $rawLeaf !== '') {
-            $hintParent = $this->cleanTitle((string)($categoryHints['parent_by_child'][$this->categoryLookupKey($rawLeaf)] ?? ''));
-        }
+        $child = $this->normalizeAccountSubcategory($rawLeaf !== '' ? $rawLeaf : (string)($service['name'] ?? ''));
 
-        $parent = $hintParent !== '' ? $this->normalizeTopCategory($hintParent) : $this->hstockplusTopCategory($service, $category, $rawLeaf);
-        $child = $parent === '账户'
-            ? $this->normalizeAccountSubcategory($rawLeaf !== '' ? $rawLeaf : (string)($service['name'] ?? ''))
-            : ($rawLeaf !== '' ? $rawLeaf : $parent);
-
-        return [$parent, $child];
-    }
-
-    private function hstockplusTopCategory(array $service, string $category, string $subcategory): string
-    {
-        $entityType = trim((string)($service['entityType'] ?? $service['entity_type'] ?? ''));
-        $text = mb_strtolower($category . ' ' . $subcategory . ' ' . (string)($service['name'] ?? ''), 'UTF-8');
-        $categoryText = mb_strtolower($category, 'UTF-8');
-
-        if (str_contains($categoryText, '账号') || str_contains($categoryText, '账户') || str_contains($categoryText, 'account')) {
-            return '账户';
-        }
-
-        if ($entityType === 'smm' || str_contains($text, '增长') || str_contains($text, '粉丝') || str_contains($text, '关注') || str_contains($text, '观看') || str_contains($text, '点赞') || str_contains($text, '成员')) {
-            return '增长服务';
-        }
-
-        if (str_contains($text, '代理') || str_contains($text, 'proxy') || str_contains($text, 'proxies') || str_contains($text, 'vpn') || str_contains($text, 'vps')) {
-            return '代理服务';
-        }
-
-        if (str_contains($text, '短信') || str_contains($text, 'sms') || str_contains($text, '验证') || str_contains($text, 'verification')) {
-            return '短信验证';
-        }
-
-        if (str_contains($text, '评论') || str_contains($text, 'review') || str_contains($text, '评价') || str_contains($text, 'trustpilot')) {
-            return '评论';
-        }
-
-        if (str_contains($text, '邮件') || str_contains($text, '邮箱') || str_contains($text, 'email') || str_contains($text, 'mail') || str_contains($text, 'gmail') || str_contains($text, 'hotmail') || str_contains($text, 'outlook')) {
-            return '电子邮件';
-        }
-
-        return '账户';
+        return [self::CATEGORY_ROOT, $child];
     }
 
     private function normalizeTopCategory(string $category): string

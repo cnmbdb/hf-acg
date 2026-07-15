@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
 set -eu
 
+# launchd uses a minimal PATH and does not include Homebrew by default.
+PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+export PATH
+
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 env_file="$root/.env"
 
