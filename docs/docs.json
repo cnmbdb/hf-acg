@@ -1,0 +1,21 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "乐多帮助中心",
+  "colors": {
+    "primary": "#111827",
+    "light": "#e5e7eb",
+    "dark": "#111827"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "帮助中心",
+        "pages": ["pages/index"]
+      },
+      {
+        "group": "博客",
+        "pages": ["blog/index"]
+      }
+    ]
+  }
+}

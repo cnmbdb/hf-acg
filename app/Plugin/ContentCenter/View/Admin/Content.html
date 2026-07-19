@@ -1,0 +1,44 @@
+#{include file=$adminHeader}
+<div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+    #{include file=$adminToolbar}
+    <div class="post d-flex flex-column-fluid" id="kt_post">
+        <div id="kt_content_container" class="container-fluid">
+            <div class="card mb-5 mb-xl-8">
+                <div class="card-header border-0 pt-5">
+                    <div class="card-title d-flex flex-column">
+                        <span class="card-label fw-bold fs-3 mb-1">#{$title}</span>
+                        <span class="text-muted fw-semibold fs-7">草稿仅保存在本系统；发布时才会生成 MDX 并提交到独立文档仓库。</span>
+                    </div>
+                    <div class="card-toolbar gap-2">
+                        #{if $docsUrl}
+                        <a class="btn btn-sm btn-light-primary" href="#{$docsUrl}" target="_blank" rel="noopener">打开文档站</a>
+                        #{/if}
+                        <button class="btn btn-sm btn-primary" id="content-create">新建#{if $contentType == 'blog'}文章#{else}页面#{/if}</button>
+                    </div>
+                </div>
+                <div class="card-body py-3">
+                    <div class="d-flex gap-2 mb-5">
+                        <input class="form-control form-control-sm w-250px" id="content-keyword" placeholder="搜索标题或 slug">
+                        <select class="form-select form-select-sm w-150px" id="content-status">
+                            <option value="">全部状态</option>
+                            <option value="draft">草稿</option>
+                            <option value="published">已发布</option>
+                            <option value="failed">发布失败</option>
+                        </select>
+                        <button class="btn btn-sm btn-light" id="content-search">搜索</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle table-row-dashed fs-6 gy-4" id="content-table">
+                            <thead><tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0"><th>标题</th><th>Slug</th><th>状态</th><th>最后更新</th><th class="text-end">操作</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="text-muted fs-7 mt-3" id="content-total"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>window.ContentCenter = { type: '#{$contentType}', docsUrl: '#{$docsUrl}' };</script>
+#{ready('/app/Plugin/ContentCenter/Assets/content-center.js?v=20260720')}
+#{include file=$adminFooter}
