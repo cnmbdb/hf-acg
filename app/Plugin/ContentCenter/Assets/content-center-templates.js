@@ -6,8 +6,8 @@
     const statusText = value => ({draft: '草稿', published: '已发布', failed: '发布失败'}[value] || value);
     const meta = {
         blog_home: {
-            route: '/',
-            description: '博客入口页，可设置介绍内容并展示最近发布的文章。',
+            route: '/blog',
+            description: '站内博客首页，继承商城顶部导航，可配置大图轮播、横向轮播、分类筛选和综合文章列表。',
             placeholders: ['{{latest_articles}} 最近 5 篇文章', '{{articles}} 全部文章', '{{article_count}} 文章总数']
         },
         blog_detail: {
@@ -48,6 +48,36 @@
 
     function openEditor(item) {
         const config = meta[item.template_key] || {placeholders: []};
+        const settings = item.settings_json || {};
+        const articleOptions = item.article_options || [];
+        const slideOptions = selected => `<option value="0">自动选择最新文章</option>${articleOptions.map(article => `<option value="${article.id}"${Number(selected) === Number(article.id) ? ' selected' : ''}>#${article.id} ${escape(article.title)}</option>`).join('')}`;
+        const slides = Array.from({length: 3}, (_, index) => (settings.hero_slides || [])[index] || {});
+        const homeSettings = item.template_key !== 'blog_home' ? '' : `
+            <div class="card border mb-5">
+                <div class="card-header min-h-60px"><div class="card-title"><div><div class="fw-bold">博客首页展示设置</div><div class="text-muted fs-8">前台只读取已发布设置；保存草稿不会立即影响线上博客首页。</div></div></div></div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4"><label class="form-label required">精选区短标题</label><input class="form-control" name="hero_kicker" maxlength="40" value="${escape(settings.hero_kicker || '')}"></div>
+                        <div class="col-md-8"><label class="form-label required">精选区主标题</label><input class="form-control" name="hero_heading" maxlength="80" value="${escape(settings.hero_heading || '')}"></div>
+                        <div class="col-12"><label class="form-label required">精选区说明</label><input class="form-control" name="hero_subheading" maxlength="180" value="${escape(settings.hero_subheading || '')}"></div>
+                    </div>
+                    <div class="fw-bold mb-3">大图轮播卡片</div>
+                    ${slides.map((slide, index) => `<div class="row g-3 align-items-end mb-3 cc-slide-setting">
+                        <div class="col-md-5"><label class="form-label">第 ${index + 1} 张文章</label><select class="form-select" name="hero_slide_article_${index}">${slideOptions(slide.article_id)}</select></div>
+                        <div class="col-md-7"><label class="form-label">图片地址</label><input class="form-control" name="hero_slide_image_${index}" value="${escape(slide.image || '')}" placeholder="https://... 或 /assets/..."></div>
+                    </div>`).join('')}
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-4"><label class="form-label">大图切换间隔（毫秒）</label><input class="form-control" type="number" name="hero_interval" min="3000" max="15000" step="500" value="${escape(settings.hero_interval || 6500)}"></div>
+                        <div class="col-md-4"><label class="form-label required">横向轮播标题</label><input class="form-control" name="ticker_title" maxlength="40" value="${escape(settings.ticker_title || '')}"></div>
+                        <div class="col-md-4"><label class="form-label">横向滚动一圈（秒）</label><input class="form-control" type="number" name="ticker_duration" min="12" max="120" value="${escape(settings.ticker_duration || 28)}"></div>
+                        <div class="col-md-6"><label class="form-label required">分类区标题</label><input class="form-control" name="category_title" maxlength="40" value="${escape(settings.category_title || '')}"></div>
+                        <div class="col-md-6"><label class="form-label">优先分类</label><input class="form-control" name="featured_categories" value="${escape((settings.featured_categories || []).join(', '))}" placeholder="公告, 教程, 产品更新"><div class="form-text">其余分类会从已发布文章标签自动补充。</div></div>
+                        <div class="col-md-6"><label class="form-label required">文章列表标题</label><input class="form-control" name="list_title" maxlength="40" value="${escape(settings.list_title || '')}"></div>
+                        <div class="col-md-3"><label class="form-label">文章数量</label><input class="form-control" type="number" name="list_limit" min="3" max="30" value="${escape(settings.list_limit || 12)}"></div>
+                        <div class="col-md-3 d-flex align-items-end"><label class="form-check form-switch form-check-custom form-check-solid mb-3"><input class="form-check-input" type="checkbox" name="animation_enabled" value="1"${settings.animation_enabled !== false ? ' checked' : ''}><span class="form-check-label">启用 GSAP 动画</span></label></div>
+                    </div>
+                </div>
+            </div>`;
         const pageFields = item.template_key === 'blog_detail' ? '' : `
             <div class="row g-3 mb-3">
                 <div class="col-md-6"><label class="form-label required">页面标题</label><input class="form-control" name="page_title" maxlength="160" value="${escape(item.page_title || '')}"></div>
@@ -61,8 +91,9 @@
                 <div class="fs-7">${escape(config.description || '')}</div>
             </div>
             ${pageFields}
+            ${homeSettings}
             <div class="mb-3">
-                <label class="form-label required">MDX 页面模板</label>
+                <label class="form-label required">Mintlify MDX 页面模板（高级）</label>
                 <textarea class="form-control font-monospace" name="body_mdx" rows="20">${escape(item.body_mdx || '')}</textarea>
                 <div class="form-text mt-3">可用占位符：</div>
                 <div class="mt-2">${placeholderHelp}</div>
@@ -71,6 +102,25 @@
         layer.open({type: 1, title: '编辑' + item.name, area: ['min(920px, 96vw)', 'min(92vh, 920px)'], content: html, btn: ['保存草稿', '取消'], yes(index, dom) {
             const data = {};
             dom.find('.content-center-template-editor :input[name]').serializeArray().forEach(pair => data[pair.name] = pair.value);
+            if (item.template_key === 'blog_home') {
+                data.settings_json = JSON.stringify({
+                    hero_kicker: data.hero_kicker,
+                    hero_heading: data.hero_heading,
+                    hero_subheading: data.hero_subheading,
+                    hero_interval: Number(data.hero_interval || 6500),
+                    hero_slides: [0, 1, 2].map(slideIndex => ({
+                        article_id: Number(data['hero_slide_article_' + slideIndex] || 0),
+                        image: data['hero_slide_image_' + slideIndex] || ''
+                    })),
+                    ticker_title: data.ticker_title,
+                    ticker_duration: Number(data.ticker_duration || 28),
+                    category_title: data.category_title,
+                    featured_categories: String(data.featured_categories || '').split(',').map(value => value.trim()).filter(Boolean),
+                    list_title: data.list_title,
+                    list_limit: Number(data.list_limit || 12),
+                    animation_enabled: dom.find('[name="animation_enabled"]').is(':checked')
+                });
+            }
             request('saveTemplate', data).done(res => {
                 if (res.code !== 200) return notify(res.msg || '保存失败', true);
                 notify(res.msg || '保存成功');
@@ -92,7 +142,7 @@
     root.on('click.contentCenterTemplates', '.publish-template', function () {
         const key = $(this).data('key');
         const config = meta[key] || {};
-        layer.confirm('确认发布该页面模板吗？' + (key === 'blog_detail' ? '所有已发布文章都会重新应用这套详情模板。' : '对应页面会立即提交到 GitHub 并触发 Mintlify 更新。'), () => {
+        layer.confirm('确认发布该页面模板吗？' + (key === 'blog_detail' ? '所有已发布文章都会重新应用这套详情模板。' : '站内博客首页设置会立即生效，同时提交 Mintlify 首页模板。'), () => {
             request('publishTemplate', {template_key: key}).done(res => {
                 notify(res.msg || '发布成功', res.code !== 200);
                 load();

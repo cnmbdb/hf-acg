@@ -57,9 +57,11 @@ final class TemplateService
         if ($template->template_key === 'blog_detail') {
             $template->page_title = null;
             $template->page_description = null;
+            $template->settings_json = null;
         } else {
             $template->page_title = $this->text($input['page_title'] ?? '', 160, '页面标题');
             $template->page_description = $this->nullableText($input['page_description'] ?? '', 500, '页面描述');
+            $template->settings_json = BlogHomeSettings::fromInput($input['settings_json'] ?? []);
         }
         $template->body_mdx = $body;
         $template->status = 'draft';
@@ -81,6 +83,7 @@ final class TemplateService
             $template->published_page_title = $template->page_title;
             $template->published_page_description = $template->page_description;
             $template->published_body_mdx = $template->body_mdx;
+            $template->published_settings_json = $template->settings_json;
             $template->status = 'published';
             $template->published_at = Date::current();
         } catch (\Throwable $e) {
@@ -95,7 +98,7 @@ final class TemplateService
         return $template;
     }
 
-    /** @return array{page_title:?string,page_description:?string,body_mdx:string} */
+    /** @return array{page_title:?string,page_description:?string,body_mdx:string,settings_json:array} */
     public function effective(string $key): array
     {
         $template = $this->find($key);
@@ -103,6 +106,9 @@ final class TemplateService
             'page_title' => $template->published_page_title ?? $template->page_title,
             'page_description' => $template->published_page_description ?? $template->page_description,
             'body_mdx' => $template->published_body_mdx ?? $template->body_mdx,
+            'settings_json' => $key === 'blog_home'
+                ? BlogHomeSettings::effective($template->published_settings_json ?? $template->settings_json)
+                : [],
         ];
     }
 

@@ -70,3 +70,46 @@ function route(uri) {
         return `/plugin/${rt[1]}/${rt[2]}/${uri}`;
     }
 }
+
+// ContentCenter owns the files below; this small bridge makes its public blog
+// navigation available even when the framework's compiled plugin hook cache is
+// stale after a code-only deployment.
+(function preloadContentCenterBlogStyle() {
+    if (location.pathname !== '/blog' && location.pathname.indexOf('/plugin/ContentCenter/index/blog') !== 0) return;
+    if (document.querySelector('link[data-content-center-blog]')) return;
+    const style = document.createElement('link');
+    style.rel = 'stylesheet';
+    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260720-2';
+    style.setAttribute('data-content-center-blog', '1');
+    document.head.appendChild(style);
+}());
+
+documentReady(() => {
+    if (!document.body || !document.body.classList.contains('xh-page')) return;
+
+    const blogPage = document.querySelector('[data-cc-blog]');
+
+    if (!document.querySelector('script[data-content-center-nav]')) {
+        const navigation = document.createElement('script');
+        navigation.src = '/app/Plugin/ContentCenter/Assets/content-center-nav.js?v=20260720-2';
+        navigation.setAttribute('data-content-center-nav', '1');
+        document.body.appendChild(navigation);
+    }
+
+    if (!blogPage || document.querySelector('script[data-content-center-page]')) return;
+
+    const pageScript = document.createElement('script');
+    pageScript.src = '/app/Plugin/ContentCenter/Assets/content-center-blog.js?v=20260720-2';
+    pageScript.setAttribute('data-content-center-page', '1');
+
+    if (window.gsap) {
+        document.body.appendChild(pageScript);
+        return;
+    }
+
+    const gsapScript = document.createElement('script');
+    gsapScript.src = '/app/Plugin/ContentCenter/Assets/vendor/gsap.min.js?v=3.13.0';
+    gsapScript.onload = () => document.body.appendChild(pageScript);
+    gsapScript.onerror = () => document.body.appendChild(pageScript);
+    document.body.appendChild(gsapScript);
+});

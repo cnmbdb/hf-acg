@@ -15,6 +15,7 @@ if ($path !== '/' && is_file($file)) {
 $path = match ($path) {
     '/2' => '/plugin/HStockPlus/index/index',
     '/3' => '/user/index/three',
+    '/blog', '/blog/' => '/plugin/ContentCenter/index/blog',
     default => $path,
 };
 

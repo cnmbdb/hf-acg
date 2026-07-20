@@ -12,9 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $page_title
  * @property string|null $page_description
  * @property string $body_mdx
+ * @property array|string|null $settings_json
  * @property string|null $published_page_title
  * @property string|null $published_page_description
  * @property string|null $published_body_mdx
+ * @property array|string|null $published_settings_json
  * @property string $status
  * @property string|null $published_at
  * @property int $author_id
@@ -32,5 +34,7 @@ class Template extends Model
     protected $casts = [
         'id' => 'integer',
         'author_id' => 'integer',
+        'settings_json' => 'array',
+        'published_settings_json' => 'array',
     ];
 }

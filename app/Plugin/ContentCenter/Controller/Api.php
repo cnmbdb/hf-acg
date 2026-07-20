@@ -176,6 +176,18 @@ class Api extends Manage
         ];
         if ($full) {
             $row['body_mdx'] = $template->body_mdx;
+            $row['settings_json'] = $template->template_key === 'blog_home'
+                ? \App\Plugin\ContentCenter\Service\BlogHomeSettings::effective($template->settings_json)
+                : [];
+            if ($template->template_key === 'blog_home') {
+                $row['article_options'] = Content::query()
+                    ->where('content_type', 'blog')
+                    ->where('status', 'published')
+                    ->orderByDesc('published_at')
+                    ->get(['id', 'title'])
+                    ->map(static fn(Content $content): array => ['id' => $content->id, 'title' => $content->title])
+                    ->all();
+            }
         }
         return $row;
     }

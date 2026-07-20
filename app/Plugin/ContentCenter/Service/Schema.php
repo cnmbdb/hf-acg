@@ -41,9 +41,11 @@ final class Schema
                 $table->string('page_title', 160)->nullable();
                 $table->text('page_description')->nullable();
                 $table->longText('body_mdx');
+                $table->longText('settings_json')->nullable();
                 $table->string('published_page_title', 160)->nullable();
                 $table->text('published_page_description')->nullable();
                 $table->longText('published_body_mdx')->nullable();
+                $table->longText('published_settings_json')->nullable();
                 $table->string('status', 16)->default('draft');
                 $table->dateTime('published_at')->nullable();
                 $table->unsignedBigInteger('author_id')->default(0);
@@ -51,6 +53,17 @@ final class Schema
                 $table->text('publish_error')->nullable();
                 $table->dateTime('create_time');
                 $table->dateTime('update_time');
+            });
+        }
+
+        if (!$schema->hasColumn('content_center_template', 'settings_json')) {
+            $schema->table('content_center_template', static function (Blueprint $table): void {
+                $table->longText('settings_json')->nullable()->after('body_mdx');
+            });
+        }
+        if (!$schema->hasColumn('content_center_template', 'published_settings_json')) {
+            $schema->table('content_center_template', static function (Blueprint $table): void {
+                $table->longText('published_settings_json')->nullable()->after('published_body_mdx');
             });
         }
 
@@ -62,16 +75,18 @@ final class Schema
         $now = date('Y-m-d H:i:s');
         $templates = [
             'blog_home' => [
-                'name' => '文章首页',
+                'name' => '博客首页',
                 'page_title' => '乐多博客',
                 'page_description' => '文章、教程与项目更新',
                 'body_mdx' => "# 欢迎来到乐多博客\n\n在这里查看最新文章、教程和项目更新。\n\n## 最新文章\n\n{{latest_articles}}\n",
+                'settings_json' => BlogHomeSettings::defaults(),
             ],
             'blog_detail' => [
                 'name' => '文章详情页',
                 'page_title' => null,
                 'page_description' => null,
                 'body_mdx' => "# {{title}}\n\n{{content}}\n",
+                'settings_json' => null,
             ],
         ];
 
@@ -85,9 +100,11 @@ final class Schema
                 'page_title' => $template['page_title'],
                 'page_description' => $template['page_description'],
                 'body_mdx' => $template['body_mdx'],
+                'settings_json' => $template['settings_json'] === null ? null : json_encode($template['settings_json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'published_page_title' => $template['page_title'],
                 'published_page_description' => $template['page_description'],
                 'published_body_mdx' => $template['body_mdx'],
+                'published_settings_json' => $template['settings_json'] === null ? null : json_encode($template['settings_json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'status' => 'published',
                 'published_at' => $now,
                 'author_id' => 0,
@@ -97,5 +114,17 @@ final class Schema
                 'update_time' => $now,
             ]);
         }
+
+        $home = DB::table('content_center_template')->where('template_key', 'blog_home');
+        $home->update(['name' => '博客首页']);
+        $defaults = json_encode(BlogHomeSettings::defaults(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        DB::table('content_center_template')
+            ->where('template_key', 'blog_home')
+            ->whereNull('settings_json')
+            ->update(['settings_json' => $defaults]);
+        DB::table('content_center_template')
+            ->where('template_key', 'blog_home')
+            ->whereNull('published_settings_json')
+            ->update(['published_settings_json' => $defaults]);
     }
 }
