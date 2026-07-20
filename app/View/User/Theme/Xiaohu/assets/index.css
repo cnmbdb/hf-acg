@@ -1973,6 +1973,12 @@ body.xh-page a {
     box-shadow: 0 0 0 1px #4095ff;
 }
 
+.xh-pay-card .pay-list .pay.is-primary span,
+.xh-pay-card .pay-list .pay.active span,
+.xh-pay-card .pay-list .pay.selected span {
+    color: #181b21;
+}
+
 .xh-pay-radio {
     width: 18px;
     height: 18px;
