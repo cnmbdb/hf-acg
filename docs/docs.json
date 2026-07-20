@@ -1,6 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "乐多帮助中心",
+  "theme": "mint",
   "colors": {
     "primary": "#111827",
     "light": "#e5e7eb",
