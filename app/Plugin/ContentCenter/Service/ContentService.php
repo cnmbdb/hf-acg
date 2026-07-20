@@ -19,7 +19,7 @@ final class ContentService
         }
 
         $type = (string)($input['content_type'] ?? $content->content_type ?? '');
-        if (!in_array($type, ['blog', 'page'], true)) {
+        if ($type !== 'blog') {
             throw new JSONException('内容类型无效');
         }
         $title = $this->text($input['title'] ?? '', 160, '标题');

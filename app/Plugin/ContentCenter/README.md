@@ -1,13 +1,23 @@
 # 内容中心（Mintlify）
 
-后台左侧只有一个“博客管理”入口，页面顶部可切换“博客管理”和“页面管理”。所有内容先安全保存到 MySQL；点击发布后，服务器将 MDX 提交到**独立的** GitHub 文档仓库，Mintlify GitHub App 随后自动部署。
+后台左侧只有一个“博客管理”入口，顶部包含两个区域：
 
-## 首次接入
+- **博客管理**：创建、编辑和发布文章。
+- **页面管理**：管理三个固定页面——文章首页、文章列表、文章详情页。
 
-1. 新建一个仅用于文档的私有 GitHub 仓库，复制本目录 `DocsStarter/docs.json` 到仓库根目录。
-2. 在 Mintlify 创建项目，连接这个仓库和发布分支，并安装 Mintlify GitHub App。
-3. 在本插件设置中填写 Owner、仓库名、分支、文档目录（根目录留空）和线上文档地址。
-4. 仅在服务器 `.env` 中添加 `CONTENT_CENTER_GITHUB_TOKEN=`。令牌必须是细粒度 Token，且只授予该文档仓库 `Contents: Read and write`；绝不要填写到插件设置或前端代码中。
-5. 首次发布一篇博客和一个页面。系统会生成 `blog/<slug>.mdx` 或 `pages/<slug>.mdx`，并同步更新 `blog/index.mdx`、`pages/index.mdx`，所以两类内容都能从 Mintlify 导航进入。
+文章详情页是一套共享模板，所有文章发布时都会自动套用。页面模板和文章草稿保存在 MySQL，点击发布后由服务器生成 MDX 并提交到 GitHub，Mintlify GitHub App 随后自动部署。
 
-发布前可在文档仓库本地执行 `mint validate` 与 `mint broken-links`。删除后台记录不会删除 GitHub 文件，以避免误删已上线页面；需要下线时请在后台编辑后重新发布，或在文档仓库走审查后的删除提交。
+## 输出结构
+
+- `docs/index.mdx`：文章首页，默认展示最近 5 篇文章。
+- `docs/blog/index.mdx`：文章列表，展示全部已发布文章。
+- `docs/blog/<slug>.mdx`：文章详情，统一使用文章详情页模板。
+- `docs/docs.json`：Mintlify 导航和主题配置。
+
+## 模板占位符
+
+文章首页支持 `{{latest_articles}}`、`{{articles}}`、`{{article_count}}`；文章列表支持 `{{articles}}`、`{{latest_articles}}`、`{{article_count}}`；文章详情页支持 `{{title}}`、`{{excerpt}}`、`{{content}}`、`{{published_at}}`、`{{cover}}`、`{{tags}}`。
+
+## 发布凭据
+
+只在服务器 `.env` 中配置 `CONTENT_CENTER_GITHUB_TOKEN=`。令牌应为仅授权当前仓库、仅开放 `Contents: Read and write` 的细粒度 Token，不能写入插件设置、前端代码或 Git 仓库。

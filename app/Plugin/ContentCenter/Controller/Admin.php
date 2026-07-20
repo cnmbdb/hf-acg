@@ -22,7 +22,15 @@ class Admin extends ManagePlugin
     /** @throws JSONException|ViewException */
     public function page(): string
     {
-        return $this->contentPage('page', '页面管理');
+        require_once BASE_PATH . '/app/View/Admin/Helper.php';
+        $config = Plugin::getConfig('ContentCenter', false);
+        return $this->render('页面管理', 'Admin/Templates.html', [
+            'toolbar' => $this->toolbar(),
+            'docsUrl' => rtrim((string)($config['docs_url'] ?? ''), '/'),
+            'adminHeader' => BASE_PATH . '/app/View/Admin/Header.html',
+            'adminToolbar' => BASE_PATH . '/app/View/Admin/Toolbar.html',
+            'adminFooter' => BASE_PATH . '/app/View/Admin/Footer.html',
+        ], true);
     }
 
     /** @throws JSONException|ViewException */
@@ -32,14 +40,19 @@ class Admin extends ManagePlugin
         $config = Plugin::getConfig('ContentCenter', false);
         return $this->render($title, 'Admin/Content.html', [
             'contentType' => $contentType,
-            'toolbar' => [
-                ['name' => '博客管理', 'url' => '/plugin/ContentCenter/admin/blog'],
-                ['name' => '页面管理', 'url' => '/plugin/ContentCenter/admin/page'],
-            ],
+            'toolbar' => $this->toolbar(),
             'docsUrl' => rtrim((string)($config['docs_url'] ?? ''), '/'),
             'adminHeader' => BASE_PATH . '/app/View/Admin/Header.html',
             'adminToolbar' => BASE_PATH . '/app/View/Admin/Toolbar.html',
             'adminFooter' => BASE_PATH . '/app/View/Admin/Footer.html',
         ], true);
+    }
+
+    private function toolbar(): array
+    {
+        return [
+            ['name' => '博客管理', 'url' => '/plugin/ContentCenter/admin/blog'],
+            ['name' => '页面管理', 'url' => '/plugin/ContentCenter/admin/page'],
+        ];
     }
 }

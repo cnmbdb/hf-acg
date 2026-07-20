@@ -1,8 +1,8 @@
 !function ($) {
     const state = window.ContentCenter || {};
-    const type = state.type === 'blog' ? 'blog' : 'page';
+    const type = 'blog';
     const api = '/plugin/ContentCenter/api/';
-    const label = type === 'blog' ? '文章' : '页面';
+    const label = '文章';
     const escape = value => $('<div>').text(value == null ? '' : String(value)).html();
     const request = (action, data = {}) => $.ajax({url: api + action, method: 'POST', dataType: 'json', data});
     const notify = (message, error = false) => window.toastr ? (error ? toastr.error(message) : toastr.success(message)) : alert(message);
@@ -25,8 +25,8 @@
     }
 
     function editor(item = {}) {
-        const coverField = type === 'blog' ? `<div class="mb-3"><label class="form-label">封面</label><input class="form-control" name="cover" value="${escape(item.cover || '')}" placeholder="https://... 或 /assets/cache/..." /></div>` : '';
-        const tagsField = type === 'blog' ? `<div class="mb-3"><label class="form-label">标签</label><input class="form-control" name="tags" value="${escape((item.tags || []).join(', '))}" placeholder="多个标签用英文逗号分隔" /></div>` : '';
+        const coverField = `<div class="mb-3"><label class="form-label">封面</label><input class="form-control" name="cover" value="${escape(item.cover || '')}" placeholder="https://... 或 /assets/cache/..." /></div>`;
+        const tagsField = `<div class="mb-3"><label class="form-label">标签</label><input class="form-control" name="tags" value="${escape((item.tags || []).join(', '))}" placeholder="多个标签用英文逗号分隔" /></div>`;
         const html = `<div class="p-4 content-center-editor">
             <input type="hidden" name="id" value="${escape(item.id || '')}"><input type="hidden" name="content_type" value="${type}">
             <div class="mb-3"><label class="form-label required">标题</label><input class="form-control" name="title" value="${escape(item.title || '')}" maxlength="160"></div>
@@ -36,9 +36,8 @@
             <div class="mb-3"><label class="form-label required">MDX 正文</label><textarea class="form-control font-monospace" name="body_mdx" rows="18" placeholder="# 标题&#10;&#10;正文内容">${escape(item.body_mdx || '')}</textarea><div class="form-text">支持 Mintlify MDX 组件。请不要在正文中再次加入 frontmatter，发布时会自动生成。</div></div>
         </div>`;
         layer.open({type: 1, title: (item.id ? '编辑' : '新建') + label, area: ['min(880px, 96vw)', 'min(92vh, 900px)'], content: html, btn: ['保存草稿', '取消'], yes(index, dom) {
-            const form = dom.find('.content-center-editor');
             const data = {};
-            form.serializeArray().forEach(pair => data[pair.name] = pair.value);
+            dom.find('.content-center-editor :input[name]').serializeArray().forEach(pair => data[pair.name] = pair.value);
             request('save', data).done(res => {
                 if (res.code !== 200) return notify(res.msg || '保存失败', true);
                 notify(res.msg || '保存成功'); layer.close(index); load();
@@ -54,7 +53,7 @@
     });
     $(document).on('click', '.publish', function () {
         const id = $(this).data('id');
-        layer.confirm('将保存的内容提交到独立 GitHub 文档仓库，并由 Mintlify 自动部署。确认发布吗？', () => {
+        layer.confirm('发布后会套用统一文章详情页模板，并同步更新文章首页和文章列表。确认发布吗？', () => {
             request('publish', {id}).done(res => { notify(res.msg || '发布成功', res.code !== 200); load(); }).fail(xhr => { notify(xhr.responseJSON?.msg || '发布失败', true); load(); });
         });
     });

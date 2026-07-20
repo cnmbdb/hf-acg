@@ -7,8 +7,10 @@ use App\Controller\Base\API\Manage;
 use App\Interceptor\ManageSession;
 use App\Model\ManageLog;
 use App\Plugin\ContentCenter\Model\Content;
+use App\Plugin\ContentCenter\Model\Template;
 use App\Plugin\ContentCenter\Service\ContentService;
 use App\Plugin\ContentCenter\Service\Schema;
+use App\Plugin\ContentCenter\Service\TemplateService;
 use Illuminate\Database\Eloquent\Builder;
 use Kernel\Annotation\Interceptor;
 use Kernel\Exception\JSONException;
@@ -42,7 +44,7 @@ class Api extends Manage
     {
         Schema::ensure();
         $content = Content::query()->find((int)$this->request->post('id'));
-        if (!$content) {
+        if (!$content || $content->content_type !== 'blog') {
             throw new JSONException('内容不存在');
         }
         return $this->json(200, 'success', self::row($content, true));
@@ -60,7 +62,7 @@ class Api extends Manage
     {
         Schema::ensure();
         $content = Content::query()->find((int)$this->request->post('id'));
-        if (!$content) {
+        if (!$content || $content->content_type !== 'blog') {
             throw new JSONException('内容不存在');
         }
         $content = (new ContentService())->publish($content);
@@ -72,7 +74,7 @@ class Api extends Manage
     {
         Schema::ensure();
         $content = Content::query()->find((int)$this->request->post('id'));
-        if (!$content) {
+        if (!$content || $content->content_type !== 'blog') {
             throw new JSONException('内容不存在');
         }
         $label = $this->label($content);
@@ -82,9 +84,41 @@ class Api extends Manage
         return $this->json(200, '已删除本地记录');
     }
 
+    public function templates(): array
+    {
+        $items = array_map(static fn(Template $template): array => self::templateRow($template), (new TemplateService())->all());
+        return $this->json(200, 'success', $items);
+    }
+
+    public function templateDetail(): array
+    {
+        $template = (new TemplateService())->find((string)$this->request->post('template_key'));
+        return $this->json(200, 'success', self::templateRow($template, true));
+    }
+
+    public function saveTemplate(): array
+    {
+        $service = new TemplateService();
+        $template = $service->save((array)$this->request->unsafePost(), (int)($this->getManage()?->id ?? 0));
+        $this->log('保存了页面模板《' . $template->name . '》');
+        return $this->json(200, '模板草稿已保存', self::templateRow($template, true));
+    }
+
+    public function publishTemplate(): array
+    {
+        $service = new TemplateService();
+        $template = $service->find((string)$this->request->post('template_key'));
+        $template = $service->publish($template);
+        $this->log('发布了页面模板《' . $template->name . '》' . ($template->git_sha ? '，Git commit: ' . $template->git_sha : ''));
+        $message = $template->template_key === 'blog_detail' && !$template->git_sha
+            ? '详情模板已启用，发布文章时会自动套用'
+            : '页面模板已提交到 GitHub，Mintlify 将自动部署';
+        return $this->json(200, $message, self::templateRow($template, true));
+    }
+
     private function type(string $type): string
     {
-        if (!in_array($type, ['blog', 'page'], true)) {
+        if ($type !== 'blog') {
             throw new JSONException('内容类型无效');
         }
         return $type;
@@ -100,7 +134,7 @@ class Api extends Manage
 
     private function label(Content $content): string
     {
-        return $content->content_type === 'blog' ? '博客文章' : '文档页面';
+        return '博客文章';
     }
 
     private static function row(Content $content, bool $full = false): array
@@ -122,6 +156,26 @@ class Api extends Manage
         ];
         if ($full) {
             $row['body_mdx'] = $content->body_mdx;
+        }
+        return $row;
+    }
+
+    private static function templateRow(Template $template, bool $full = false): array
+    {
+        $row = [
+            'id' => $template->id,
+            'template_key' => $template->template_key,
+            'name' => $template->name,
+            'page_title' => $template->page_title,
+            'page_description' => $template->page_description,
+            'status' => $template->status,
+            'published_at' => $template->published_at,
+            'git_sha' => $template->git_sha,
+            'publish_error' => $template->publish_error,
+            'update_time' => $template->update_time,
+        ];
+        if ($full) {
+            $row['body_mdx'] = $template->body_mdx;
         }
         return $row;
     }

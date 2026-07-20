@@ -10,12 +10,8 @@
   "navigation": {
     "groups": [
       {
-        "group": "帮助中心",
-        "pages": ["pages/index"]
-      },
-      {
         "group": "博客",
-        "pages": ["blog/index"]
+        "pages": ["index", "blog/index"]
       }
     ]
   }
