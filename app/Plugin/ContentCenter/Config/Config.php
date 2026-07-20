@@ -7,5 +7,5 @@ return array (
   'github_repo' => 'acg-xiaohu',
   'github_branch' => 'main',
   'docs_path' => 'docs',
-  'docs_url' => '',
+  'docs_url' => 'https://acg-xiaohu.mintlify.site',
 );

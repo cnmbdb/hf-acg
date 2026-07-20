@@ -3,6 +3,7 @@
     const type = 'blog';
     const api = '/plugin/ContentCenter/api/';
     const label = '文章';
+    const docsUrl = typeof state.docsUrl === 'string' ? state.docsUrl.replace(/\/+$/, '') : '';
     const escape = value => $('<div>').text(value == null ? '' : String(value)).html();
     const request = (action, data = {}) => $.ajax({url: api + action, method: 'POST', dataType: 'json', data});
     const notify = (message, error = false) => window.toastr ? (error ? toastr.error(message) : toastr.success(message)) : alert(message);
@@ -12,13 +13,17 @@
         request('data', {content_type: type, keyword: $('#content-keyword').val(), status: $('#content-status').val()})
             .done(res => {
                 if (res.code !== 200) return notify(res.msg || '加载失败', true);
-                const rows = (res.data.list || []).map(item => `<tr>
+                const rows = (res.data.list || []).map(item => {
+                    const previewUrl = item.status === 'published' && docsUrl ? docsUrl + '/blog/' + encodeURIComponent(item.slug) : '';
+                    const previewButton = previewUrl ? `<a class="btn btn-sm btn-light-success" href="${escape(previewUrl)}" target="_blank" rel="noopener">预览</a> ` : '';
+                    return `<tr>
                     <td><div class="fw-bold">${escape(item.title)}</div><div class="text-muted fs-8">${escape(item.excerpt || '')}</div></td>
                     <td><code>${escape(item.slug)}</code></td>
                     <td><span class="badge badge-light-${item.status === 'published' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'}">${status(item.status)}</span>${item.publish_error ? `<div class="text-danger fs-8 mt-1">${escape(item.publish_error)}</div>` : ''}</td>
                     <td>${escape(item.update_time || '')}</td>
-                    <td class="text-end"><button class="btn btn-sm btn-light edit" data-id="${item.id}">编辑</button> <button class="btn btn-sm btn-light-primary publish" data-id="${item.id}">发布</button> <button class="btn btn-sm btn-light-danger remove" data-id="${item.id}">删除</button></td>
-                </tr>`).join('');
+                    <td class="text-end">${previewButton}<button class="btn btn-sm btn-light edit" data-id="${item.id}">编辑</button> <button class="btn btn-sm btn-light-primary publish" data-id="${item.id}">发布</button> <button class="btn btn-sm btn-light-danger remove" data-id="${item.id}">删除</button></td>
+                </tr>`;
+                }).join('');
                 $('#content-table tbody').html(rows || '<tr><td colspan="5" class="text-center text-muted py-8">暂无' + label + '</td></tr>');
                 $('#content-total').text('共 ' + (res.data.total || 0) + ' 条');
             }).fail(xhr => notify(xhr.responseJSON?.msg || '加载失败', true));
