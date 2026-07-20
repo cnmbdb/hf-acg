@@ -75,11 +75,15 @@ function route(uri) {
 // navigation available even when the framework's compiled plugin hook cache is
 // stale after a code-only deployment.
 (function preloadContentCenterBlogStyle() {
-    if (location.pathname !== '/blog' && location.pathname.indexOf('/plugin/ContentCenter/index/blog') !== 0) return;
+    const isBlogRoute = location.pathname === '/blog'
+        || location.pathname.indexOf('/blog/') === 0
+        || location.pathname.indexOf('/plugin/ContentCenter/index/blog') === 0
+        || location.pathname.indexOf('/plugin/ContentCenter/index/article') === 0;
+    if (!isBlogRoute) return;
     if (document.querySelector('link[data-content-center-blog]')) return;
     const style = document.createElement('link');
     style.rel = 'stylesheet';
-    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260720-2';
+    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260721-1';
     style.setAttribute('data-content-center-blog', '1');
     document.head.appendChild(style);
 }());
@@ -91,7 +95,7 @@ documentReady(() => {
 
     if (!document.querySelector('script[data-content-center-nav]')) {
         const navigation = document.createElement('script');
-        navigation.src = '/app/Plugin/ContentCenter/Assets/content-center-nav.js?v=20260720-2';
+        navigation.src = '/app/Plugin/ContentCenter/Assets/content-center-nav.js?v=20260721-1';
         navigation.setAttribute('data-content-center-nav', '1');
         document.body.appendChild(navigation);
     }

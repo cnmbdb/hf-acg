@@ -12,12 +12,16 @@ if ($path !== '/' && is_file($file)) {
     return false;
 }
 
-$path = match ($path) {
-    '/2' => '/plugin/HStockPlus/index/index',
-    '/3' => '/user/index/three',
-    '/blog', '/blog/' => '/plugin/ContentCenter/index/blog',
-    default => $path,
-};
+if (preg_match('#^/blog/([a-z0-9]+(?:-[a-z0-9]+)*)/?$#', $path, $match)) {
+    $path = '/plugin/ContentCenter/index/article.' . $match[1];
+} else {
+    $path = match ($path) {
+        '/2' => '/plugin/HStockPlus/index/index',
+        '/3' => '/user/index/three',
+        '/blog', '/blog/' => '/plugin/ContentCenter/index/blog',
+        default => $path,
+    };
+}
 
 if ($path === '/') {
     unset($_GET['s']);

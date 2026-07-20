@@ -10,7 +10,10 @@
     }
 
     function mount() {
-        var active = location.pathname === '/blog' || location.pathname.indexOf('/plugin/ContentCenter/index/blog') === 0;
+        var active = location.pathname === '/blog'
+            || location.pathname.indexOf('/blog/') === 0
+            || location.pathname.indexOf('/plugin/ContentCenter/index/blog') === 0
+            || location.pathname.indexOf('/plugin/ContentCenter/index/article') === 0;
         var desktop = document.querySelector('.xh-navlinks');
         if (desktop && !desktop.querySelector('[data-content-center-blog-link]')) {
             var desktopLink = createLink('xh-navlink' + (active ? ' is-active' : ''), false);

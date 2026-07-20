@@ -12,7 +12,7 @@
         },
         blog_detail: {
             route: '/blog/{slug}',
-            description: '所有文章共用此详情模板，文章标题、摘要和正文会自动填充。',
+            description: '站内所有文章共用统一详情布局；这里的 MDX 模板继续用于 Mintlify 同步发布。',
             placeholders: ['{{title}} 标题', '{{excerpt}} 摘要', '{{content}} 正文', '{{published_at}} 发布日期', '{{cover}} 封面', '{{tags}} 标签']
         }
     };
@@ -142,7 +142,7 @@
     root.on('click.contentCenterTemplates', '.publish-template', function () {
         const key = $(this).data('key');
         const config = meta[key] || {};
-        layer.confirm('确认发布该页面模板吗？' + (key === 'blog_detail' ? '所有已发布文章都会重新应用这套详情模板。' : '站内博客首页设置会立即生效，同时提交 Mintlify 首页模板。'), () => {
+        layer.confirm('确认发布该页面模板吗？' + (key === 'blog_detail' ? '所有已发布文章会重新应用这套 Mintlify MDX 模板，站内详情布局保持统一。' : '站内博客首页设置会立即生效，同时提交 Mintlify 首页模板。'), () => {
             request('publishTemplate', {template_key: key}).done(res => {
                 notify(res.msg || '发布成功', res.code !== 200);
                 load();

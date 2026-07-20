@@ -1,9 +1,7 @@
 !function ($) {
-    const state = window.ContentCenter || {};
     const type = 'blog';
     const api = '/plugin/ContentCenter/api/';
     const label = '文章';
-    const docsUrl = typeof state.docsUrl === 'string' ? state.docsUrl.replace(/\/+$/, '') : '';
     const escape = value => $('<div>').text(value == null ? '' : String(value)).html();
     const request = (action, data = {}) => $.ajax({url: api + action, method: 'POST', dataType: 'json', data});
     const notify = (message, error = false) => window.toastr ? (error ? toastr.error(message) : toastr.success(message)) : alert(message);
@@ -14,8 +12,8 @@
             .done(res => {
                 if (res.code !== 200) return notify(res.msg || '加载失败', true);
                 const rows = (res.data.list || []).map(item => {
-                    const previewUrl = item.status === 'published' && docsUrl ? docsUrl + '/blog/' + encodeURIComponent(item.slug) : '';
-                    const previewButton = previewUrl ? `<a class="btn btn-sm btn-light-success" href="${escape(previewUrl)}" target="_blank" rel="noopener">预览</a> ` : '';
+                    const previewUrl = item.status === 'published' ? '/blog/' + encodeURIComponent(item.slug) : '';
+                    const previewButton = previewUrl ? `<a class="btn btn-sm btn-light-success" href="${escape(previewUrl)}" target="_blank" rel="noopener">站内预览</a> ` : '';
                     return `<tr>
                     <td><div class="fw-bold">${escape(item.title)}</div><div class="text-muted fs-8">${escape(item.excerpt || '')}</div></td>
                     <td><code>${escape(item.slug)}</code></td>
@@ -38,7 +36,7 @@
             <div class="mb-3"><label class="form-label required">Slug</label><input class="form-control" name="slug" value="${escape(item.slug || '')}" placeholder="例如 getting-started" maxlength="160"><div class="form-text">只支持小写英文、数字与连字符；发布后会成为 URL 与 MDX 文件名。</div></div>
             <div class="mb-3"><label class="form-label">摘要</label><textarea class="form-control" name="excerpt" rows="2" maxlength="500">${escape(item.excerpt || '')}</textarea></div>
             ${coverField}${tagsField}
-            <div class="mb-3"><label class="form-label required">MDX 正文</label><textarea class="form-control font-monospace" name="body_mdx" rows="18" placeholder="# 标题&#10;&#10;正文内容">${escape(item.body_mdx || '')}</textarea><div class="form-text">支持 Mintlify MDX 组件。请不要在正文中再次加入 frontmatter，发布时会自动生成。</div></div>
+            <div class="mb-3"><label class="form-label required">Markdown / MDX 正文</label><textarea class="form-control font-monospace" name="body_mdx" rows="18" placeholder="# 标题&#10;&#10;正文内容">${escape(item.body_mdx || '')}</textarea><div class="form-text">Markdown 会直接渲染到本站文章详情页，并继续同步 Mintlify。请不要在正文中再次加入 frontmatter。</div></div>
         </div>`;
         layer.open({type: 1, title: (item.id ? '编辑' : '新建') + label, area: ['min(880px, 96vw)', 'min(92vh, 900px)'], content: html, btn: ['保存草稿', '取消'], yes(index, dom) {
             const data = {};
@@ -60,7 +58,7 @@
     });
     root.on('click.contentCenterArticles', '#content-table .publish', function () {
         const id = $(this).data('id');
-        layer.confirm('发布后会套用统一文章详情页模板，并同步更新文章首页和文章列表。确认发布吗？', () => {
+        layer.confirm('发布后本站文章详情页会立即可访问，并同步更新 GitHub、Mintlify 和文章列表。确认发布吗？', () => {
             request('publish', {id}).done(res => { notify(res.msg || '发布成功', res.code !== 200); load(); }).fail(xhr => { notify(xhr.responseJSON?.msg || '发布失败', true); load(); });
         });
     });

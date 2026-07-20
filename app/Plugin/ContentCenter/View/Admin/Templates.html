@@ -9,9 +9,10 @@
                         <span class="card-label fw-bold fs-3 mb-1">页面管理</span>
                         <span class="text-muted fw-semibold fs-7">管理站内博客首页和统一文章详情页。博客首页的四个区块、轮播节奏与分类入口都在这里配置。</span>
                     </div>
-                    <div class="card-toolbar">
+                    <div class="card-toolbar gap-2">
+                        <a class="btn btn-sm btn-light-primary" href="/blog" target="_blank" rel="noopener">打开站内博客</a>
                         #{if $docsUrl}
-                        <a class="btn btn-sm btn-light-primary" href="#{$docsUrl}" target="_blank" rel="noopener">打开博客站</a>
+                        <a class="btn btn-sm btn-light" href="#{$docsUrl}" target="_blank" rel="noopener">打开 Mintlify</a>
                         #{/if}
                     </div>
                 </div>
@@ -23,5 +24,5 @@
     </div>
 </div>
 <script>window.ContentCenterTemplates = { docsUrl: '#{$docsUrl}' };</script>
-#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260722')}
+#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260724')}
 #{include file=$adminFooter}

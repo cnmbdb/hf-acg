@@ -16,7 +16,7 @@
                     <span class="cc-badge cc-badge-inverse">#{$blogSettings.hero_kicker|escape:'html'}</span>
                     <h2>#{$slide.title|escape:'html'}</h2>
                     <p>#{$slide.excerpt|escape:'html'}</p>
-                    <a class="cc-button cc-button-inverse" href="#{$slide.url|escape:'html'}" target="_blank" rel="noopener">
+                    <a class="cc-button cc-button-inverse" href="#{$slide.url|escape:'html'}">
                         <span>阅读文章</span>
                         <i class="fa-duotone fa-regular fa-arrow-up-right-from-square"></i>
                     </a>
@@ -48,14 +48,14 @@
         <div class="cc-ticker-viewport" data-ticker-viewport>
             <div class="cc-ticker-track" data-ticker-track>
                 #{foreach $articles as $article}
-                <a class="cc-mini-card" href="#{$article.url|escape:'html'}" target="_blank" rel="noopener">
+                <a class="cc-mini-card" href="#{$article.url|escape:'html'}">
                     <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
                     <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
                     <i class="fa-duotone fa-regular fa-arrow-up-right"></i>
                 </a>
                 #{/foreach}
                 #{foreach $articles as $article}
-                <a class="cc-mini-card" href="#{$article.url|escape:'html'}" target="_blank" rel="noopener" aria-hidden="true" tabindex="-1">
+                <a class="cc-mini-card" href="#{$article.url|escape:'html'}" aria-hidden="true" tabindex="-1">
                     <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
                     <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
                     <i class="fa-duotone fa-regular fa-arrow-up-right"></i>
@@ -92,18 +92,18 @@
         <div class="cc-article-grid" data-article-grid>
             #{foreach $articles as $article}
             <article class="cc-article-card" data-article-card>
-                <a class="cc-article-media" href="#{$article.url|escape:'html'}" target="_blank" rel="noopener">
+                <a class="cc-article-media" href="#{$article.url|escape:'html'}">
                     <img src="#{$article.cover|escape:'html'}" alt="#{$article.title|escape:'html'}" loading="lazy">
                 </a>
                 <div class="cc-article-body">
                     <div class="cc-article-tags">
                         #{foreach $article.display_tags as $tag}<span class="cc-badge" data-article-tag>#{$tag|escape:'html'}</span>#{/foreach}
                     </div>
-                    <h3><a href="#{$article.url|escape:'html'}" target="_blank" rel="noopener">#{$article.title|escape:'html'}</a></h3>
+                    <h3><a href="#{$article.url|escape:'html'}">#{$article.title|escape:'html'}</a></h3>
                     <p>#{$article.excerpt|escape:'html'}</p>
                     <footer>
                         <time datetime="#{$article.published_date|escape:'html'}">#{$article.published_date|escape:'html'}</time>
-                        <a class="cc-article-link" href="#{$article.url|escape:'html'}" target="_blank" rel="noopener">阅读全文 <i class="fa-duotone fa-regular fa-arrow-up-right"></i></a>
+                        <a class="cc-article-link" href="#{$article.url|escape:'html'}">阅读全文 <i class="fa-duotone fa-regular fa-arrow-right"></i></a>
                     </footer>
                 </div>
             </article>

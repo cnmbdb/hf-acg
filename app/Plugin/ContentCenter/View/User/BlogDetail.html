@@ -1,0 +1,57 @@
+#{include file=$themeHeader}
+<main class="xh-shell cc-article-page">
+    <nav class="cc-breadcrumb" aria-label="面包屑导航">
+        <a href="/blog"><i class="fa-duotone fa-regular fa-arrow-left"></i> 博客首页</a>
+        <span>/</span>
+        <span>#{$article.title|escape:'html'}</span>
+    </nav>
+
+    <article class="cc-article-shell">
+        <header class="cc-detail-header">
+            <div class="cc-article-tags">
+                #{foreach $article.display_tags as $tag}<span class="cc-badge">#{$tag|escape:'html'}</span>#{/foreach}
+            </div>
+            <h1>#{$article.title|escape:'html'}</h1>
+            <p>#{$article.excerpt|escape:'html'}</p>
+            <div class="cc-detail-meta">
+                <span><i class="fa-duotone fa-regular fa-calendar"></i> 发布于 <time datetime="#{$article.published_date|escape:'html'}">#{$article.published_date|escape:'html'}</time></span>
+                <span><i class="fa-duotone fa-regular fa-link"></i> <span class="cc-detail-path">/blog/#{$article.slug|escape:'html'}</span></span>
+            </div>
+        </header>
+
+        #{if $article.cover}
+        <figure class="cc-detail-cover">
+            <img src="#{$article.cover|escape:'html'}" alt="#{$article.title|escape:'html'}">
+        </figure>
+        #{/if}
+
+        <div class="cc-prose">
+            #{$article.body_html}
+        </div>
+    </article>
+
+    <nav class="cc-article-pagination" aria-label="文章翻页">
+        #{if $olderArticle}
+        <a class="cc-page-card" href="#{$olderArticle.url|escape:'html'}">
+            <span><i class="fa-duotone fa-regular fa-arrow-left"></i> 上一篇</span>
+            <strong>#{$olderArticle.title|escape:'html'}</strong>
+        </a>
+        #{else}
+        <span class="cc-page-card is-disabled"><span>上一篇</span><strong>已经是最早的文章</strong></span>
+        #{/if}
+
+        #{if $newerArticle}
+        <a class="cc-page-card cc-page-card-next" href="#{$newerArticle.url|escape:'html'}">
+            <span>下一篇 <i class="fa-duotone fa-regular fa-arrow-right"></i></span>
+            <strong>#{$newerArticle.title|escape:'html'}</strong>
+        </a>
+        #{else}
+        <span class="cc-page-card cc-page-card-next is-disabled"><span>下一篇</span><strong>已经是最新的文章</strong></span>
+        #{/if}
+    </nav>
+
+    <div class="cc-detail-back">
+        <a class="cc-button cc-button-dark" href="/blog"><i class="fa-duotone fa-regular fa-grid-2"></i> 返回全部文章</a>
+    </div>
+</main>
+#{include file=$themeFooter}
