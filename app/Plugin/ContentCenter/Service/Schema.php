@@ -60,26 +60,12 @@ final class Schema
     private static function seedTemplates(): void
     {
         $now = date('Y-m-d H:i:s');
-        if (DB::table('content_center_template')->where('template_key', 'blog_index')->exists()
-            && !DB::table('content_center_template')->where('template_key', 'blog_list')->exists()) {
-            DB::table('content_center_template')->where('template_key', 'blog_index')->update([
-                'template_key' => 'blog_list',
-                'name' => '文章列表',
-                'update_time' => $now,
-            ]);
-        }
         $templates = [
             'blog_home' => [
                 'name' => '文章首页',
                 'page_title' => '乐多博客',
                 'page_description' => '文章、教程与项目更新',
                 'body_mdx' => "# 欢迎来到乐多博客\n\n在这里查看最新文章、教程和项目更新。\n\n## 最新文章\n\n{{latest_articles}}\n",
-            ],
-            'blog_list' => [
-                'name' => '文章列表',
-                'page_title' => '全部文章',
-                'page_description' => '查看全部已发布文章',
-                'body_mdx' => "# 全部文章\n\n{{articles}}\n",
             ],
             'blog_detail' => [
                 'name' => '文章详情页',

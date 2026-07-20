@@ -21,7 +21,6 @@ final class GitHubPublisher
         $templates = new TemplateService();
         $detailTemplate = $templates->effective('blog_detail');
         $homeTemplate = $templates->effective('blog_home');
-        $listTemplate = $templates->effective('blog_list');
 
         $articleEndpoint = $this->endpoint($owner, $repo, $this->fullPath($root, 'blog/' . $content->slug . '.mdx'));
         $articleSha = $this->putFile(
@@ -44,7 +43,7 @@ final class GitHubPublisher
             $client,
             $this->endpoint($owner, $repo, $this->fullPath($root, 'blog/index.mdx')),
             $branch,
-            $this->listMdx($listTemplate, $articles),
+            $this->listMdx($articles),
             'docs: update article list'
         );
 
@@ -68,15 +67,6 @@ final class GitHubPublisher
                 $branch,
                 $this->homeMdx($draft, $articles),
                 'docs: publish article homepage template'
-            );
-        }
-        if ($template->template_key === 'blog_list') {
-            return $this->putFile(
-                $client,
-                $this->endpoint($owner, $repo, $this->fullPath($root, 'blog/index.mdx')),
-                $branch,
-                $this->listMdx($draft, $articles),
-                'docs: publish article list template'
             );
         }
         if ($template->template_key !== 'blog_detail') {
@@ -195,18 +185,13 @@ final class GitHubPublisher
         ], $body);
     }
 
-    /** @param array{page_title:?string,page_description:?string,body_mdx:string} $template @param array<int,Content> $articles */
-    private function listMdx(array $template, array $articles): string
+    /** @param array<int,Content> $articles */
+    private function listMdx(array $articles): string
     {
-        $body = strtr($template['body_mdx'], [
-            '{{articles}}' => $this->articleLinks($articles),
-            '{{latest_articles}}' => $this->articleLinks(array_slice($articles, 0, 5)),
-            '{{article_count}}' => (string)count($articles),
-        ]);
         return $this->document([
-            'title' => (string)($template['page_title'] ?: '全部文章'),
-            'description' => (string)($template['page_description'] ?: '查看全部已发布文章'),
-        ], $body);
+            'title' => '全部文章',
+            'description' => '查看全部已发布文章',
+        ], "# 全部文章\n\n" . $this->articleLinks($articles));
     }
 
     /** @param array<int,Content> $articles */

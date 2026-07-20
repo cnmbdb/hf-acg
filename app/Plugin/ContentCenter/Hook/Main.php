@@ -23,6 +23,6 @@ class Main
     #[HookPoint(point: Hook::ADMIN_VIEW_MENU)]
     public function adminMenu(): string
     {
-        return '<div class="menu-item"><a class="menu-link" href="/plugin/ContentCenter/admin/blog"><span class="menu-icon"><i class="fa-duotone fa-regular fa-newspaper"></i></span><span class="menu-title">博客管理</span></a></div>';
+        return '<div class="menu-item"><a class="menu-link" href="/plugin/ContentCenter/admin/page"><span class="menu-icon"><i class="fa-duotone fa-regular fa-newspaper"></i></span><span class="menu-title">博客管理</span></a></div>';
     }
 }

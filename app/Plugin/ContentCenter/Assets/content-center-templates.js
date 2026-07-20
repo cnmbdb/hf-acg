@@ -10,11 +10,6 @@
             description: '博客入口页，可设置介绍内容并展示最近发布的文章。',
             placeholders: ['{{latest_articles}} 最近 5 篇文章', '{{articles}} 全部文章', '{{article_count}} 文章总数']
         },
-        blog_list: {
-            route: '/blog',
-            description: '全部文章的统一列表页，发布文章后会自动刷新。',
-            placeholders: ['{{articles}} 全部文章', '{{latest_articles}} 最近 5 篇文章', '{{article_count}} 文章总数']
-        },
         blog_detail: {
             route: '/blog/{slug}',
             description: '所有文章共用此详情模板，文章标题、摘要和正文会自动填充。',
@@ -28,7 +23,7 @@
             const cards = (res.data || []).map(item => {
                 const config = meta[item.template_key] || {};
                 const badge = item.status === 'published' ? 'success' : item.status === 'failed' ? 'danger' : 'warning';
-                return `<div class="col-12 col-xl-4">
+                return `<div class="col-12 col-xl-6">
                     <div class="border rounded-3 p-5 h-100 bg-white">
                         <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
                             <div>
@@ -85,14 +80,16 @@
         }});
     }
 
-    $(document).on('click', '.edit-template', function () {
+    const root = $('#kt_content');
+    root.off('.contentCenterTemplates');
+    root.on('click.contentCenterTemplates', '.edit-template', function () {
         request('templateDetail', {template_key: $(this).data('key')}).done(res => {
             if (res.code !== 200) return notify(res.msg || '读取失败', true);
             openEditor(res.data);
         }).fail(xhr => notify(xhr.responseJSON?.msg || '读取失败', true));
     });
 
-    $(document).on('click', '.publish-template', function () {
+    root.on('click.contentCenterTemplates', '.publish-template', function () {
         const key = $(this).data('key');
         const config = meta[key] || {};
         layer.confirm('确认发布该页面模板吗？' + (key === 'blog_detail' ? '所有已发布文章都会重新应用这套详情模板。' : '对应页面会立即提交到 GitHub 并触发 Mintlify 更新。'), () => {

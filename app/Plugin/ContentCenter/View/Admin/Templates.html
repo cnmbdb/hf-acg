@@ -7,7 +7,7 @@
                 <div class="card-header border-0 pt-5">
                     <div class="card-title d-flex flex-column">
                         <span class="card-label fw-bold fs-3 mb-1">页面管理</span>
-                        <span class="text-muted fw-semibold fs-7">只管理博客的三个固定页面。所有文章共用同一个文章详情页模板。</span>
+                        <span class="text-muted fw-semibold fs-7">管理文章首页和统一文章详情页。所有文章请在右侧“文章列表”中编辑发布。</span>
                     </div>
                     <div class="card-toolbar">
                         #{if $docsUrl}
@@ -23,5 +23,5 @@
     </div>
 </div>
 <script>window.ContentCenterTemplates = { docsUrl: '#{$docsUrl}' };</script>
-#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260721')}
+#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260722')}
 #{include file=$adminFooter}

@@ -16,7 +16,7 @@ class Admin extends ManagePlugin
     /** @throws JSONException|ViewException */
     public function blog(): string
     {
-        return $this->contentPage('blog', '博客管理');
+        return $this->contentPage('blog', '文章列表');
     }
 
     /** @throws JSONException|ViewException */
@@ -51,8 +51,8 @@ class Admin extends ManagePlugin
     private function toolbar(): array
     {
         return [
-            ['name' => '博客管理', 'url' => '/plugin/ContentCenter/admin/blog'],
             ['name' => '页面管理', 'url' => '/plugin/ContentCenter/admin/page'],
+            ['name' => '文章列表', 'url' => '/plugin/ContentCenter/admin/blog'],
         ];
     }
 }

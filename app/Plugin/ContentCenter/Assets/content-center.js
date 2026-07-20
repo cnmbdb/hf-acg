@@ -45,19 +45,21 @@
         }});
     }
 
-    $(document).on('click', '#content-create', () => editor());
-    $(document).on('click', '#content-search', load);
-    $(document).on('keydown', '#content-keyword', event => { if (event.key === 'Enter') load(); });
-    $(document).on('click', '.edit', function () {
+    const root = $('#kt_content');
+    root.off('.contentCenterArticles');
+    root.on('click.contentCenterArticles', '#content-create', () => editor());
+    root.on('click.contentCenterArticles', '#content-search', load);
+    root.on('keydown.contentCenterArticles', '#content-keyword', event => { if (event.key === 'Enter') load(); });
+    root.on('click.contentCenterArticles', '#content-table .edit', function () {
         request('detail', {id: $(this).data('id')}).done(res => res.code === 200 ? editor(res.data) : notify(res.msg || '读取失败', true));
     });
-    $(document).on('click', '.publish', function () {
+    root.on('click.contentCenterArticles', '#content-table .publish', function () {
         const id = $(this).data('id');
         layer.confirm('发布后会套用统一文章详情页模板，并同步更新文章首页和文章列表。确认发布吗？', () => {
             request('publish', {id}).done(res => { notify(res.msg || '发布成功', res.code !== 200); load(); }).fail(xhr => { notify(xhr.responseJSON?.msg || '发布失败', true); load(); });
         });
     });
-    $(document).on('click', '.remove', function () {
+    root.on('click.contentCenterArticles', '#content-table .remove', function () {
         const id = $(this).data('id');
         layer.confirm('只删除本系统的内容记录，不会删除已发布的 GitHub MDX 文件。确认继续吗？', () => {
             request('remove', {id}).done(res => { notify(res.msg || '已删除', res.code !== 200); load(); }).fail(xhr => notify(xhr.responseJSON?.msg || '删除失败', true));

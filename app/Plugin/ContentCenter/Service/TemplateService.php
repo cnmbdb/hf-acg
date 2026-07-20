@@ -9,7 +9,7 @@ use Kernel\Exception\JSONException;
 
 final class TemplateService
 {
-    public const KEYS = ['blog_home', 'blog_list', 'blog_detail'];
+    public const KEYS = ['blog_home', 'blog_detail'];
 
     /** @return array<int, Template> */
     public function all(): array
@@ -48,7 +48,6 @@ final class TemplateService
 
         $requiredPlaceholder = [
             'blog_home' => '{{latest_articles}}',
-            'blog_list' => '{{articles}}',
             'blog_detail' => '{{content}}',
         ][$template->template_key];
         if (!str_contains($body, $requiredPlaceholder)) {

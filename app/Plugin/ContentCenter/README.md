@@ -2,10 +2,10 @@
 
 后台左侧只有一个“博客管理”入口，顶部包含两个区域：
 
-- **博客管理**：创建、编辑和发布文章。
-- **页面管理**：管理三个固定页面——文章首页、文章列表、文章详情页。
+- **页面管理**：管理文章首页和所有文章共用的文章详情页模板。
+- **文章列表**：创建、编辑和发布所有文章。
 
-文章详情页是一套共享模板，所有文章发布时都会自动套用。页面模板和文章草稿保存在 MySQL，点击发布后由服务器生成 MDX 并提交到 GitHub，Mintlify GitHub App 随后自动部署。
+公开站的 `/blog` 文章目录由系统自动生成，不作为页面模板单独管理。文章详情页是一套共享模板，所有文章发布时都会自动套用。页面模板和文章草稿保存在 MySQL，点击发布后由服务器生成 MDX 并提交到 GitHub，Mintlify GitHub App 随后自动部署。
 
 ## 输出结构
 
@@ -16,7 +16,7 @@
 
 ## 模板占位符
 
-文章首页支持 `{{latest_articles}}`、`{{articles}}`、`{{article_count}}`；文章列表支持 `{{articles}}`、`{{latest_articles}}`、`{{article_count}}`；文章详情页支持 `{{title}}`、`{{excerpt}}`、`{{content}}`、`{{published_at}}`、`{{cover}}`、`{{tags}}`。
+文章首页支持 `{{latest_articles}}`、`{{articles}}`、`{{article_count}}`；文章详情页支持 `{{title}}`、`{{excerpt}}`、`{{content}}`、`{{published_at}}`、`{{cover}}`、`{{tags}}`。
 
 ## 发布凭据
 

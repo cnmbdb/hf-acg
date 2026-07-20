@@ -7,7 +7,7 @@
                 <div class="card-header border-0 pt-5">
                     <div class="card-title d-flex flex-column">
                         <span class="card-label fw-bold fs-3 mb-1">#{$title}</span>
-                        <span class="text-muted fw-semibold fs-7">文章内容单独管理；发布时会套用统一详情页模板，并自动更新文章首页和文章列表。</span>
+                        <span class="text-muted fw-semibold fs-7">在这里新增、编辑和发布所有文章；发布时会套用统一详情页模板，并自动更新文章首页和公开文章目录。</span>
                     </div>
                     <div class="card-toolbar gap-2">
                         #{if $docsUrl}
@@ -40,5 +40,5 @@
     </div>
 </div>
 <script>window.ContentCenter = { type: '#{$contentType}', docsUrl: '#{$docsUrl}' };</script>
-#{ready('/app/Plugin/ContentCenter/Assets/content-center.js?v=20260721')}
+#{ready('/app/Plugin/ContentCenter/Assets/content-center.js?v=20260722')}
 #{include file=$adminFooter}
