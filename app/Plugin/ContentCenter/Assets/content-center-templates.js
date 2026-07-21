@@ -56,26 +56,33 @@
             <div class="card border mb-5">
                 <div class="card-header min-h-60px"><div class="card-title"><div><div class="fw-bold">博客首页展示设置</div><div class="text-muted fs-8">前台只读取已发布设置；保存草稿不会立即影响线上博客首页。</div></div></div></div>
                 <div class="card-body">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4"><label class="form-label required">精选区短标题</label><input class="form-control" name="hero_kicker" maxlength="40" value="${escape(settings.hero_kicker || '')}"></div>
-                        <div class="col-md-8"><label class="form-label required">精选区主标题</label><input class="form-control" name="hero_heading" maxlength="80" value="${escape(settings.hero_heading || '')}"></div>
-                        <div class="col-12"><label class="form-label required">精选区说明</label><input class="form-control" name="hero_subheading" maxlength="180" value="${escape(settings.hero_subheading || '')}"></div>
+                    <div class="border rounded-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">1. 幻灯片大图轮播</div><div class="text-muted fs-8 mt-1">首页首屏大图、精选文章与切换节奏</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="hero_enabled" value="1"${settings.hero_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
+                        <div class="p-4">
+                            <div class="row g-3 mb-3"><div class="col-md-4"><label class="form-label required">精选标签</label><input class="form-control" name="hero_kicker" maxlength="40" value="${escape(settings.hero_kicker || '')}"></div><div class="col-md-4"><label class="form-label">切换间隔（毫秒）</label><input class="form-control" type="number" name="hero_interval" min="3000" max="15000" step="500" value="${escape(settings.hero_interval || 6500)}"></div></div>
+                            ${slides.map((slide, index) => `<div class="row g-3 align-items-end mb-3 cc-slide-setting">
+                                <div class="col-md-5"><label class="form-label">第 ${index + 1} 张文章</label><select class="form-select" name="hero_slide_article_${index}">${slideOptions(slide.article_id)}</select></div>
+                                <div class="col-md-7"><label class="form-label">图片地址</label><input class="form-control" name="hero_slide_image_${index}" value="${escape(slide.image || '')}" placeholder="https://... 或 /assets/..."></div>
+                            </div>`).join('')}
+                        </div>
                     </div>
-                    <div class="fw-bold mb-3">大图轮播卡片</div>
-                    ${slides.map((slide, index) => `<div class="row g-3 align-items-end mb-3 cc-slide-setting">
-                        <div class="col-md-5"><label class="form-label">第 ${index + 1} 张文章</label><select class="form-select" name="hero_slide_article_${index}">${slideOptions(slide.article_id)}</select></div>
-                        <div class="col-md-7"><label class="form-label">图片地址</label><input class="form-control" name="hero_slide_image_${index}" value="${escape(slide.image || '')}" placeholder="https://... 或 /assets/..."></div>
-                    </div>`).join('')}
-                    <div class="row g-3 mt-1">
-                        <div class="col-md-4"><label class="form-label">大图切换间隔（毫秒）</label><input class="form-control" type="number" name="hero_interval" min="3000" max="15000" step="500" value="${escape(settings.hero_interval || 6500)}"></div>
-                        <div class="col-md-4"><label class="form-label required">横向轮播标题</label><input class="form-control" name="ticker_title" maxlength="40" value="${escape(settings.ticker_title || '')}"></div>
-                        <div class="col-md-4"><label class="form-label">横向滚动一圈（秒）</label><input class="form-control" type="number" name="ticker_duration" min="12" max="120" value="${escape(settings.ticker_duration || 28)}"></div>
-                        <div class="col-md-6"><label class="form-label required">分类区标题</label><input class="form-control" name="category_title" maxlength="40" value="${escape(settings.category_title || '')}"></div>
-                        <div class="col-md-6"><label class="form-label">优先分类</label><input class="form-control" name="featured_categories" value="${escape((settings.featured_categories || []).join(', '))}" placeholder="公告, 教程, 产品更新"><div class="form-text">其余分类会从已发布文章标签自动补充。</div></div>
-                        <div class="col-md-6"><label class="form-label required">文章列表标题</label><input class="form-control" name="list_title" maxlength="40" value="${escape(settings.list_title || '')}"></div>
-                        <div class="col-md-3"><label class="form-label">文章数量</label><input class="form-control" type="number" name="list_limit" min="3" max="30" value="${escape(settings.list_limit || 12)}"></div>
-                        <div class="col-md-3 d-flex align-items-end"><label class="form-check form-switch form-check-custom form-check-solid mb-3"><input class="form-check-input" type="checkbox" name="animation_enabled" value="1"${settings.animation_enabled !== false ? ' checked' : ''}><span class="form-check-label">启用 GSAP 动画</span></label></div>
+
+                    <div class="border rounded-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">2. 横向文章轮播</div><div class="text-muted fs-8 mt-1">从右向左滚动的最新文章卡片</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="ticker_enabled" value="1"${settings.ticker_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
+                        <div class="p-4"><div class="row g-3"><div class="col-md-6"><label class="form-label required">区块标题</label><input class="form-control" name="ticker_title" maxlength="40" value="${escape(settings.ticker_title || '')}"></div><div class="col-md-6"><label class="form-label">滚动一圈（秒）</label><input class="form-control" type="number" name="ticker_duration" min="12" max="120" value="${escape(settings.ticker_duration || 28)}"></div></div></div>
                     </div>
+
+                    <div class="border rounded-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">3. 分类卡片</div><div class="text-muted fs-8 mt-1">点击分类后筛选综合文章列表</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="category_enabled" value="1"${settings.category_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
+                        <div class="p-4"><div class="row g-3"><div class="col-md-5"><label class="form-label required">区块标题</label><input class="form-control" name="category_title" maxlength="40" value="${escape(settings.category_title || '')}"></div><div class="col-md-7"><label class="form-label">优先分类</label><input class="form-control" name="featured_categories" value="${escape((settings.featured_categories || []).join(', '))}" placeholder="公告, 教程, 产品更新"><div class="form-text">其余分类会从已发布文章标签自动补充。</div></div></div></div>
+                    </div>
+
+                    <div class="border rounded-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">4. 综合文章列表</div><div class="text-muted fs-8 mt-1">默认文章网格、数量和阅读全文入口</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="list_enabled" value="1"${settings.list_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
+                        <div class="p-4"><div class="row g-3"><div class="col-md-8"><label class="form-label required">区块标题</label><input class="form-control" name="list_title" maxlength="40" value="${escape(settings.list_title || '')}"></div><div class="col-md-4"><label class="form-label">文章数量</label><input class="form-control" type="number" name="list_limit" min="3" max="30" value="${escape(settings.list_limit || 12)}"></div></div></div>
+                    </div>
+
+                    <label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="animation_enabled" value="1"${settings.animation_enabled !== false ? ' checked' : ''}><span class="form-check-label">启用 GSAP 区块进场与筛选动画</span></label>
                 </div>
             </div>`;
         const pageFields = item.template_key === 'blog_detail' ? '' : `
@@ -104,9 +111,11 @@
             dom.find('.content-center-template-editor :input[name]').serializeArray().forEach(pair => data[pair.name] = pair.value);
             if (item.template_key === 'blog_home') {
                 data.settings_json = JSON.stringify({
+                    hero_enabled: dom.find('[name="hero_enabled"]').is(':checked'),
+                    ticker_enabled: dom.find('[name="ticker_enabled"]').is(':checked'),
+                    category_enabled: dom.find('[name="category_enabled"]').is(':checked'),
+                    list_enabled: dom.find('[name="list_enabled"]').is(':checked'),
                     hero_kicker: data.hero_kicker,
-                    hero_heading: data.hero_heading,
-                    hero_subheading: data.hero_subheading,
                     hero_interval: Number(data.hero_interval || 6500),
                     hero_slides: [0, 1, 2].map(slideIndex => ({
                         article_id: Number(data['hero_slide_article_' + slideIndex] || 0),

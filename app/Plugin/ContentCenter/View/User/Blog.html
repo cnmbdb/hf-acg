@@ -1,11 +1,6 @@
 #{include file=$themeHeader}
 <main class="xh-shell cc-blog" data-cc-blog data-hero-interval="#{$blogSettings.hero_interval|escape:'html'}" data-ticker-duration="#{$blogSettings.ticker_duration|escape:'html'}" data-animation-enabled="#{if $blogSettings.animation_enabled}1#{else}0#{/if}">
-    <header class="cc-blog-intro">
-        <span class="cc-eyebrow">#{$pageTitle|escape:'html'}</span>
-        <h1>#{$blogSettings.hero_heading|escape:'html'}</h1>
-        <p>#{$blogSettings.hero_subheading|escape:'html'}</p>
-    </header>
-
+    #{if $blogSettings.hero_enabled}
     <section class="cc-panel cc-hero" aria-label="幻灯片大图轮播">
         <div class="cc-hero-stage" data-hero-stage>
             #{foreach $heroSlides as $slide}
@@ -36,7 +31,9 @@
             #{/if}
         </div>
     </section>
+    #{/if}
 
+    #{if $blogSettings.ticker_enabled}
     <section class="cc-panel cc-ticker" aria-label="从右向左文章轮播">
         <header class="cc-section-head">
             <div>
@@ -64,7 +61,9 @@
             </div>
         </div>
     </section>
+    #{/if}
 
+    #{if $blogSettings.category_enabled}
     <section class="cc-panel cc-categories" aria-label="文章分类">
         <header class="cc-section-head">
             <div>
@@ -80,7 +79,9 @@
             #{/foreach}
         </div>
     </section>
+    #{/if}
 
+    #{if $blogSettings.list_enabled}
     <section class="cc-panel cc-articles" aria-label="综合默认文章列表">
         <header class="cc-section-head cc-article-list-head">
             <div>
@@ -111,5 +112,6 @@
         </div>
         #{if !$articles}<div class="cc-empty">暂无已发布文章</div>#{/if}
     </section>
+    #{/if}
 </main>
 #{include file=$themeFooter}

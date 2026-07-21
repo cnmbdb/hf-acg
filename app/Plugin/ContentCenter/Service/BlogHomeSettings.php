@@ -10,6 +10,10 @@ final class BlogHomeSettings
     public static function defaults(): array
     {
         return [
+            'hero_enabled' => true,
+            'ticker_enabled' => true,
+            'category_enabled' => true,
+            'list_enabled' => true,
             'hero_kicker' => '博客精选',
             'hero_heading' => '把出海经验，整理成可复用的方法',
             'hero_subheading' => '产品更新、实用教程与行业观察，持续沉淀在这里。',
@@ -87,6 +91,10 @@ final class BlogHomeSettings
         }
 
         return [
+            'hero_enabled' => self::boolean($raw['hero_enabled'] ?? $defaults['hero_enabled']),
+            'ticker_enabled' => self::boolean($raw['ticker_enabled'] ?? $defaults['ticker_enabled']),
+            'category_enabled' => self::boolean($raw['category_enabled'] ?? $defaults['category_enabled']),
+            'list_enabled' => self::boolean($raw['list_enabled'] ?? $defaults['list_enabled']),
             'hero_kicker' => self::text($raw['hero_kicker'] ?? $defaults['hero_kicker'], 40, '精选区短标题'),
             'hero_heading' => self::text($raw['hero_heading'] ?? $defaults['hero_heading'], 80, '精选区标题'),
             'hero_subheading' => self::text($raw['hero_subheading'] ?? $defaults['hero_subheading'], 180, '精选区说明'),
@@ -98,7 +106,7 @@ final class BlogHomeSettings
             'featured_categories' => array_values($categories),
             'list_title' => self::text($raw['list_title'] ?? $defaults['list_title'], 40, '文章列表标题'),
             'list_limit' => self::number($raw['list_limit'] ?? $defaults['list_limit'], 3, 30),
-            'animation_enabled' => filter_var($raw['animation_enabled'] ?? true, FILTER_VALIDATE_BOOL),
+            'animation_enabled' => self::boolean($raw['animation_enabled'] ?? true),
         ];
     }
 
@@ -135,5 +143,10 @@ final class BlogHomeSettings
     private static function number(mixed $value, int $min, int $max): int
     {
         return min($max, max($min, (int)$value));
+    }
+
+    private static function boolean(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOL);
     }
 }

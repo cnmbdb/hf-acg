@@ -15,6 +15,8 @@
     var tickerTrack = root.querySelector('[data-ticker-track]');
     var tickerViewport = root.querySelector('[data-ticker-viewport]');
     var countNode = root.querySelector('[data-visible-count]');
+    var heroPanel = root.querySelector('.cc-hero');
+    var supportingPanels = Array.prototype.slice.call(root.querySelectorAll('.cc-ticker, .cc-categories'));
     var enabled = root.getAttribute('data-animation-enabled') !== '0';
     var current = Math.max(0, slides.findIndex(function (slide) { return slide.classList.contains('is-active'); }));
     var timer = 0;
@@ -114,11 +116,15 @@
     function intro() {
         if (!gsap || !enabled || reduceMotion) return;
         introTimeline = gsap.timeline({defaults: {ease: 'power3.out'}});
-        introTimeline
-            .from('.cc-blog-intro > *', {autoAlpha: 0, y: 24, duration: .68, stagger: .09}, 0)
-            .from('.cc-hero', {autoAlpha: 0, y: 28, duration: .78}, '-=.42')
-            .from('.cc-ticker, .cc-categories', {autoAlpha: 0, y: 22, duration: .62, stagger: .12}, '-=.32')
-            .from(cards, {autoAlpha: 0, y: 22, duration: .55, stagger: .08}, '-=.25');
+        if (heroPanel) {
+            introTimeline.from(heroPanel, {autoAlpha: 0, y: 28, duration: .78}, 0);
+        }
+        if (supportingPanels.length) {
+            introTimeline.from(supportingPanels, {autoAlpha: 0, y: 22, duration: .62, stagger: .12}, heroPanel ? '-=.32' : 0);
+        }
+        if (cards.length) {
+            introTimeline.from(cards, {autoAlpha: 0, y: 22, duration: .55, stagger: .08}, '-=.25');
+        }
     }
 
     var prev = root.querySelector('[data-hero-prev]');
