@@ -101,7 +101,10 @@ class Api extends Manage
         $service = new TemplateService();
         $template = $service->save((array)$this->request->unsafePost(), (int)($this->getManage()?->id ?? 0));
         $this->log('保存了页面模板《' . $template->name . '》');
-        return $this->json(200, '模板草稿已保存', self::templateRow($template, true));
+        $message = $template->template_key === 'blog_home'
+            ? '博客首页设置已保存并应用到本站'
+            : '模板草稿已保存';
+        return $this->json(200, $message, self::templateRow($template, true));
     }
 
     public function publishTemplate(): array

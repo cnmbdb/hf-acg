@@ -107,7 +107,7 @@ final class TemplateService
             'page_description' => $template->published_page_description ?? $template->page_description,
             'body_mdx' => $template->published_body_mdx ?? $template->body_mdx,
             'settings_json' => $key === 'blog_home'
-                ? BlogHomeSettings::effective($template->published_settings_json ?? $template->settings_json)
+                ? BlogHomeSettings::effective($template->settings_json ?? $template->published_settings_json)
                 : [],
         ];
     }

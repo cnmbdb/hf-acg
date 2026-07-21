@@ -23,6 +23,30 @@
         </div>
     </div>
 </div>
+<style>
+    .cc-home-section-card {
+        overflow: hidden;
+        background: #fff;
+        transition: background-color .2s ease, border-color .2s ease, opacity .2s ease;
+    }
+    .cc-home-section-card.is-disabled {
+        background: #f2f3f5;
+        border-color: #d8dbe0 !important;
+    }
+    .cc-home-section-card.is-disabled .cc-home-section-body {
+        opacity: .42;
+        filter: grayscale(1);
+        pointer-events: none;
+        user-select: none;
+    }
+    .cc-home-section-card .form-check-input:not(:checked) {
+        background-color: #c8cbd1 !important;
+        border-color: #c8cbd1 !important;
+    }
+    .cc-home-section-body {
+        transition: opacity .2s ease, filter .2s ease;
+    }
+</style>
 <script>window.ContentCenterTemplates = { docsUrl: '#{$docsUrl}' };</script>
-#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260725')}
+#{ready('/app/Plugin/ContentCenter/Assets/content-center-templates.js?v=20260726')}
 #{include file=$adminFooter}
