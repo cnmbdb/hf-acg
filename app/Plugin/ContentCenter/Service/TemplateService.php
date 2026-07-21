@@ -57,7 +57,7 @@ final class TemplateService
         if ($template->template_key === 'blog_detail') {
             $template->page_title = null;
             $template->page_description = null;
-            $template->settings_json = null;
+            $template->settings_json = BlogDetailSettings::fromInput($input['settings_json'] ?? []);
         } else {
             $template->page_title = $this->text($input['page_title'] ?? '', 160, '页面标题');
             $template->page_description = $this->nullableText($input['page_description'] ?? '', 500, '页面描述');
@@ -108,7 +108,7 @@ final class TemplateService
             'body_mdx' => $template->published_body_mdx ?? $template->body_mdx,
             'settings_json' => $key === 'blog_home'
                 ? BlogHomeSettings::effective($template->settings_json ?? $template->published_settings_json)
-                : [],
+                : BlogDetailSettings::effective($template->settings_json ?? $template->published_settings_json),
         ];
     }
 

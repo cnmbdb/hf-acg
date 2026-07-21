@@ -115,14 +115,35 @@ class Index extends User
 
         /** @var Content $content */
         $content = $published->get($position);
-        $settings = (new TemplateService())->effective('blog_home')['settings_json'];
-        $fallbackImages = $this->fallbackImages($settings);
+        $templates = new TemplateService();
+        $homeSettings = $templates->effective('blog_home')['settings_json'];
+        $detailSettings = $templates->effective('blog_detail')['settings_json'];
+        $fallbackImages = $this->fallbackImages($homeSettings);
         $article = $this->articleRow($content, (int)$position, $fallbackImages);
         $article['body_html'] = (new MarkdownRenderer())->render($content->body_mdx);
 
         $data = $this->viewData($content->title);
+        $wordCount = $this->wordCount($article['body_html']);
+        $moreArticles = [];
+        foreach ($published as $index => $publishedArticle) {
+            if ($publishedArticle->id === $content->id) {
+                continue;
+            }
+            $moreArticles[] = $this->articleRow($publishedArticle, (int)$index, $fallbackImages);
+            if (count($moreArticles) >= (int)$detailSettings['more_articles_limit']) {
+                break;
+            }
+        }
+
         $data['config']['description'] = $content->excerpt ?: '阅读《' . $content->title . '》完整内容。';
         $data['article'] = $article;
+        $data['detailSettings'] = $detailSettings;
+        $data['articleInfo'] = [
+            'source' => (string)($data['config']['shop_name'] ?? '本站博客'),
+            'word_count' => $wordCount,
+            'reading_minutes' => max(1, (int)ceil($wordCount / 300)),
+        ];
+        $data['moreArticles'] = $moreArticles;
         $data['olderArticle'] = $published->has($position + 1)
             ? $this->articleRow($published->get($position + 1), $position + 1, $fallbackImages)
             : null;
@@ -204,6 +225,12 @@ class Index extends User
             'published_date' => substr((string)$article->published_at, 0, 10),
             'url' => '/blog/' . rawurlencode($article->slug),
         ];
+    }
+
+    private function wordCount(string $html): int
+    {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return preg_match_all('/[\p{Han}]|[A-Za-z0-9]+(?:[\'\x{2019}-][A-Za-z0-9]+)*/u', $text, $matches) ?: 0;
     }
 
     /** @param array<string,mixed> $data */

@@ -6,49 +6,80 @@
         <span>#{$article.title|escape:'html'}</span>
     </nav>
 
-    <article class="cc-article-shell">
-        <header class="cc-detail-header">
-            <div class="cc-article-tags">
-                #{foreach $article.display_tags as $tag}<span class="cc-badge">#{$tag|escape:'html'}</span>#{/foreach}
-            </div>
-            <h1>#{$article.title|escape:'html'}</h1>
-            <p>#{$article.excerpt|escape:'html'}</p>
-            <div class="cc-detail-meta">
-                <span><i class="fa-duotone fa-regular fa-calendar"></i> 发布于 <time datetime="#{$article.published_date|escape:'html'}">#{$article.published_date|escape:'html'}</time></span>
-                <span><i class="fa-duotone fa-regular fa-link"></i> <span class="cc-detail-path">/blog/#{$article.slug|escape:'html'}</span></span>
-            </div>
-        </header>
-
-        #{if $article.cover}
-        <figure class="cc-detail-cover">
-            <img src="#{$article.cover|escape:'html'}" alt="#{$article.title|escape:'html'}">
-        </figure>
-        #{/if}
-
-        <div class="cc-prose">
-            #{$article.body_html}
+    <header class="cc-detail-header">
+        <div class="cc-article-tags">
+            #{foreach $article.display_tags as $tag}<span class="cc-badge">#{$tag|escape:'html'}</span>#{/foreach}
         </div>
-    </article>
+        <h1>#{$article.title|escape:'html'}</h1>
+        <p>#{$article.excerpt|escape:'html'}</p>
+        <div class="cc-detail-meta">
+            <span><i class="fa-duotone fa-regular fa-calendar"></i> 发布于 <time datetime="#{$article.published_date|escape:'html'}">#{$article.published_date|escape:'html'}</time></span>
+            <span><i class="fa-duotone fa-regular fa-clock"></i> 约 #{$articleInfo.reading_minutes|escape:'html'} 分钟</span>
+        </div>
+    </header>
 
-    <nav class="cc-article-pagination" aria-label="文章翻页">
-        #{if $olderArticle}
-        <a class="cc-page-card" href="#{$olderArticle.url|escape:'html'}">
-            <span><i class="fa-duotone fa-regular fa-arrow-left"></i> 上一篇</span>
-            <strong>#{$olderArticle.title|escape:'html'}</strong>
-        </a>
-        #{else}
-        <span class="cc-page-card is-disabled"><span>上一篇</span><strong>已经是最早的文章</strong></span>
-        #{/if}
+    <div class="cc-detail-layout#{if !$detailSettings.sidebar_enabled} is-sidebar-disabled#{/if}">
+        <div class="cc-detail-main">
+            <article class="cc-article-shell">
+                #{if $article.cover}
+                <figure class="cc-detail-cover">
+                    <img src="#{$article.cover|escape:'html'}" alt="#{$article.title|escape:'html'}">
+                </figure>
+                #{/if}
 
-        #{if $newerArticle}
-        <a class="cc-page-card cc-page-card-next" href="#{$newerArticle.url|escape:'html'}">
-            <span>下一篇 <i class="fa-duotone fa-regular fa-arrow-right"></i></span>
-            <strong>#{$newerArticle.title|escape:'html'}</strong>
-        </a>
-        #{else}
-        <span class="cc-page-card cc-page-card-next is-disabled"><span>下一篇</span><strong>已经是最新的文章</strong></span>
+                <div class="cc-prose">
+                    #{$article.body_html}
+                </div>
+            </article>
+
+            <nav class="cc-article-pagination" aria-label="文章翻页">
+                #{if $olderArticle}
+                <a class="cc-page-card" href="#{$olderArticle.url|escape:'html'}">
+                    <span><i class="fa-duotone fa-regular fa-arrow-left"></i> 上一篇</span>
+                    <strong>#{$olderArticle.title|escape:'html'}</strong>
+                </a>
+                #{else}
+                <span class="cc-page-card is-disabled"><span>上一篇</span><strong>已经是最早的文章</strong></span>
+                #{/if}
+
+                #{if $newerArticle}
+                <a class="cc-page-card cc-page-card-next" href="#{$newerArticle.url|escape:'html'}">
+                    <span>下一篇 <i class="fa-duotone fa-regular fa-arrow-right"></i></span>
+                    <strong>#{$newerArticle.title|escape:'html'}</strong>
+                </a>
+                #{else}
+                <span class="cc-page-card cc-page-card-next is-disabled"><span>下一篇</span><strong>已经是最新的文章</strong></span>
+                #{/if}
+            </nav>
+        </div>
+
+        #{if $detailSettings.sidebar_enabled}
+        <aside class="cc-detail-sidebar" aria-label="文章侧栏">
+            <section class="cc-sidebar-section" aria-labelledby="cc-article-info-title">
+                <h2 id="cc-article-info-title">文章信息</h2>
+                <dl class="cc-article-info">
+                    <div><dt>来源</dt><dd>#{$articleInfo.source|escape:'html'}</dd></div>
+                    <div><dt>发布日期</dt><dd>#{$article.published_date|escape:'html'}</dd></div>
+                    <div><dt>字数</dt><dd>#{$articleInfo.word_count|escape:'html'}</dd></div>
+                    <div><dt>阅读时间</dt><dd>约 #{$articleInfo.reading_minutes|escape:'html'} 分钟</dd></div>
+                </dl>
+            </section>
+
+            <section class="cc-sidebar-section" aria-labelledby="cc-more-articles-title">
+                <h2 id="cc-more-articles-title">更多文章</h2>
+                <div class="cc-more-articles">
+                    #{foreach $moreArticles as $moreArticle}
+                    <a class="cc-more-article" href="#{$moreArticle.url|escape:'html'}">
+                        <img src="#{$moreArticle.cover|escape:'html'}" alt="" loading="lazy">
+                        <span><strong>#{$moreArticle.title|escape:'html'}</strong><time datetime="#{$moreArticle.published_date|escape:'html'}">#{$moreArticle.published_date|escape:'html'}</time></span>
+                    </a>
+                    #{/foreach}
+                    #{if !$moreArticles}<p class="cc-sidebar-empty">暂无更多文章</p>#{/if}
+                </div>
+            </section>
+        </aside>
         #{/if}
-    </nav>
+    </div>
 
     <div class="cc-detail-back">
         <a class="cc-button cc-button-dark" href="/blog"><i class="fa-duotone fa-regular fa-grid-2"></i> 返回全部文章</a>

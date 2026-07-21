@@ -86,7 +86,7 @@ final class Schema
                 'page_title' => null,
                 'page_description' => null,
                 'body_mdx' => "# {{title}}\n\n{{content}}\n",
-                'settings_json' => null,
+                'settings_json' => BlogDetailSettings::defaults(),
             ],
         ];
 
@@ -126,5 +126,15 @@ final class Schema
             ->where('template_key', 'blog_home')
             ->whereNull('published_settings_json')
             ->update(['published_settings_json' => $defaults]);
+
+        $detailDefaults = json_encode(BlogDetailSettings::defaults(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        DB::table('content_center_template')
+            ->where('template_key', 'blog_detail')
+            ->whereNull('settings_json')
+            ->update(['settings_json' => $detailDefaults]);
+        DB::table('content_center_template')
+            ->where('template_key', 'blog_detail')
+            ->whereNull('published_settings_json')
+            ->update(['published_settings_json' => $detailDefaults]);
     }
 }

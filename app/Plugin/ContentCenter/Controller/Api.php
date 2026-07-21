@@ -103,7 +103,7 @@ class Api extends Manage
         $this->log('保存了页面模板《' . $template->name . '》');
         $message = $template->template_key === 'blog_home'
             ? '博客首页设置已保存并应用到本站'
-            : '模板草稿已保存';
+            : '文章详情页设置已保存并应用到本站';
         return $this->json(200, $message, self::templateRow($template, true));
     }
 
@@ -181,7 +181,7 @@ class Api extends Manage
             $row['body_mdx'] = $template->body_mdx;
             $row['settings_json'] = $template->template_key === 'blog_home'
                 ? \App\Plugin\ContentCenter\Service\BlogHomeSettings::effective($template->settings_json)
-                : [];
+                : \App\Plugin\ContentCenter\Service\BlogDetailSettings::effective($template->settings_json);
             if ($template->template_key === 'blog_home') {
                 $row['article_options'] = Content::query()
                     ->where('content_type', 'blog')
