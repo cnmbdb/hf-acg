@@ -207,8 +207,25 @@
 }
 
 .cc-ticker-viewport {
+    --cc-ticker-fade: clamp(30px, 6vw, 72px);
     overflow: hidden;
     padding: 0 0 4px;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--cc-ticker-fade),
+        #000 calc(100% - var(--cc-ticker-fade)),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--cc-ticker-fade),
+        #000 calc(100% - var(--cc-ticker-fade)),
+        transparent 100%
+    );
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
 }
 
 .cc-ticker-track {
