@@ -268,7 +268,12 @@
 }
 
 .cc-categories {
-    padding-bottom: 32px;
+    padding-bottom: 4px;
+}
+
+.cc-categories > .cc-section-head,
+.cc-articles > .cc-section-head {
+    padding: 4px 0 20px;
 }
 
 .cc-toggle-group {
@@ -276,6 +281,12 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
     padding: 0 34px;
+}
+
+.cc-categories .cc-toggle-group,
+.cc-articles .cc-article-grid {
+    padding-right: 0;
+    padding-left: 0;
 }
 
 .cc-toggle {
@@ -318,7 +329,7 @@
 }
 
 .cc-articles {
-    padding-bottom: 34px;
+    padding-bottom: 0;
 }
 
 .cc-article-grid {
