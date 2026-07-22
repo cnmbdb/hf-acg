@@ -83,7 +83,7 @@ function route(uri) {
     if (document.querySelector('link[data-content-center-blog]')) return;
     const style = document.createElement('link');
     style.rel = 'stylesheet';
-    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260723-1';
+    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260723-2';
     style.setAttribute('data-content-center-blog', '1');
     document.head.appendChild(style);
 }());

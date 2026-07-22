@@ -208,14 +208,14 @@
 
 .cc-ticker-viewport {
     overflow: hidden;
-    padding: 0 0 32px;
+    padding: 0 0 4px;
 }
 
 .cc-ticker-track {
     display: flex;
     width: max-content;
     gap: 14px;
-    padding: 0 7px;
+    padding: 0;
     will-change: transform;
 }
 
@@ -271,6 +271,7 @@
     padding-bottom: 4px;
 }
 
+.cc-ticker > .cc-section-head,
 .cc-categories > .cc-section-head,
 .cc-articles > .cc-section-head {
     padding: 4px 0 20px;
