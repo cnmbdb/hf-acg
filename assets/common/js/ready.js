@@ -88,6 +88,49 @@ function route(uri) {
     document.head.appendChild(style);
 }());
 
+// Keep the ContentCenter entry reachable when a code-only deployment leaves
+// the framework's compiled admin-menu hook cache stale. The real hook remains
+// the primary source; this bridge only adds the missing entry and never
+// duplicates it.
+(function bridgeContentCenterAdminMenu() {
+    const isAdminRoute = location.pathname.indexOf('/admin/') === 0
+        || location.pathname.indexOf('/plugin/ContentCenter/admin/') === 0;
+    if (!isAdminRoute) return;
+
+    function ensureMenu() {
+        const menu = document.querySelector('#kt_aside_menu');
+        if (!menu || menu.querySelector('a[href="/plugin/ContentCenter/admin/page"]')) return;
+
+        const updateItem = menu.querySelector('.menu-update')?.closest('.menu-item');
+        const separatorItem = updateItem?.previousElementSibling;
+        const insertionPoint = separatorItem || updateItem;
+        if (!insertionPoint) return;
+
+        const hasPluginSection = Array.from(menu.querySelectorAll('.menu-section')).some((section) => {
+            return section.textContent.trim().toLowerCase() === 'plugin';
+        });
+
+        if (!hasPluginSection) {
+            const section = document.createElement('div');
+            section.className = 'menu-item';
+            section.setAttribute('data-content-center-admin-section', '1');
+            section.innerHTML = '<div class="menu-content pt-8 pb-2"><span class="menu-section text-muted text-uppercase fs-8 ls-1">Plugin</span></div>';
+            menu.insertBefore(section, insertionPoint);
+        }
+
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+        item.setAttribute('data-content-center-admin-menu', '1');
+        const active = location.pathname.indexOf('/plugin/ContentCenter/admin/') === 0 ? ' active' : '';
+        item.innerHTML = '<a class="menu-link' + active + '" href="/plugin/ContentCenter/admin/page"><span class="menu-icon"><i class="fa-duotone fa-regular fa-newspaper"></i></span><span class="menu-title">博客管理</span></a>';
+        menu.insertBefore(item, insertionPoint);
+    }
+
+    documentReady(ensureMenu);
+    window.addEventListener('load', ensureMenu, {once: true});
+    window.setTimeout(ensureMenu, 600);
+}());
+
 documentReady(() => {
     if (!document.body || !document.body.classList.contains('xh-page')) return;
 
