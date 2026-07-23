@@ -49,6 +49,10 @@ class Index extends User
         foreach ($articles as $index => $article) {
             $tags = is_array($article->tags) ? array_values($article->tags) : [];
             foreach ($tags as $tag) {
+                $tag = trim((string)$tag);
+                if ($tag === '') {
+                    continue;
+                }
                 $categories[$tag] = $tag;
             }
             $row = $this->articleRow($article, $index, $fallbackImages);
@@ -69,23 +73,12 @@ class Index extends User
             $heroSlides = array_slice($articleRows, 0, 3);
         }
 
-        $featuredCategories = [];
-        foreach (array_merge($settings['featured_categories'], array_values($categories)) as $category) {
-            $category = trim((string)$category);
-            if ($category !== '') {
-                $featuredCategories[$category] = $category;
-            }
-            if (count($featuredCategories) >= 10) {
-                break;
-            }
-        }
-
         $data['pageTitle'] = $effective['page_title'] ?: '乐多博客';
         $data['pageDescription'] = $effective['page_description'] ?: '文章、教程与项目更新';
         $data['blogSettings'] = $settings;
         $data['articles'] = $articleRows;
         $data['heroSlides'] = $heroSlides;
-        $data['categories'] = array_values($featuredCategories);
+        $data['categories'] = array_values($categories);
         $data['articleCount'] = count($articleRows);
 
         return $this->renderPluginView('User/Blog.html', $data);

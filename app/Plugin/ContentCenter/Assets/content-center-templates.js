@@ -77,7 +77,7 @@
 
                     <div class="border rounded-3 mb-4 cc-config-section-card${settings.category_enabled === false ? ' is-disabled' : ''}" data-section-card>
                         <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">3. 分类卡片</div><div class="text-muted fs-8 mt-1">点击分类后筛选综合文章列表</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="category_enabled" value="1" data-section-toggle${settings.category_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
-                        <div class="p-4 cc-config-section-body"><div class="row g-3"><div class="col-md-5"><label class="form-label required">区块标题</label><input class="form-control" name="category_title" maxlength="40" value="${escape(settings.category_title || '')}"></div><div class="col-md-7"><label class="form-label">优先分类</label><input class="form-control" name="featured_categories" value="${escape((settings.featured_categories || []).join(', '))}" placeholder="公告, 教程, 产品更新"><div class="form-text">其余分类会从已发布文章标签自动补充。</div></div></div></div>
+                        <div class="p-4 cc-config-section-body"><div class="row g-3 align-items-end"><div class="col-md-6"><label class="form-label required">区块标题</label><input class="form-control" name="category_title" maxlength="40" value="${escape(settings.category_title || '')}"></div><div class="col-md-6"><div class="fw-semibold mb-1">分类来源</div><div class="text-muted fs-8">自动显示已发布文章中实际使用的标签；文章标签变化后会同步更新，无需单独设置。</div></div></div></div>
                     </div>
 
                     <div class="border rounded-3 mb-4 cc-config-section-card${settings.list_enabled === false ? ' is-disabled' : ''}" data-section-card>
@@ -146,7 +146,6 @@
                     ticker_title: data.ticker_title,
                     ticker_duration: Number(data.ticker_duration || 28),
                     category_title: data.category_title,
-                    featured_categories: String(data.featured_categories || '').split(',').map(value => value.trim()).filter(Boolean),
                     list_title: data.list_title,
                     list_limit: Number(data.list_limit || 12),
                     animation_enabled: dom.find('[name="animation_enabled"]').is(':checked')

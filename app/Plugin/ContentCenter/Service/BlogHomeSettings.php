@@ -35,7 +35,6 @@ final class BlogHomeSettings
             'ticker_title' => '最新发布',
             'ticker_duration' => 28,
             'category_title' => '按主题浏览',
-            'featured_categories' => ['公告', '教程', 'Mintlify', '后台管理'],
             'list_title' => '综合文章',
             'list_limit' => 12,
             'animation_enabled' => true,
@@ -75,21 +74,6 @@ final class BlogHomeSettings
             $slides = $defaults['hero_slides'];
         }
 
-        $categories = [];
-        foreach ((array)($raw['featured_categories'] ?? []) as $category) {
-            $category = trim(strip_tags((string)$category));
-            if ($category === '') {
-                continue;
-            }
-            if (mb_strlen($category) > 24 || str_contains($category, "\0")) {
-                throw new JSONException('每个首页分类不能超过 24 个字符');
-            }
-            $categories[$category] = $category;
-            if (count($categories) >= 12) {
-                break;
-            }
-        }
-
         return [
             'hero_enabled' => self::boolean($raw['hero_enabled'] ?? $defaults['hero_enabled']),
             'ticker_enabled' => self::boolean($raw['ticker_enabled'] ?? $defaults['ticker_enabled']),
@@ -103,7 +87,6 @@ final class BlogHomeSettings
             'ticker_title' => self::text($raw['ticker_title'] ?? $defaults['ticker_title'], 40, '轮播区标题'),
             'ticker_duration' => self::number($raw['ticker_duration'] ?? $defaults['ticker_duration'], 12, 120),
             'category_title' => self::text($raw['category_title'] ?? $defaults['category_title'], 40, '分类区标题'),
-            'featured_categories' => array_values($categories),
             'list_title' => self::text($raw['list_title'] ?? $defaults['list_title'], 40, '文章列表标题'),
             'list_limit' => self::number($raw['list_limit'] ?? $defaults['list_limit'], 3, 30),
             'animation_enabled' => self::boolean($raw['animation_enabled'] ?? true),
