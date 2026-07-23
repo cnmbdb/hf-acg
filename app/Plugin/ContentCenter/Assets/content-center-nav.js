@@ -4,7 +4,7 @@
         link.className = className;
         link.href = '/blog';
         link.setAttribute('data-content-center-blog-link', '1');
-        link.innerHTML = '<i class="fa-duotone fa-regular fa-newspaper"></i><span>博客</span>';
+        link.innerHTML = '<i class="fa-duotone fa-regular fa-newspaper"></i><span>使用教程</span>';
         if (mobile) link.classList.add('xh-mobile-link');
         return link;
     }

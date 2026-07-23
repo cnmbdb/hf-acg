@@ -138,7 +138,7 @@ documentReady(() => {
 
     if (!document.querySelector('script[data-content-center-nav]')) {
         const navigation = document.createElement('script');
-        navigation.src = '/app/Plugin/ContentCenter/Assets/content-center-nav.js?v=20260721-1';
+        navigation.src = '/app/Plugin/ContentCenter/Assets/content-center-nav.js?v=20260723-1';
         navigation.setAttribute('data-content-center-nav', '1');
         document.body.appendChild(navigation);
     }
