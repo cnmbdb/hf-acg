@@ -2,8 +2,12 @@
 declare(strict_types=1);
 
 // Development router for PHP's built-in web server. It mirrors .htaccess so
-// local development does not require Apache or Docker.
-defined('DEBUG') || define('DEBUG', true);
+// local development does not require Apache or Docker. Keep cache-busting and
+// expanded assets for localhost only; the public Tunnel hostname should use
+// stable production assets so browsers and Cloudflare can cache them.
+$requestHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+$isLocalDevelopment = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/', $requestHost) === 1;
+defined('DEBUG') || define('DEBUG', $isLocalDevelopment);
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $file = __DIR__ . $path;
