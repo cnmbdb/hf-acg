@@ -6,6 +6,81 @@
     const request = (action, data = {}) => $.ajax({url: api + action, method: 'POST', dataType: 'json', data});
     const notify = (message, error = false) => window.toastr ? (error ? toastr.error(message) : toastr.success(message)) : alert(message);
     const status = value => ({draft: '草稿', published: '已发布', failed: '发布失败'}[value] || value);
+    const coverUploadUrl = '/admin/api/upload/send?mime=image';
+    const coverTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxCoverSize = 8 * 1024 * 1024;
+
+    function renderCoverPreview(editor, value) {
+        const preview = editor.find('[data-cover-preview]');
+        const image = preview.find('img');
+        const empty = preview.find('[data-cover-empty]');
+        const url = String(value || '').trim();
+
+        preview.removeClass('has-error');
+        if (!url) {
+            image.removeAttr('src').addClass('d-none');
+            empty.removeClass('d-none').find('span').text('暂未设置封面');
+            return;
+        }
+
+        empty.addClass('d-none');
+        image.removeClass('d-none').attr('src', url);
+    }
+
+    function bindCoverUploader(editor) {
+        const coverInput = editor.find('input[name="cover"]');
+        const fileInput = editor.find('[data-cover-file]');
+        const uploadButton = editor.find('[data-cover-upload]');
+        const preview = editor.find('[data-cover-preview]');
+        const image = preview.find('img');
+
+        coverInput.on('input change', () => renderCoverPreview(editor, coverInput.val()));
+        uploadButton.on('click', () => fileInput.trigger('click'));
+        editor.find('[data-cover-remove]').on('click', () => {
+            coverInput.val('').trigger('change');
+            fileInput.val('');
+        });
+        image.on('load', () => preview.removeClass('has-error'));
+        image.on('error', () => {
+            if (!image.attr('src')) return;
+            image.addClass('d-none');
+            preview.addClass('has-error').find('[data-cover-empty]').removeClass('d-none').find('span').text('图片无法预览，请检查地址');
+        });
+        renderCoverPreview(editor, coverInput.val());
+
+        fileInput.on('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            if (!coverTypes.includes(file.type)) {
+                this.value = '';
+                return notify('仅支持 JPG、PNG、WebP 或 GIF 图片', true);
+            }
+            if (file.size > maxCoverSize) {
+                this.value = '';
+                return notify('封面图片不能超过 8MB', true);
+            }
+
+            const data = new FormData();
+            data.append('file', file);
+            uploadButton.prop('disabled', true).html('<i class="fa-duotone fa-regular fa-spinner-third fa-spin"></i> 上传中');
+            $.ajax({
+                url: coverUploadUrl,
+                method: 'POST',
+                data,
+                dataType: 'json',
+                contentType: false,
+                processData: false
+            }).done(res => {
+                if (res.code !== 200 || !res.data?.url) return notify(res.msg || '封面上传失败', true);
+                coverInput.val(res.data.url).trigger('change');
+                notify('封面上传成功，保存文章后生效');
+            }).fail(xhr => notify(xhr.responseJSON?.msg || '封面上传失败，请稍后重试', true))
+                .always(() => {
+                    uploadButton.prop('disabled', false).html('<i class="fa-duotone fa-regular fa-cloud-arrow-up"></i> 上传封面');
+                    fileInput.val('');
+                });
+        });
+    }
 
     function load() {
         request('data', {content_type: type, keyword: $('#content-keyword').val(), status: $('#content-status').val()})
@@ -28,7 +103,24 @@
     }
 
     function editor(item = {}) {
-        const coverField = `<div class="mb-3"><label class="form-label">封面</label><input class="form-control" name="cover" value="${escape(item.cover || '')}" placeholder="https://... 或 /assets/cache/..." /></div>`;
+        const coverField = `<div class="mb-4">
+            <label class="form-label">文章封面图</label>
+            <div class="cc-cover-uploader">
+                <div class="cc-cover-preview" data-cover-preview>
+                    <img class="d-none" alt="文章封面预览">
+                    <div class="cc-cover-empty" data-cover-empty><i class="fa-duotone fa-regular fa-image"></i><span>暂未设置封面</span></div>
+                </div>
+                <div class="cc-cover-controls">
+                    <input class="form-control" name="cover" value="${escape(item.cover || '')}" placeholder="上传图片后自动填写，也可粘贴 HTTPS 地址或本站路径">
+                    <input class="d-none" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-cover-file>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button class="btn btn-sm btn-primary" type="button" data-cover-upload><i class="fa-duotone fa-regular fa-cloud-arrow-up"></i> 上传封面</button>
+                        <button class="btn btn-sm btn-light-danger" type="button" data-cover-remove><i class="fa-duotone fa-regular fa-trash-can"></i> 移除</button>
+                    </div>
+                    <div class="form-text mt-2">支持 JPG、PNG、WebP、GIF，最大 8MB；建议使用 16:9 横图。</div>
+                </div>
+            </div>
+        </div>`;
         const tagsField = `<div class="mb-3"><label class="form-label">标签</label><input class="form-control" name="tags" value="${escape((item.tags || []).join(', '))}" placeholder="多个标签用英文逗号分隔" /></div>`;
         const html = `<div class="p-4 content-center-editor">
             <input type="hidden" name="id" value="${escape(item.id || '')}"><input type="hidden" name="content_type" value="${type}">
@@ -38,7 +130,9 @@
             ${coverField}${tagsField}
             <div class="mb-3"><label class="form-label required">Markdown / MDX 正文</label><textarea class="form-control font-monospace" name="body_mdx" rows="18" placeholder="# 标题&#10;&#10;正文内容">${escape(item.body_mdx || '')}</textarea><div class="form-text">Markdown 会直接渲染到本站文章详情页，并继续同步 Mintlify。请不要在正文中再次加入 frontmatter。</div></div>
         </div>`;
-        layer.open({type: 1, title: (item.id ? '编辑' : '新建') + label, area: ['min(880px, 96vw)', 'min(92vh, 900px)'], content: html, btn: ['保存草稿', '取消'], yes(index, dom) {
+        layer.open({type: 1, title: (item.id ? '编辑' : '新建') + label, area: ['min(880px, 96vw)', 'min(92vh, 900px)'], content: html, btn: ['保存草稿', '取消'], success(dom) {
+            bindCoverUploader(dom.find('.content-center-editor'));
+        }, yes(index, dom) {
             const data = {};
             dom.find('.content-center-editor :input[name]').serializeArray().forEach(pair => data[pair.name] = pair.value);
             request('save', data).done(res => {
