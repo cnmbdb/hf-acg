@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $body_mdx
  * @property string|null $cover
  * @property array|string|null $tags
+ * @property int $sort_order
  * @property string $status
  * @property string|null $published_at
  * @property int $author_id
@@ -31,6 +32,7 @@ class Content extends Model
     protected $casts = [
         'id' => 'integer',
         'author_id' => 'integer',
+        'sort_order' => 'integer',
         'tags' => 'array',
     ];
 }

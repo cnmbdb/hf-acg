@@ -26,6 +26,8 @@ use Kernel\Util\View;
 #[Interceptor([Waf::class, UserVisitor::class])]
 class Index extends User
 {
+    private const ARTICLES_PER_PAGE = 20;
+
     /** @throws JSONException|ViewException|\ReflectionException */
     public function blog(): string
     {
@@ -34,35 +36,43 @@ class Index extends User
 
         $effective = (new TemplateService())->effective('blog_home');
         $settings = $effective['settings_json'];
-        $articles = Content::query()
+        $published = Content::query()
             ->where('content_type', 'blog')
             ->where('status', 'published')
+            ->orderByDesc('sort_order')
             ->orderByDesc('published_at')
-            ->limit((int)$settings['list_limit'])
-            ->get();
+            ->orderByDesc('id')
+            ->get(['id', 'title', 'slug', 'excerpt', 'cover', 'tags', 'published_at', 'sort_order']);
+        $totalArticles = $published->count();
+        $totalPages = max(1, (int)ceil($totalArticles / self::ARTICLES_PER_PAGE));
+        $currentPage = min($totalPages, max(1, (int)($_GET['page'] ?? 1)));
+        $offset = ($currentPage - 1) * self::ARTICLES_PER_PAGE;
 
         $fallbackImages = $this->fallbackImages($settings);
 
+        $allArticleRows = [];
         $articleRows = [];
         $articleById = [];
         $categories = [];
-        foreach ($articles as $index => $article) {
-            $tags = is_array($article->tags) ? array_values($article->tags) : [];
-            foreach ($tags as $tag) {
+        foreach ($published as $index => $article) {
+            $row = $this->articleRow($article, $index, $fallbackImages);
+            $allArticleRows[] = $row;
+            $articleById[$article->id] = $row;
+            foreach ($row['tags'] as $tag) {
                 $tag = trim((string)$tag);
                 if ($tag === '') {
                     continue;
                 }
                 $categories[$tag] = $tag;
             }
-            $row = $this->articleRow($article, $index, $fallbackImages);
-            $articleRows[] = $row;
-            $articleById[$article->id] = $row;
+            if ($index >= $offset && $index < $offset + self::ARTICLES_PER_PAGE) {
+                $articleRows[] = $row;
+            }
         }
 
         $heroSlides = [];
         foreach ($settings['hero_slides'] as $slideIndex => $slide) {
-            $article = $articleById[(int)$slide['article_id']] ?? ($articleRows[$slideIndex] ?? null);
+            $article = $articleById[(int)$slide['article_id']] ?? ($allArticleRows[$slideIndex] ?? null);
             if (!$article) {
                 continue;
             }
@@ -70,16 +80,26 @@ class Index extends User
             $heroSlides[] = $article;
         }
         if (!$heroSlides) {
-            $heroSlides = array_slice($articleRows, 0, 3);
+            $heroSlides = array_slice($allArticleRows, 0, 3);
         }
 
-        $data['pageTitle'] = $effective['page_title'] ?: '乐多博客';
+        $pageTitle = $effective['page_title'] ?: '乐多博客';
+        $data['pageTitle'] = $currentPage > 1 ? $pageTitle . ' - 第 ' . $currentPage . ' 页' : $pageTitle;
         $data['pageDescription'] = $effective['page_description'] ?: '文章、教程与项目更新';
         $data['blogSettings'] = $settings;
         $data['articles'] = $articleRows;
+        $data['tickerArticles'] = array_slice($allArticleRows, 0, self::ARTICLES_PER_PAGE);
         $data['heroSlides'] = $heroSlides;
         $data['categories'] = array_values($categories);
         $data['articleCount'] = count($articleRows);
+        $data['totalArticleCount'] = $totalArticles;
+        $data['articleRangeStart'] = $totalArticles > 0 ? $offset + 1 : 0;
+        $data['articleRangeEnd'] = $offset + count($articleRows);
+        $data['currentPage'] = $currentPage;
+        $data['totalPages'] = $totalPages;
+        $data['previousPage'] = max(1, $currentPage - 1);
+        $data['nextPage'] = min($totalPages, $currentPage + 1);
+        $data['paginationItems'] = $this->paginationItems($currentPage, $totalPages);
 
         return $this->renderPluginView('User/Blog.html', $data);
     }
@@ -97,6 +117,7 @@ class Index extends User
         $published = Content::query()
             ->where('content_type', 'blog')
             ->where('status', 'published')
+            ->orderByDesc('sort_order')
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->get();
@@ -224,6 +245,32 @@ class Index extends User
     {
         $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return preg_match_all('/[\p{Han}]|[A-Za-z0-9]+(?:[\'\x{2019}-][A-Za-z0-9]+)*/u', $text, $matches) ?: 0;
+    }
+
+    /** @return list<array{type:string,page?:int,current?:bool}> */
+    private function paginationItems(int $currentPage, int $totalPages): array
+    {
+        if ($totalPages <= 1) {
+            return [];
+        }
+
+        $pages = [1, $totalPages];
+        for ($page = max(1, $currentPage - 2); $page <= min($totalPages, $currentPage + 2); $page++) {
+            $pages[] = $page;
+        }
+        $pages = array_values(array_unique($pages));
+        sort($pages);
+
+        $items = [];
+        $previous = 0;
+        foreach ($pages as $page) {
+            if ($previous > 0 && $page - $previous > 1) {
+                $items[] = ['type' => 'ellipsis'];
+            }
+            $items[] = ['type' => 'page', 'page' => $page, 'current' => $page === $currentPage];
+            $previous = $page;
+        }
+        return $items;
     }
 
     /** @param array<string,mixed> $data */

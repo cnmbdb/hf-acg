@@ -81,8 +81,8 @@
                     </div>
 
                     <div class="border rounded-3 mb-4 cc-config-section-card${settings.list_enabled === false ? ' is-disabled' : ''}" data-section-card>
-                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">4. 综合文章列表</div><div class="text-muted fs-8 mt-1">默认文章网格、数量和阅读全文入口</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="list_enabled" value="1" data-section-toggle${settings.list_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
-                        <div class="p-4 cc-config-section-body"><div class="row g-3"><div class="col-md-8"><label class="form-label required">区块标题</label><input class="form-control" name="list_title" maxlength="40" value="${escape(settings.list_title || '')}"></div><div class="col-md-4"><label class="form-label">文章数量</label><input class="form-control" type="number" name="list_limit" min="3" max="30" value="${escape(settings.list_limit || 12)}"></div></div></div>
+                        <div class="d-flex justify-content-between align-items-center gap-3 p-4 border-bottom"><div><div class="fw-bold fs-6">4. 综合文章列表</div><div class="text-muted fs-8 mt-1">默认文章网格、每页固定 20 篇和分页入口</div></div><label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="list_enabled" value="1" data-section-toggle${settings.list_enabled !== false ? ' checked' : ''}><span class="form-check-label">是否启用</span></label></div>
+                        <div class="p-4 cc-config-section-body"><div class="row g-3"><div class="col-md-8"><label class="form-label required">区块标题</label><input class="form-control" name="list_title" maxlength="40" value="${escape(settings.list_title || '')}"></div><div class="col-md-4"><label class="form-label">每页文章数量</label><input class="form-control" type="number" name="list_limit" value="20" readonly></div></div></div>
                     </div>
 
                     <label class="form-check form-switch form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="animation_enabled" value="1"${settings.animation_enabled !== false ? ' checked' : ''}><span class="form-check-label">启用 GSAP 区块进场与筛选动画</span></label>
@@ -147,7 +147,7 @@
                     ticker_duration: Number(data.ticker_duration || 28),
                     category_title: data.category_title,
                     list_title: data.list_title,
-                    list_limit: Number(data.list_limit || 12),
+                    list_limit: 20,
                     animation_enabled: dom.find('[name="animation_enabled"]').is(':checked')
                 });
             } else if (item.template_key === 'blog_detail') {

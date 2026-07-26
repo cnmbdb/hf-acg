@@ -44,14 +44,14 @@
         </header>
         <div class="cc-ticker-viewport" data-ticker-viewport>
             <div class="cc-ticker-track" data-ticker-track>
-                #{foreach $articles as $article}
+                #{foreach $tickerArticles as $article}
                 <a class="cc-mini-card" href="#{$article.url|escape:'html'}">
                     <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
                     <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
                     <i class="fa-duotone fa-regular fa-arrow-up-right"></i>
                 </a>
                 #{/foreach}
-                #{foreach $articles as $article}
+                #{foreach $tickerArticles as $article}
                 <a class="cc-mini-card" href="#{$article.url|escape:'html'}" aria-hidden="true" tabindex="-1">
                     <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
                     <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
@@ -88,7 +88,10 @@
                 <span class="cc-eyebrow">All stories</span>
                 <h2>#{$blogSettings.list_title|escape:'html'}</h2>
             </div>
-            <span class="cc-section-meta"><strong data-visible-count>#{$articleCount}</strong> 篇文章</span>
+            <span class="cc-section-meta">
+                <span data-page-summary>第 #{$articleRangeStart}-#{$articleRangeEnd} 篇，共 <strong>#{$totalArticleCount}</strong> 篇</span>
+                <span data-filter-summary hidden>本页筛选出 <strong data-visible-count>#{$articleCount}</strong> 篇</span>
+            </span>
         </header>
         <div class="cc-article-grid" data-article-grid>
             #{foreach $articles as $article}
@@ -111,6 +114,33 @@
             #{/foreach}
         </div>
         #{if !$articles}<div class="cc-empty">暂无已发布文章</div>#{/if}
+        #{if $totalPages > 1}
+        <nav class="cc-list-pagination" aria-label="文章列表分页">
+            #{if $currentPage > 1}
+            <a class="cc-page-control" href="/blog?page=#{$previousPage|escape:'html'}" rel="prev"><i class="fa-duotone fa-regular fa-arrow-left"></i><span>上一页</span></a>
+            #{else}
+            <span class="cc-page-control is-disabled" aria-disabled="true"><i class="fa-duotone fa-regular fa-arrow-left"></i><span>上一页</span></span>
+            #{/if}
+            <div class="cc-page-numbers">
+                #{foreach $paginationItems as $item}
+                    #{if $item.type == 'page'}
+                        #{if $item.current}
+                        <span class="cc-page-number is-current" aria-current="page">#{$item.page|escape:'html'}</span>
+                        #{else}
+                        <a class="cc-page-number" href="/blog?page=#{$item.page|escape:'html'}">#{$item.page|escape:'html'}</a>
+                        #{/if}
+                    #{else}
+                    <span class="cc-page-ellipsis" aria-hidden="true">…</span>
+                    #{/if}
+                #{/foreach}
+            </div>
+            #{if $currentPage < $totalPages}
+            <a class="cc-page-control" href="/blog?page=#{$nextPage|escape:'html'}" rel="next"><span>下一页</span><i class="fa-duotone fa-regular fa-arrow-right"></i></a>
+            #{else}
+            <span class="cc-page-control is-disabled" aria-disabled="true"><span>下一页</span><i class="fa-duotone fa-regular fa-arrow-right"></i></span>
+            #{/if}
+        </nav>
+        #{/if}
     </section>
     #{/if}
 </main>

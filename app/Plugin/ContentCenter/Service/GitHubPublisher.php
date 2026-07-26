@@ -128,17 +128,18 @@ final class GitHubPublisher
         $items = Content::query()
             ->where('content_type', 'blog')
             ->where('status', 'published')
-            ->orderByDesc('published_at')
+            ->orderByDesc('sort_order')
+            ->orderByDesc('id')
             ->get()
             ->keyBy('id');
         if ($current) {
             $items->put($current->id, $current);
         }
         $items = $items->values()->all();
-        usort($items, static fn(Content $a, Content $b): int => strcmp(
-            (string)($b->published_at ?: date('Y-m-d H:i:s')),
-            (string)($a->published_at ?: date('Y-m-d H:i:s'))
-        ));
+        usort($items, static fn(Content $a, Content $b): int =>
+            ((int)$b->sort_order <=> (int)$a->sort_order)
+            ?: ((int)$b->id <=> (int)$a->id)
+        );
         return array_values($items);
     }
 

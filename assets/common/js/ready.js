@@ -83,7 +83,7 @@ function route(uri) {
     if (document.querySelector('link[data-content-center-blog]')) return;
     const style = document.createElement('link');
     style.rel = 'stylesheet';
-    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260723-4';
+    style.href = '/app/Plugin/ContentCenter/Assets/content-center-blog.css?v=20260726-1';
     style.setAttribute('data-content-center-blog', '1');
     document.head.appendChild(style);
 }());
@@ -146,7 +146,7 @@ documentReady(() => {
     if (!blogPage || document.querySelector('script[data-content-center-page]')) return;
 
     const pageScript = document.createElement('script');
-    pageScript.src = '/app/Plugin/ContentCenter/Assets/content-center-blog.js?v=20260722-1';
+    pageScript.src = '/app/Plugin/ContentCenter/Assets/content-center-blog.js?v=20260726-1';
     pageScript.setAttribute('data-content-center-page', '1');
 
     if (window.gsap) {

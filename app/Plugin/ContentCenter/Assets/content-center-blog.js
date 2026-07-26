@@ -15,6 +15,8 @@
     var tickerTrack = root.querySelector('[data-ticker-track]');
     var tickerViewport = root.querySelector('[data-ticker-viewport]');
     var countNode = root.querySelector('[data-visible-count]');
+    var pageSummary = root.querySelector('[data-page-summary]');
+    var filterSummary = root.querySelector('[data-filter-summary]');
     var heroPanel = root.querySelector('.cc-hero');
     var supportingPanels = Array.prototype.slice.call(root.querySelectorAll('.cc-ticker, .cc-categories'));
     var enabled = root.getAttribute('data-animation-enabled') !== '0';
@@ -96,6 +98,8 @@
             });
         }
         if (countNode) countNode.textContent = String(visible.length);
+        if (pageSummary) pageSummary.hidden = category !== 'all';
+        if (filterSummary) filterSummary.hidden = category === 'all';
     }
 
     function startTicker() {

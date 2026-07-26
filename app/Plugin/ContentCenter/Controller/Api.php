@@ -11,6 +11,7 @@ use App\Plugin\ContentCenter\Model\Template;
 use App\Plugin\ContentCenter\Service\ContentService;
 use App\Plugin\ContentCenter\Service\Schema;
 use App\Plugin\ContentCenter\Service\TemplateService;
+use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Eloquent\Builder;
 use Kernel\Annotation\Interceptor;
 use Kernel\Exception\JSONException;
@@ -23,7 +24,7 @@ class Api extends Manage
         Schema::ensure();
         $type = $this->type((string)$this->request->post('content_type'));
         $page = max(1, (int)$this->request->post('page'));
-        $limit = min(100, max(1, (int)$this->request->post('limit') ?: 20));
+        $limit = min(1000, max(1, (int)$this->request->post('limit') ?: 20));
         $keyword = trim((string)$this->request->post('keyword'));
         $status = trim((string)$this->request->post('status'));
         $query = Content::query()->where('content_type', $type);
@@ -36,8 +37,48 @@ class Api extends Manage
             $query->where('status', $status);
         }
         $total = $query->count();
-        $list = $query->orderByDesc('update_time')->forPage($page, $limit)->get()->map(static fn(Content $item): array => self::row($item))->all();
+        $list = $query
+            ->orderByDesc('sort_order')
+            ->orderByDesc('id')
+            ->forPage($page, $limit)
+            ->get()
+            ->map(static fn(Content $item): array => self::row($item))
+            ->all();
         return $this->json(200, 'success', ['list' => $list, 'total' => $total]);
+    }
+
+    public function reorder(): array
+    {
+        Schema::ensure();
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', explode(',', (string)$this->request->post('ids'))),
+            static fn(int $id): bool => $id > 0
+        )));
+        if (!$ids || count($ids) > 1000) {
+            throw new JSONException('文章排序数据无效');
+        }
+
+        $allIds = Content::query()
+            ->where('content_type', 'blog')
+            ->pluck('id')
+            ->map(static fn(mixed $id): int => (int)$id)
+            ->all();
+        $sortedIds = $ids;
+        $sortedAllIds = $allIds;
+        sort($sortedIds);
+        sort($sortedAllIds);
+        if ($sortedIds !== $sortedAllIds) {
+            throw new JSONException('请清除搜索和状态筛选后，再拖动全部文章排序');
+        }
+
+        DB::connection()->transaction(static function () use ($ids): void {
+            $weight = count($ids);
+            foreach ($ids as $id) {
+                Content::query()->where('id', $id)->update(['sort_order' => $weight--]);
+            }
+        });
+        $this->log('调整了博客文章展示顺序');
+        return $this->json(200, '文章顺序已保存');
     }
 
     public function detail(): array
@@ -150,6 +191,7 @@ class Api extends Manage
             'excerpt' => $content->excerpt,
             'cover' => $content->cover,
             'tags' => is_array($content->tags) ? $content->tags : [],
+            'sort_order' => $content->sort_order,
             'status' => $content->status,
             'published_at' => $content->published_at,
             'git_sha' => $content->git_sha,
@@ -186,7 +228,8 @@ class Api extends Manage
                 $row['article_options'] = Content::query()
                     ->where('content_type', 'blog')
                     ->where('status', 'published')
-                    ->orderByDesc('published_at')
+                    ->orderByDesc('sort_order')
+                    ->orderByDesc('id')
                     ->get(['id', 'title'])
                     ->map(static fn(Content $content): array => ['id' => $content->id, 'title' => $content->title])
                     ->all();

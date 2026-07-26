@@ -21,6 +21,7 @@ final class Schema
                 $table->longText('body_mdx');
                 $table->string('cover', 512)->nullable();
                 $table->text('tags')->nullable();
+                $table->unsignedBigInteger('sort_order')->default(0);
                 $table->string('status', 16)->default('draft');
                 $table->dateTime('published_at')->nullable();
                 $table->unsignedBigInteger('author_id')->default(0);
@@ -65,6 +66,17 @@ final class Schema
             $schema->table('content_center_template', static function (Blueprint $table): void {
                 $table->longText('published_settings_json')->nullable()->after('published_body_mdx');
             });
+        }
+        if (!$schema->hasColumn('content_center_content', 'sort_order')) {
+            $schema->table('content_center_content', static function (Blueprint $table): void {
+                $table->unsignedBigInteger('sort_order')->default(0)->after('tags');
+            });
+            $items = DB::table('content_center_content')->orderBy('id')->get(['id']);
+            foreach ($items as $position => $item) {
+                DB::table('content_center_content')
+                    ->where('id', (int)$item->id)
+                    ->update(['sort_order' => $position + 1]);
+            }
         }
 
         self::seedTemplates();

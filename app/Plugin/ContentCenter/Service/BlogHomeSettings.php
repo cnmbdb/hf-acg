@@ -36,7 +36,7 @@ final class BlogHomeSettings
             'ticker_duration' => 28,
             'category_title' => '按主题浏览',
             'list_title' => '综合文章',
-            'list_limit' => 12,
+            'list_limit' => 20,
             'animation_enabled' => true,
         ];
     }
@@ -88,7 +88,7 @@ final class BlogHomeSettings
             'ticker_duration' => self::number($raw['ticker_duration'] ?? $defaults['ticker_duration'], 12, 120),
             'category_title' => self::text($raw['category_title'] ?? $defaults['category_title'], 40, '分类区标题'),
             'list_title' => self::text($raw['list_title'] ?? $defaults['list_title'], 40, '文章列表标题'),
-            'list_limit' => self::number($raw['list_limit'] ?? $defaults['list_limit'], 3, 30),
+            'list_limit' => 20,
             'animation_enabled' => self::boolean($raw['animation_enabled'] ?? true),
         ];
     }

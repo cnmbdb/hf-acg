@@ -49,6 +49,11 @@ final class ContentService
         $content->body_mdx = $body;
         $content->cover = $this->nullableUrl($input['cover'] ?? '');
         $content->tags = $this->tags($input['tags'] ?? '');
+        if (!$content->exists) {
+            $content->sort_order = (int)Content::query()
+                ->where('content_type', $type)
+                ->max('sort_order') + 1;
+        }
         $content->status = 'draft';
         $content->author_id = $authorId;
         $content->update_time = Date::current();

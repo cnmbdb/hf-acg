@@ -469,6 +469,81 @@
     text-align: center;
 }
 
+.cc-list-pagination {
+    display: grid;
+    grid-template-columns: minmax(110px, 1fr) auto minmax(110px, 1fr);
+    align-items: center;
+    gap: 18px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--cc-border);
+}
+
+.cc-page-control,
+.cc-page-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cc-foreground) !important;
+    background: #fff;
+    border: 1px solid var(--cc-border);
+    border-radius: 12px;
+    font-size: .78rem;
+    font-weight: 850;
+    transition: color .18s ease, background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.cc-page-control {
+    width: max-content;
+    min-width: 110px;
+    min-height: 44px;
+    gap: 9px;
+    padding: 0 16px;
+}
+
+.cc-page-control:last-child {
+    justify-self: end;
+}
+
+.cc-page-control:not(.is-disabled):hover,
+.cc-page-number:not(.is-current):hover {
+    border-color: rgba(29, 32, 39, .28);
+    transform: translateY(-2px);
+}
+
+.cc-page-control.is-disabled {
+    color: var(--cc-muted) !important;
+    background: rgba(255, 255, 255, .55);
+    cursor: not-allowed;
+    opacity: .65;
+}
+
+.cc-page-numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.cc-page-number {
+    width: 42px;
+    height: 42px;
+}
+
+.cc-page-number.is-current {
+    color: #fff !important;
+    background: #17191f;
+    border-color: #17191f;
+}
+
+.cc-page-ellipsis {
+    display: inline-flex;
+    width: 24px;
+    justify-content: center;
+    color: var(--cc-muted);
+    font-weight: 850;
+}
+
 .cc-article-page {
     display: flex;
     max-width: 1180px;
@@ -1018,6 +1093,21 @@ a.cc-page-card:hover {
         flex-direction: column;
         gap: 8px;
         padding-top: 16px;
+    }
+
+    .cc-list-pagination {
+        grid-template-columns: 1fr 1fr;
+        gap: 14px 10px;
+    }
+
+    .cc-page-numbers {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    .cc-page-control {
+        grid-row: 2;
+        width: 100%;
     }
 
     .cc-article-page {

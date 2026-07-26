@@ -9,6 +9,9 @@
     const coverUploadUrl = '/admin/api/upload/send?mime=image';
     const coverTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     const maxCoverSize = 8 * 1024 * 1024;
+    let draggedRow = null;
+    let originalOrder = [];
+    let sorting = false;
 
     function renderCoverPreview(editor, value) {
         const preview = editor.find('[data-cover-preview]');
@@ -83,13 +86,22 @@
     }
 
     function load() {
-        request('data', {content_type: type, keyword: $('#content-keyword').val(), status: $('#content-status').val()})
+        const keyword = String($('#content-keyword').val() || '').trim();
+        const selectedStatus = String($('#content-status').val() || '');
+        request('data', {content_type: type, keyword, status: selectedStatus, limit: 1000})
             .done(res => {
                 if (res.code !== 200) return notify(res.msg || '加载失败', true);
-                const rows = (res.data.list || []).map(item => {
+                const list = res.data.list || [];
+                const total = Number(res.data.total || 0);
+                const sortable = keyword === '' && selectedStatus === '' && list.length === total;
+                const rows = list.map(item => {
                     const previewUrl = item.status === 'published' ? '/blog/' + encodeURIComponent(item.slug) : '';
                     const previewButton = previewUrl ? `<a class="btn btn-sm btn-light-success" href="${escape(previewUrl)}" target="_blank" rel="noopener">站内预览</a> ` : '';
-                    return `<tr>
+                    const sortHandle = sortable
+                        ? '<button class="cc-drag-handle" type="button" draggable="true" title="按住拖动排序" aria-label="拖动文章排序"><i class="fa-duotone fa-regular fa-grip-dots-vertical"></i></button>'
+                        : '<span class="text-muted" title="清除筛选后可拖动排序"><i class="fa-duotone fa-regular fa-grip-dots-vertical"></i></span>';
+                    return `<tr data-id="${Number(item.id)}">
+                    <td class="cc-sort-cell">${sortHandle}</td>
                     <td><div class="fw-bold">${escape(item.title)}</div><div class="text-muted fs-8">${escape(item.excerpt || '')}</div></td>
                     <td><code>${escape(item.slug)}</code></td>
                     <td><span class="badge badge-light-${item.status === 'published' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'}">${status(item.status)}</span>${item.publish_error ? `<div class="text-danger fs-8 mt-1">${escape(item.publish_error)}</div>` : ''}</td>
@@ -97,9 +109,41 @@
                     <td class="text-end">${previewButton}<button class="btn btn-sm btn-light edit" data-id="${item.id}">编辑</button> <button class="btn btn-sm btn-light-primary publish" data-id="${item.id}">发布</button> <button class="btn btn-sm btn-light-danger remove" data-id="${item.id}">删除</button></td>
                 </tr>`;
                 }).join('');
-                $('#content-table tbody').html(rows || '<tr><td colspan="5" class="text-center text-muted py-8">暂无' + label + '</td></tr>');
-                $('#content-total').text('共 ' + (res.data.total || 0) + ' 条');
+                $('#content-table tbody').html(rows || '<tr><td colspan="6" class="text-center text-muted py-8">暂无' + label + '</td></tr>');
+                $('#content-total').text('共 ' + total + ' 条 · ' + (sortable ? '按住左侧手柄拖动排序，松开后自动保存' : '清除搜索和状态筛选后可拖动排序'));
             }).fail(xhr => notify(xhr.responseJSON?.msg || '加载失败', true));
+    }
+
+    function tableOrder() {
+        return $('#content-table tbody tr[data-id]').map(function () {
+            return Number($(this).data('id'));
+        }).get();
+    }
+
+    function clearDragState() {
+        $('#content-table tbody tr').removeClass('is-dragging is-sorting');
+        draggedRow = null;
+        originalOrder = [];
+    }
+
+    function saveOrder(ids) {
+        if (sorting) return;
+        sorting = true;
+        $('#content-table .cc-drag-handle').prop('disabled', true);
+        request('reorder', {ids: ids.join(',')}).done(res => {
+            if (res.code !== 200) {
+                notify(res.msg || '排序保存失败', true);
+            } else {
+                notify(res.msg || '文章顺序已保存');
+            }
+            load();
+        }).fail(xhr => {
+            notify(xhr.responseJSON?.msg || '排序保存失败', true);
+            load();
+        }).always(() => {
+            sorting = false;
+            clearDragState();
+        });
     }
 
     function editor(item = {}) {
@@ -121,7 +165,7 @@
                 </div>
             </div>
         </div>`;
-        const tagsField = `<div class="mb-3"><label class="form-label">标签</label><input class="form-control" name="tags" value="${escape((item.tags || []).join(', '))}" placeholder="多个标签用英文逗号分隔" /></div>`;
+        const tagsField = `<div class="mb-3"><label class="form-label">文章分类标题</label><input class="form-control" name="tags" value="${escape((item.tags || []).join(', '))}" placeholder="多个分类标题用英文逗号分隔" /></div>`;
         const html = `<div class="p-4 content-center-editor">
             <input type="hidden" name="id" value="${escape(item.id || '')}"><input type="hidden" name="content_type" value="${type}">
             <div class="mb-3"><label class="form-label required">标题</label><input class="form-control" name="title" value="${escape(item.title || '')}" maxlength="160"></div>
@@ -147,6 +191,40 @@
     root.on('click.contentCenterArticles', '#content-create', () => editor());
     root.on('click.contentCenterArticles', '#content-search', load);
     root.on('keydown.contentCenterArticles', '#content-keyword', event => { if (event.key === 'Enter') load(); });
+    root.on('dragstart.contentCenterArticles', '#content-table .cc-drag-handle', function (event) {
+        if (sorting) {
+            event.preventDefault();
+            return;
+        }
+        draggedRow = $(this).closest('tr')[0];
+        originalOrder = tableOrder();
+        draggedRow.classList.add('is-dragging');
+        event.originalEvent.dataTransfer.effectAllowed = 'move';
+        event.originalEvent.dataTransfer.setData('text/plain', draggedRow.dataset.id || '');
+    });
+    root.on('dragover.contentCenterArticles', '#content-table tbody tr[data-id]', function (event) {
+        if (!draggedRow || this === draggedRow) return;
+        event.preventDefault();
+        event.originalEvent.dataTransfer.dropEffect = 'move';
+        const rect = this.getBoundingClientRect();
+        const insertAfter = event.originalEvent.clientY > rect.top + rect.height / 2;
+        this.parentNode.insertBefore(draggedRow, insertAfter ? this.nextSibling : this);
+        $('#content-table tbody tr').removeClass('is-sorting');
+        this.classList.add('is-sorting');
+    });
+    root.on('drop.contentCenterArticles', '#content-table tbody', function (event) {
+        if (!draggedRow) return;
+        event.preventDefault();
+        const ids = tableOrder();
+        const changed = ids.join(',') !== originalOrder.join(',');
+        clearDragState();
+        if (changed) saveOrder(ids);
+    });
+    root.on('dragend.contentCenterArticles', '#content-table .cc-drag-handle', function () {
+        const cancelled = draggedRow && tableOrder().join(',') !== originalOrder.join(',');
+        clearDragState();
+        if (cancelled) load();
+    });
     root.on('click.contentCenterArticles', '#content-table .edit', function () {
         request('detail', {id: $(this).data('id')}).done(res => res.code === 200 ? editor(res.data) : notify(res.msg || '读取失败', true));
     });
