@@ -201,18 +201,24 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
+        #{if $fansGurusNavEnabled}
         <a class="xh-navlink #{if $shopSource == "fansgurus"}is-active#{/if}" href="/fans">
             <i class="fa-duotone fa-regular fa-users"></i>
             <span>粉丝服务</span>
         </a>
+        #{/if}
+        #{if $hStockPlusNavEnabled}
         <a class="xh-navlink #{if $shopSource == "hstockplus"}is-active#{/if}" href="/2">
             <i class="fa-duotone fa-regular fa-id-card"></i>
             <span>海外账号购买</span>
         </a>
+        #{/if}
+        #{if $manualShopPageNavEnabled}
         <a class="xh-navlink #{if $shopSource == "default"}is-active#{/if}" href="/3">
-            <i class="fa-duotone fa-regular fa-box-open"></i>
+            <i class="#{$manualShopPageNavIcon}"></i>
             <span>#{$manualShopPageNavLabel}</span>
         </a>
+        #{/if}
         <div class="xh-tools">
             <button class="xh-navlink xh-tools-toggle" type="button" aria-label="打开2FA工具箱" aria-expanded="false" data-tools-toggle>
                 <i class="fa-duotone fa-regular fa-wrench"></i>
@@ -305,18 +311,24 @@
             <i class="fa-duotone fa-regular fa-folders"></i>
             <span data-i18n="orderLookup">订单查询</span>
         </a>
+        #{if $fansGurusNavEnabled}
         <a class="xh-mobile-link #{if $shopSource == "fansgurus"}is-active#{/if}" href="/fans">
             <i class="fa-duotone fa-regular fa-users"></i>
             <span>粉丝服务</span>
         </a>
+        #{/if}
+        #{if $hStockPlusNavEnabled}
         <a class="xh-mobile-link #{if $shopSource == "hstockplus"}is-active#{/if}" href="/2">
             <i class="fa-duotone fa-regular fa-id-card"></i>
             <span>海外账号购买</span>
         </a>
+        #{/if}
+        #{if $manualShopPageNavEnabled}
         <a class="xh-mobile-link #{if $shopSource == "default"}is-active#{/if}" href="/3">
-            <i class="fa-duotone fa-regular fa-box-open"></i>
+            <i class="#{$manualShopPageNavIcon}"></i>
             <span>#{$manualShopPageNavLabel}</span>
         </a>
+        #{/if}
         <div class="xh-mobile-tools">
             <div class="xh-mobile-tools-title">
                 <i class="fa-duotone fa-regular fa-wrench"></i>

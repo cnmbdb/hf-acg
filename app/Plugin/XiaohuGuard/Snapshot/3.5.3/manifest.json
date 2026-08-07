@@ -53,8 +53,8 @@
             "size": 448
         },
         "app/Plugin/ManualShopPage/Service/Navigation.php": {
-            "sha256": "1db5ec178c52a281abd3246da9780cae2b1576788b8cbca677aa8bb3712992b1",
-            "size": 1220
+            "sha256": "ba5ef9dc33ffe4b39bda9452cef0b6c18d50ab12a27cb984e0c74a56b81f23b2",
+            "size": 1658
         },
         "app/Plugin/ManualShopPage/Wiki/README.md": {
             "sha256": "b2a40b822a0ed3207187d9a50724791b2fc260cd5041379ed32e13c5b0ab53e3",
@@ -77,8 +77,8 @@
             "size": 3966
         },
         "app/View/User/Theme/Cartoon/Index/Header.html": {
-            "sha256": "f38a1bdc1cbbccffd0f4f0a612dc5b51d82ce3ba7f7235283c922a89309b23d0",
-            "size": 6864
+            "sha256": "64ad137e13c3818c85cd38f99536c5ab01781dfc592a15827c8af3ddf4a89e9a",
+            "size": 6997
         },
         "app/View/User/Theme/Xiaohu/Config.php": {
             "sha256": "b33d0e7b061d0a89731c8cab36ac25748e6ad093f50979329d94434add6d2cf7",
@@ -89,8 +89,8 @@
             "size": 1648
         },
         "app/View/User/Theme/Xiaohu/Index/Header.html": {
-            "sha256": "f43c222df8ad2b007bde901a12911b9de694650bab4df784e17cc45775676c38",
-            "size": 22363
+            "sha256": "05551cea9ea20b8336abd871a2937eb45e74c42fe20512d1d3ca6a8e7acdd619",
+            "size": 22659
         },
         "app/View/User/Theme/Xiaohu/Index/Index.html": {
             "sha256": "37d447398cd771bb10ec4c47fcc4bc057dee5fe3640cc19b544df091ad7e56c9",

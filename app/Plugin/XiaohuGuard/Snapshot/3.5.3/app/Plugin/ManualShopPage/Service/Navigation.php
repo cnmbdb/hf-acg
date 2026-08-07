@@ -13,11 +13,7 @@ final class Navigation
 
     public static function viewData(): array
     {
-        try {
-            $config = Plugin::getConfig(self::PLUGIN, false);
-        } catch (\Throwable) {
-            $config = [];
-        }
+        $config = self::pluginConfig(self::PLUGIN);
 
         $label = trim(strip_tags((string)($config['nav_label'] ?? self::DEFAULT_LABEL)));
         if ($label === '') {
@@ -31,9 +27,26 @@ final class Navigation
         }
 
         return [
+            'fansGurusNavEnabled' => self::pluginEnabled('FansGurus'),
+            'hStockPlusNavEnabled' => self::pluginEnabled('HStockPlus'),
             'manualShopPageNavEnabled' => (int)($config['STATUS'] ?? 0) === 1,
             'manualShopPageNavLabel' => htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             'manualShopPageNavIcon' => $icon,
         ];
+    }
+
+    private static function pluginEnabled(string $plugin): bool
+    {
+        $config = self::pluginConfig($plugin);
+        return (int)($config['STATUS'] ?? 0) === 1;
+    }
+
+    private static function pluginConfig(string $plugin): array
+    {
+        try {
+            return Plugin::getConfig($plugin, false);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 }
