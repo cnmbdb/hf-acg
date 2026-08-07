@@ -580,7 +580,7 @@ class Order implements \App\Service\Order
         }
 
         if (str_starts_with((string)$commodity->code, 'FG_') && $targetLink === '') {
-            throw new JSONException('请输入 FansGurus 商品的目标链接');
+            throw new JSONException('请输入商品目标链接');
         }
 
         $widget = json_encode($widget, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

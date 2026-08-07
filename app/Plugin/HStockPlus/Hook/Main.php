@@ -10,6 +10,7 @@ use App\Model\Order;
 use App\Model\Pay;
 use App\Plugin\HStockPlus\Service\Client;
 use App\Plugin\HStockPlus\Service\Sync;
+use App\Plugin\Support\UpstreamCategoryStatus;
 use App\Plugin\Support\UpstreamPriceRecalculator;
 use App\Util\Ini;
 use App\Util\Plugin;
@@ -305,7 +306,7 @@ class Main
             ->all();
         $categoryIds = $this->withParentCategoryIds($categoryIds);
         $enabledCategoryIds = $this->enabledCategoryIds($categoryIds, $config);
-        $disabledCategoryIds = array_values(array_diff(array_map('intval', $categoryIds), $enabledCategoryIds));
+        $enabledCategoryLookup = array_fill_keys($enabledCategoryIds, true);
 
         $productCount = (clone $products)->count();
 
@@ -324,17 +325,14 @@ class Main
             $products->update(['status' => 0]);
         }
 
+        // Categories are shared by upstream plugins. Keep every category and
+        // ancestor needed by any product that remains active after this update.
+        $activeCategoryTree = UpstreamCategoryStatus::activeCategoryTreeIds();
         $categoryCount = 0;
         foreach ($categoryIds as $categoryId) {
-            if (!in_array((int)$categoryId, $enabledCategoryIds, true)) {
-                $categoryCount += Category::query()
-                    ->where('owner', 0)
-                    ->where('id', $categoryId)
-                    ->update(['status' => 0]);
-                continue;
-            }
+            $categoryId = (int)$categoryId;
 
-            if ($categoryStatus === 1) {
+            if ($categoryStatus === 1 && isset($enabledCategoryLookup[$categoryId])) {
                 $categoryCount += Category::query()
                     ->where('owner', 0)
                     ->where('id', $categoryId)
@@ -342,11 +340,7 @@ class Main
                 continue;
             }
 
-            $activeProducts = Commodity::query()
-                ->where('category_id', $categoryId)
-                ->where('status', 1)
-                ->count();
-            if ((int)$activeProducts > 0) {
+            if (isset($activeCategoryTree[$categoryId])) {
                 continue;
             }
 

@@ -8,6 +8,7 @@ use App\Model\Commodity;
 use App\Model\Coupon;
 use App\Model\UserCategory;
 use App\Plugin\Support\ExchangeRate;
+use App\Plugin\Support\UpstreamOrderMessage;
 use App\Util\Plugin;
 use App\Util\Ini;
 use Illuminate\Database\Capsule\Manager as Db;
@@ -380,7 +381,7 @@ class Sync
         $commodity->api_status = 1;
         $commodity->delivery_way = 1;
         $commodity->delivery_auto_mode = 0;
-        $commodity->delivery_message = 'FansGurus 上游订单处理中，请稍后查看订单状态。';
+        $commodity->delivery_message = UpstreamOrderMessage::PROCESSING;
         $commodity->contact_type = 0;
         $commodity->password_status = 0;
         $commodity->sort = $sort;

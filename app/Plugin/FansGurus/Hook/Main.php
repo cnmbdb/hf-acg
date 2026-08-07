@@ -9,6 +9,8 @@ use App\Model\Order;
 use App\Model\Pay;
 use App\Plugin\FansGurus\Service\Client;
 use App\Plugin\FansGurus\Service\Sync;
+use App\Plugin\Support\UpstreamCategoryStatus;
+use App\Plugin\Support\UpstreamOrderMessage;
 use App\Plugin\Support\UpstreamPriceRecalculator;
 use App\Util\Plugin;
 use Kernel\Annotation\Hook as HookPoint;
@@ -156,7 +158,7 @@ class Main
         }
 
         $upstreamOrder = (string)$result['order'];
-        $order->secret = $this->formatSecret($upstreamOrder, (string)$service, $quantity, $link);
+        $order->secret = $this->formatSecret();
         $order->delivery_status = 1;
         $order->save();
 
@@ -197,7 +199,7 @@ class Main
     private function setSyncedGoodsStatus(int $status): array
     {
         $categoryIds = Commodity::query()
-            ->where('code', 'like', 'FG_%')
+            ->where('code', 'like', 'FG\_%')
             ->whereNotNull('category_id')
             ->distinct()
             ->pluck('category_id')
@@ -207,11 +209,15 @@ class Main
         $categoryIds = $this->withParentCategoryIds($categoryIds);
 
         $commodities = Commodity::query()
-            ->where('code', 'like', 'FG_%')
+            ->where('code', 'like', 'FG\_%')
             ->update(['status' => $status]);
 
+        // A parent category can be shared even when its direct products are not.
+        // Preserve the full path required by products from every active plugin.
+        $activeCategoryTree = UpstreamCategoryStatus::activeCategoryTreeIds();
         $categories = 0;
         foreach ($categoryIds as $categoryId) {
+            $categoryId = (int)$categoryId;
             if ($status === 1) {
                 $categories += \App\Model\Category::query()
                     ->where('id', $categoryId)
@@ -219,11 +225,7 @@ class Main
                 continue;
             }
 
-            $activeProducts = Commodity::query()
-                ->where('category_id', $categoryId)
-                ->where('status', 1)
-                ->count();
-            if ((int)$activeProducts > 0) {
+            if (isset($activeCategoryTree[$categoryId])) {
                 continue;
             }
 
@@ -368,15 +370,9 @@ class Main
         return $url;
     }
 
-    private function formatSecret(string $upstreamOrder, string $service, int $quantity, string $link): string
+    private function formatSecret(): string
     {
-        return implode(PHP_EOL, [
-            'FansGurus上游订单已提交',
-            '上游订单号：' . $upstreamOrder,
-            '服务ID：' . $service,
-            '数量：' . $quantity,
-            '链接：' . $link,
-        ]);
+        return UpstreamOrderMessage::PROCESSING;
     }
 
     private function log(string $message): void

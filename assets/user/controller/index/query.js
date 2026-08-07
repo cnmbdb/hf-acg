@@ -1,4 +1,22 @@
 !function () {
+    const processingContent = '订单处理中，请稍后查看订单状态。';
+    const legacyProcessingContent = new Set([
+        'FansGurus 上游订单处理中，请稍后查看订单状态。',
+        'FansGurus上游订单处理中，请稍后查看订单状态。',
+        'HStockPlus 上游订单处理中，请稍后查看订单状态。',
+        'HStockPlus上游订单处理中，请稍后查看订单状态。',
+        '订单已提交上游处理，请稍后查看订单状态。'
+    ]);
+
+    function _NormalizeProcessingContent(content) {
+        const normalized = String(content ?? '').trim();
+        const isLegacyDetailedMessage = /^FansGurus\s*上游订单已提交(?:\r?\n|$)/.test(normalized);
+
+        return legacyProcessingContent.has(normalized) || isLegacyDetailedMessage
+            ? processingContent
+            : content;
+    }
+
     function _QueryOrders(keywords) {
         util.post({
             url: "/user/api/index/query",
@@ -111,7 +129,7 @@
         </div>
       </div>`;
             } else {
-                cardContent = `<div class="card-content-no-password"><div class="card-display">${order.secret}</div></div>${order?.commodity?.leave_message ? `<div class="mt-3">${order?.commodity?.leave_message}</div>` : ""}`;
+                cardContent = `<div class="card-content-no-password"><div class="card-display">${_NormalizeProcessingContent(order.secret)}</div></div>${order?.commodity?.leave_message ? `<div class="mt-3">${order?.commodity?.leave_message}</div>` : ""}`;
             }
 
             cardContent = `<div class="card-section">
@@ -198,7 +216,7 @@
 
     function _ShowCardContent(tradeNo, content, leaveMessage = null) {
         $(`.card-content-${tradeNo}`).html(`<div class="card-content">
-          <div class="card-display">${content}</div>
+          <div class="card-display">${_NormalizeProcessingContent(content)}</div>
         </div>${leaveMessage ? `<div class="mt-3">${leaveMessage}</div>` : ""}`).show();
     }
 
