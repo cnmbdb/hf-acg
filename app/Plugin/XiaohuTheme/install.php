@@ -12,5 +12,5 @@ $suite=new App\Plugin\XiaohuTheme\Service\Suite();
 $suite->install();
 if (in_array('--enable',$argv,true)) {
  $suite->activate();setConfig(['STATUS'=>1],$root.'/app/Plugin/XiaohuTheme/Config/Config.php');
- echo "小虎主题套件及五个组件已启用\n";
+ echo "小虎主题套件已启用；五个配套插件按各自开关控制\n";
 } else echo "组件文件已安装；请到通用插件启用 Xiaohu 小虎主题套件\n";

@@ -8,23 +8,37 @@ use Kernel\Exception\JSONException;
 final class Suite
 {
     public const COMPONENTS = ['ContentCenter','FansGurus','HStockPlus','ManualShopPage','XiaohuGuard'];
+    public const COMPONENT_SWITCHES = [
+        'ContentCenter'=>'content_center_enabled',
+        'FansGurus'=>'fans_gurus_enabled',
+        'HStockPlus'=>'hstock_plus_enabled',
+        'ManualShopPage'=>'manual_shop_page_enabled',
+        'XiaohuGuard'=>'xiaohu_guard_enabled',
+    ];
     private const THEMES = ['user_theme','user_mobile_theme'];
     private string $root;
     public function __construct(?string $root = null) { $this->root = rtrim($root ?? BASE_PATH, '/'); }
-    public function componentsEnabled(): bool
+    public function resolveComponentStates(?array $config = null): array
     {
-        $path=$this->root.'/app/Plugin/XiaohuTheme/Config/Config.php';
-        if (!is_file($path)) return true;
-        $config=require $path;
-        // Existing installations do not have the switch yet; preserve their current behavior.
-        return (int)($config['components_enabled']??1)===1;
+        if ($config === null) {
+            $path=$this->root.'/app/Plugin/XiaohuTheme/Config/Config.php';
+            $config=is_file($path)?(array)require $path:[];
+        }
+        // The old suite-wide switch remains a fallback for installations upgraded from v1.2.0.
+        $legacyEnabled=(int)($config['components_enabled']??1)===1;
+        $states=[];
+        foreach (self::COMPONENTS as $name) {
+            $key=self::COMPONENT_SWITCHES[$name];
+            $states[$name]=array_key_exists($key,$config)?(int)$config[$key]===1:$legacyEnabled;
+        }
+        return $states;
     }
     public function filterPluginList(array $plugins): array
     {
-        if ($this->componentsEnabled()) return $plugins;
-        return array_values(array_filter($plugins,static function(array $plugin): bool {
+        $states=$this->resolveComponentStates();
+        return array_values(array_filter($plugins,static function(array $plugin) use($states): bool {
             $name=(string)($plugin['id']??$plugin['PLUGIN_NAME']??'');
-            return !in_array($name,self::COMPONENTS,true);
+            return !in_array($name,self::COMPONENTS,true)||($states[$name]??false);
         }));
     }
     private function locked(callable $operation): void
@@ -58,9 +72,9 @@ final class Suite
         }
         Registry::set('XiaohuTheme',true);
     }
-    public function activate(?bool $componentsEnabled = null): void
+    public function activate(): void
     {
-        $this->locked(function() use($componentsEnabled): void {
+        $this->locked(function(): void {
             $this->installFiles();
             $path=$this->root.'/runtime/XiaohuTheme/state.php';
             $state=is_file($path) ? require $path : [];
@@ -76,10 +90,10 @@ final class Suite
                     $state=['statuses'=>array_map(static fn($c)=>(int)($c['STATUS']??0),$before),'themes'=>$themes];
                     setConfig($state,$path,true); chmod($path,0600);
                 }
-                $this->applyComponentStates($componentsEnabled??$this->componentsEnabled());
+                $this->applyComponentStates($this->resolveComponentStates());
                 Config::put('user_theme','Xiaohu');
                 Config::put('user_mobile_theme','0');
-                \App\Util\Plugin::log('XiaohuTheme','小虎主题套件已启用，配套插件状态由套件开关控制，未触发上游同步');
+                \App\Util\Plugin::log('XiaohuTheme','小虎主题套件已启用，配套插件状态由各自开关控制，未触发上游同步');
             } catch (\Throwable $e) {
                 foreach ($before as $name=>$config) setConfig($config,$this->configPath($name),true);
                 foreach ($themes as $key=>$value) Config::put($key,$value);
@@ -91,16 +105,20 @@ final class Suite
             }
         });
     }
-    public function setComponentsEnabled(bool $enabled): void
+    public function setComponentStates(array $states): void
     {
-        $this->locked(function() use($enabled): void {
+        $this->locked(function() use($states): void {
             $this->installFiles();
+            $desired=$this->resolveComponentStates();
+            foreach ($states as $name=>$enabled) {
+                if (array_key_exists($name,$desired)) $desired[$name]=(bool)$enabled;
+            }
             $before=[];
             foreach (self::COMPONENTS as $name) $before[$name]=require $this->configPath($name);
             $hookPath=$this->root.'/runtime/plugin/hook';
             $hooks=is_file($hookPath)?file_get_contents($hookPath):null;
             try {
-                $this->applyComponentStates($enabled);
+                $this->applyComponentStates($desired);
             } catch (\Throwable $e) {
                 foreach ($before as $name=>$config) setConfig($config,$this->configPath($name),true);
                 if ($hooks!==null) file_put_contents($hookPath,$hooks,LOCK_EX);
@@ -109,13 +127,14 @@ final class Suite
             }
         });
     }
-    private function applyComponentStates(bool $enabled): void
+    private function applyComponentStates(array $states): void
     {
         foreach (self::COMPONENTS as $name) {
+            $enabled=(bool)($states[$name]??false);
             setConfig(['STATUS'=>$enabled?1:0],$this->configPath($name));
             Registry::set($name,$enabled);
         }
-        if ($enabled) {
+        if ($states['ContentCenter']??false) {
             // ContentCenter only prepares local schema. Provider START hooks may sync remote products.
             Plugin::runHookState('ContentCenter',\Kernel\Annotation\Plugin::START);
         }
@@ -126,9 +145,9 @@ final class Suite
             $path=$this->root.'/runtime/XiaohuTheme/state.php';
             if (!is_file($path)) return;
             $state=require $path;
-            $componentsEnabled=$this->componentsEnabled();
+            $componentStates=$this->resolveComponentStates();
             foreach (self::COMPONENTS as $name) {
-                $status=$componentsEnabled?(int)($state['statuses'][$name]??0):0;
+                $status=($componentStates[$name]??false)?(int)($state['statuses'][$name]??0):0;
                 setConfig(['STATUS'=>$status],$this->configPath($name));
                 Registry::set($name,$status===1);
             }

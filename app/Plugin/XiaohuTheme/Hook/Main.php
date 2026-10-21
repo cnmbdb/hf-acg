@@ -72,15 +72,10 @@ final class Main
         if ($pluginName !== 'XiaohuTheme') return;
         $config = require BASE_PATH.'/app/Plugin/XiaohuTheme/Config/Config.php';
         $repair=(int)($map['repair_components']??0)===1;
-        $switchChanged=array_key_exists('components_enabled',$map);
+        $switchChanged=(bool)array_intersect(array_keys($map),array_values(Suite::COMPONENT_SWITCHES));
         if (!$repair && !$switchChanged) return;
-        $componentsEnabled=(int)($map['components_enabled']??$config['components_enabled']??1)===1;
         $suite=new Suite();
         $suite->install();
-        if ((int)($config['STATUS']??0)===1) {
-            $suite->activate($componentsEnabled);
-        } elseif ($switchChanged) {
-            $suite->setComponentsEnabled($componentsEnabled);
-        }
+        if ($switchChanged) $suite->setComponentStates($suite->resolveComponentStates(array_replace($config,$map)));
     }
 }

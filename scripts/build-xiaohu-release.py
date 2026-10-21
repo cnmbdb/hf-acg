@@ -35,7 +35,7 @@ def main() -> None:
             if rel.as_posix() == 'Config/Config.php':
                 continue
             if rel.as_posix() == 'Config/Info.php':
-                data = ("<?php\ndeclare(strict_types=1);\nreturn ['NAME'=>'Xiaohu 小虎主题套件','AUTHOR'=>'Xiaohu','VERSION'=>'" + args.version + "','WEB_SITE'=>'#','DESCRIPTION'=>'集中管理小虎主题与五个配套插件；支持独立 GitHub Releases 更新。默认模板 Cartoon 独立保留。'];\n").encode()
+                data = ("<?php\ndeclare(strict_types=1);\nreturn ['NAME'=>'Xiaohu 小虎主题套件','AUTHOR'=>'Xiaohu','VERSION'=>'" + args.version + "','WEB_SITE'=>'#','DESCRIPTION'=>'集中管理小虎主题与五个配套插件；支持分别开关及独立 GitHub Releases 更新。默认模板 Cartoon 独立保留。'];\n").encode()
             else:
                 data = path.read_bytes()
                 if rel.as_posix().startswith('Bundle/Plugins/') and rel.parts[-2:] == ('Config', 'Config.php'):

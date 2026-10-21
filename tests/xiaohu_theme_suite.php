@@ -17,7 +17,12 @@ function check(bool $ok,string $name): void { if(!$ok)throw new RuntimeException
 $bundle=$root.'/app/Plugin/XiaohuTheme/Bundle';
 foreach(Suite::COMPONENTS as $name){mkdir($bundle.'/Plugins/'.$name.'/Config',0755,true);setConfig(['STATUS'=>0,'api_key'=>'TEST_ONLY_API_KEY'],$bundle.'/Plugins/'.$name.'/Config/Config.php');}
 mkdir($bundle.'/Theme/Xiaohu',0755,true);file_put_contents($bundle.'/Theme/Xiaohu/Config.php','theme');mkdir($bundle.'/Support',0755,true);file_put_contents($bundle.'/Support/helper.php','helper');
-$suite=new Suite($root);check($suite->componentsEnabled(),'legacy configuration keeps components enabled');$suite->install();
+$suite=new Suite($root);check(count(array_filter($suite->resolveComponentStates()))===count(Suite::COMPONENTS),'missing suite configuration keeps legacy components enabled');
+check(count(array_filter($suite->resolveComponentStates(['components_enabled'=>0])))===0,'legacy master-off maps to all individual switches off');
+check(count(array_filter($suite->resolveComponentStates(['components_enabled'=>1])))===count(Suite::COMPONENTS),'legacy master-on maps to all individual switches on');
+$submit=require dirname(__DIR__).'/app/Plugin/XiaohuTheme/Config/Submit.php';
+check(count(array_intersect(array_column($submit,'name'),array_values(Suite::COMPONENT_SWITCHES)))===count(Suite::COMPONENTS),'suite settings expose one switch per component');
+$suite->install();
 check(is_file($root.'/app/View/User/Theme/Xiaohu/Config.php'),'fresh installation installs theme');
 check(!is_dir($root.'/app/View/User/Theme/Cartoon'),'Cartoon is never installed or modified');
 foreach(Suite::COMPONENTS as $name)check(is_file($root.'/app/Plugin/'.$name.'/Config/Config.php'),'fresh install '.$name);
@@ -39,15 +44,19 @@ $root2=sys_get_temp_dir().'/xiaohu-suite-switch-test-'.bin2hex(random_bytes(6));
 $bundle2=$root2.'/app/Plugin/XiaohuTheme/Bundle';
 foreach(Suite::COMPONENTS as $name){mkdir($bundle2.'/Plugins/'.$name.'/Config',0755,true);setConfig(['STATUS'=>0],$bundle2.'/Plugins/'.$name.'/Config/Config.php');}
 mkdir($bundle2.'/Theme/Xiaohu',0755,true);mkdir($bundle2.'/Support',0755,true);
-mkdir($root2.'/app/Plugin/XiaohuTheme/Config',0755,true);setConfig(['STATUS'=>1,'components_enabled'=>0],$root2.'/app/Plugin/XiaohuTheme/Config/Config.php');
-$suite2=new Suite($root2);check(!$suite2->componentsEnabled(),'fresh suite defaults components off');$suite2->install();$suite2->activate();
+mkdir($root2.'/app/Plugin/XiaohuTheme/Config',0755,true);setConfig(['STATUS'=>1,'components_enabled'=>0,'content_center_enabled'=>0,'fans_gurus_enabled'=>0,'hstock_plus_enabled'=>0,'manual_shop_page_enabled'=>0,'xiaohu_guard_enabled'=>0],$root2.'/app/Plugin/XiaohuTheme/Config/Config.php');
+$suite2=new Suite($root2);check(count(array_filter($suite2->resolveComponentStates()))===0,'fresh suite defaults each component off');$suite2->install();$suite2->activate();
 $rows=[['id'=>'XiaohuTheme'],...array_map(static fn($name)=>['id'=>$name],Suite::COMPONENTS)];
 check(count($suite2->filterPluginList($rows))===1,'disabled components are hidden from generic plugin list');
-foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check($c['STATUS']===0,'master-off keeps '.$name.' disabled');}
-$suite2->setComponentsEnabled(true);setConfig(['components_enabled'=>1],$root2.'/app/Plugin/XiaohuTheme/Config/Config.php');check(count($suite2->filterPluginList($rows))===6,'enabled components appear in generic plugin list');
-foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check($c['STATUS']===1&&\App\Plugin\XiaohuTheme\Service\Registry::$enabled[$name]===true,'master-on enables and registers '.$name);}
-$suite2->setComponentsEnabled(false);setConfig(['components_enabled'=>0],$root2.'/app/Plugin/XiaohuTheme/Config/Config.php');check(count($suite2->filterPluginList($rows))===1,'master-off hides component rows again');
-foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check($c['STATUS']===0&&\App\Plugin\XiaohuTheme\Service\Registry::$enabled[$name]===false,'master-off disables and unregisters '.$name);}
-$suite2->deactivate();foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check($c['STATUS']===0,'stopping suite respects disabled master switch for '.$name);}
+$configPath=$root2.'/app/Plugin/XiaohuTheme/Config/Config.php';
+setConfig(['fans_gurus_enabled'=>1],$configPath);$suite2->setComponentStates($suite2->resolveComponentStates());
+check(count($suite2->filterPluginList($rows))===2,'enabling FansGurus reveals only its own row');
+foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';$expected=$name==='FansGurus'?1:0;check((int)$c['STATUS']===$expected&&\App\Plugin\XiaohuTheme\Service\Registry::$enabled[$name]===($expected===1),'FansGurus switch independently controls '.$name);}
+setConfig(['hstock_plus_enabled'=>1],$configPath);$suite2->setComponentStates($suite2->resolveComponentStates());
+check(count($suite2->filterPluginList($rows))===3,'enabling HStockPlus preserves FansGurus and reveals its own row');
+setConfig(['fans_gurus_enabled'=>0],$configPath);$suite2->setComponentStates($suite2->resolveComponentStates());
+check(count($suite2->filterPluginList($rows))===2,'disabling FansGurus hides only its row');
+foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';$expected=$name==='HStockPlus'?1:0;check((int)$c['STATUS']===$expected&&\App\Plugin\XiaohuTheme\Service\Registry::$enabled[$name]===($expected===1),'independent switch state remains correct for '.$name);}
+$suite2->deactivate();foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check((int)$c['STATUS']===0,'stopping suite restores the pre-suite status for '.$name);}
 echo "ALL TESTS PASSED\n";
 }
