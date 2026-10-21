@@ -7,7 +7,6 @@ use App\Interceptor\Owner;
 use App\Model\ManageLog;
 use App\Plugin\XiaohuTheme\Service\Updater;
 use Kernel\Annotation\Interceptor;
-use Kernel\Annotation\Post;
 use Kernel\Context\Interface\Request;
 use Kernel\Exception\JSONException;
 #[Interceptor([ManageSession::class,Owner::class],Interceptor::TYPE_API)]
@@ -17,7 +16,6 @@ final class Api extends Manage
     {
         return $this->json(200,'检查完成',(new Updater())->check());
     }
-    #[Post]
     public function apply(Request $request): array
     {
         $version=trim((string)$request->post('version'));
