@@ -120,7 +120,7 @@ final class Updater
         foreach (Suite::COMPONENTS as $component) $this->mirrorBundle($stage.'/Bundle/Plugins/'.$component,$this->root.'/app/Plugin/'.$component,['Config/Config.php'],$backup,$undo);
         $this->replace($stage.'/Config/Info.php',$infoDestination,$backup,$undo);
     }
-    private function mirrorBundle(string $source,string $destination,array $exclude,array $backup,array &$undo): void
+    private function mirrorBundle(string $source,string $destination,array $exclude,string $backup,array &$undo): void
     {
         if (!is_dir($source)) throw new JSONException('更新包缺少套件组件目录');
         $it=new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($source,\FilesystemIterator::SKIP_DOTS));
