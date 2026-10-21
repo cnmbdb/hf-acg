@@ -62,11 +62,12 @@ final class Updater
     {
         $zip=new ZipArchive();
         if ($zip->open($zipPath)!==true) throw new JSONException('更新包不是有效 ZIP');
+        $zipOpen=true;
         $stage=$this->root.'/runtime/XiaohuTheme/stage-'.bin2hex(random_bytes(6));
         if (!mkdir($stage,0700,true)) { $zip->close();throw new JSONException('无法创建更新暂存目录'); }
         $undo=[];$infoDestination=$this->root.'/app/Plugin/XiaohuTheme/Config/Info.php';
         try {
-            $seen=[];$total=0;$count=0;
+            $seen=[];$seenArchive=[];$total=0;$count=0;
             for ($i=0;$i<$zip->numFiles;$i++) {
                 $stat=$zip->statIndex($i);if (!is_array($stat)) throw new JSONException('更新包目录损坏');
                 $name=(string)$stat['name'];
@@ -81,8 +82,10 @@ final class Updater
                 $ops=0;$attrs=0;$zip->getExternalAttributesIndex($i,$ops,$attrs);
                 $type=(($attrs>>16)&0170000);
                 if ($type!==0 && $type!==0100000) throw new JSONException('更新包包含非普通文件');
-                if (isset($seen[$relative])) throw new JSONException('更新包包含重复文件路径');$seen[$relative]=true;
+                if (isset($seenArchive[$relative])) throw new JSONException('更新包包含重复文件路径');
+                $seenArchive[$relative]=true;
                 if ($relative==='Config/Config.php'||$relative==='runtime.log') continue;
+                $seen[$relative]=true;
                 $path=$stage.'/'.$relative;
                 if (!is_dir(dirname($path))&&!mkdir(dirname($path),0700,true)) throw new JSONException('更新包暂存失败');
                 $in=$zip->getStream($name);$out=fopen($path,'xb');
@@ -92,11 +95,13 @@ final class Updater
                 finally { fclose($in);fclose($out); }
                 if ($written!==(int)$stat['size']) throw new JSONException('更新包条目长度不匹配');
             }
-            $zip->close();
+            $closed=$zip->close();$zipOpen=false;
+            if (!$closed) throw new JSONException('无法关闭更新包');
             if (!$count || !isset($seen['Config/Info.php'])) throw new JSONException('更新包缺少套件版本信息');
             $this->installStagedFiles($stage,$seen,$backup,$undo,$infoDestination);
         } catch (\Throwable $e) {
-            $zip->close();$this->rollback($undo);$this->removeTree($stage);
+            if ($zipOpen) { try { $zip->close(); } catch (\Throwable) {} }
+            $this->rollback($undo);$this->removeTree($stage);
             if ($e instanceof JSONException) throw $e;
             throw new JSONException('更新失败，已尝试恢复更新前文件');
         }
@@ -106,7 +111,10 @@ final class Updater
     {
         $base='app/Plugin/XiaohuTheme/';
         $paths=array_keys($seen);sort($paths,SORT_STRING);
-        foreach ($paths as $relative) if ($relative!=='Config/Info.php') $this->replace($stage.'/'.$relative,$this->root.'/'.$base.$relative,$backup,$undo);
+        foreach ($paths as $relative) {
+            if (in_array($relative,['Config/Config.php','Config/Info.php','runtime.log'],true)) continue;
+            $this->replace($stage.'/'.$relative,$this->root.'/'.$base.$relative,$backup,$undo);
+        }
         $this->mirrorBundle($stage.'/Bundle/Theme/Xiaohu',$this->root.'/app/View/User/Theme/Xiaohu',['Config.php','Setting.php'],$backup,$undo);
         $this->mirrorBundle($stage.'/Bundle/Support',$this->root.'/app/Plugin/Support',[],$backup,$undo);
         foreach (Suite::COMPONENTS as $component) $this->mirrorBundle($stage.'/Bundle/Plugins/'.$component,$this->root.'/app/Plugin/'.$component,['Config/Config.php'],$backup,$undo);

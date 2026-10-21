@@ -33,8 +33,8 @@ def main() -> None:
             if any(part in BLOCKED for part in rel.parts) or path.name in {'.env', '.DS_Store', 'runtime.log'}:
                 continue
             if rel.as_posix() == 'Config/Config.php':
-                data = b"<?php\ndeclare(strict_types=1);\nreturn ['STATUS'=>0,'top'=>1,'repair_components'=>0];\n"
-            elif rel.as_posix() == 'Config/Info.php':
+                continue
+            if rel.as_posix() == 'Config/Info.php':
                 data = ("<?php\ndeclare(strict_types=1);\nreturn ['NAME'=>'Xiaohu 小虎主题套件','AUTHOR'=>'Xiaohu','VERSION'=>'" + args.version + "','WEB_SITE'=>'#','DESCRIPTION'=>'一键安装并启用小虎主题与五个配套插件；通过独立 GitHub Releases 检查和安装更新。默认模板 Cartoon 独立保留。'];\n").encode()
             else:
                 data = path.read_bytes()
