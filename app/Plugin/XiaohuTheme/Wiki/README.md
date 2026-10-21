@@ -21,13 +21,13 @@ php app/Plugin/XiaohuTheme/install.php 你的站点域名
 
 套件单独维护自身与配套组件的挂钩注册，并通过框架的控制器前置挂钩处理套件开关；不改动主程序的插件控制器。其他插件的挂钩会原样保留。停用时保留套件的开关入口，以便再次启用。
 
-## 私有 Releases 独立更新
+## 公开 Releases 独立更新
 
 “通用插件”列表中 Xiaohu 套件这一行提供“检查更新”按钮。更新器只读取 `cnmbdb/hf-acg` 仓库里 `xiaohu-vMAJOR.MINOR.PATCH` 格式的稳定 Release，并校验发布清单中的版本、包大小与 SHA-256 后才安装。当前更新包声明兼容 ACG 3.8.4。
 
-私有仓库需要在站点 `.env` 设置 `XIAOHU_GITHUB_TOKEN`。使用 GitHub fine-grained personal access token，仓库范围只选 `cnmbdb/hf-acg`，权限只加 `Contents: Read-only`；必需的 `Metadata: Read-only` 由 GitHub 自动包含。不要把 Token 写入插件配置、前端代码或日志。Token 到期或撤销后，只影响检查和下载，不会影响已安装的套件。
+仓库设为公开后，检查与下载 Release 无需配置 GitHub Token；站点只需能通过 HTTPS 访问 GitHub Releases API 和公开附件下载域名。GitHub 匿名 API 有访问频率限制，日常从后台手动检查更新通常足够；不要在请求中添加不必要的 Token。
 
-在 `xiaohu` 分支提交代码后，推送 `xiaohu-vMAJOR.MINOR.PATCH` 标签会触发 `.github/workflows/xiaohu-release.yml`，自动构建只含 Xiaohu 套件的更新 ZIP 与 `xiaohu-update.json`，并发布到当前私有仓库的 Release 附件。发布包不包含 `.env`、Cartoon、运行数据、数据库或用户配置。更新时会在 `runtime/XiaohuTheme/updates/` 留存更新前文件备份。
+在 `xiaohu` 分支提交代码后，推送 `xiaohu-vMAJOR.MINOR.PATCH` 标签会触发 `.github/workflows/xiaohu-release.yml`，自动构建只含 Xiaohu 套件的更新 ZIP 与 `xiaohu-update.json`，并发布到公开仓库的 Release 附件。发布包不包含 `.env`、Cartoon、运行数据、数据库或用户配置。更新时会在 `runtime/XiaohuTheme/updates/` 留存更新前文件备份。
 
 沙盒网络策略需要允许 HTTPS 访问 `api.github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 与 `github-releases.githubusercontent.com`。
 

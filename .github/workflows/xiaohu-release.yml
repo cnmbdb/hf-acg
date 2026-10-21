@@ -36,13 +36,21 @@ jobs:
         run: |
           archive="$RUNNER_TEMP/xiaohu-release/XiaohuTheme-${{ steps.package.outputs.version }}.zip"
           manifest="$RUNNER_TEMP/xiaohu-release/xiaohu-update.json"
+          tag="$GITHUB_REF_NAME"
           title="Xiaohu v${{ steps.package.outputs.version }}"
           notes="小虎主题与配套插件更新包。后台在通用插件中检查并安装此 Release。"
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" "$archive" "$manifest" --clobber
-            gh release edit "${GITHUB_REF_NAME}" --title "$title" --notes "$notes"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" "$manifest" --clobber
+            gh release edit "$tag" --title "$title" --notes "$notes"
           else
-            gh release create "${GITHUB_REF_NAME}" "$archive" "$manifest" \
+            gh release create "$tag" "$archive" "$manifest" \
+              --verify-tag \
+              --target "$GITHUB_SHA" \
               --title "$title" \
               --notes "$notes"
+          fi
+          published_tag="$(gh release view "$tag" --json tagName --jq .tagName)"
+          if [[ "$published_tag" != "$tag" ]]; then
+            echo "Release tag mismatch: expected $tag, got $published_tag" >&2
+            exit 1
           fi

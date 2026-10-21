@@ -25,11 +25,23 @@ final class Main
     #[State(state: State::INSTALL)]
     public function install(): void { (new Suite())->install(); }
     #[State(state: State::START)]
-    public function start(): void { (new Suite())->activate(); }
+    public function start(): void
+    {
+        (new Suite())->activate();
+        setConfig(['STATUS'=>1],BASE_PATH.'/app/Plugin/XiaohuTheme/Config/Config.php');
+    }
     #[State(state: State::STOP)]
-    public function stop(): void { (new Suite())->deactivate(); }
+    public function stop(): void
+    {
+        (new Suite())->deactivate();
+        setConfig(['STATUS'=>0],BASE_PATH.'/app/Plugin/XiaohuTheme/Config/Config.php');
+    }
     #[State(state: State::UNINSTALL)]
-    public function uninstall(): void { (new Suite())->deactivate(); }
+    public function uninstall(): void
+    {
+        (new Suite())->deactivate();
+        setConfig(['STATUS'=>0],BASE_PATH.'/app/Plugin/XiaohuTheme/Config/Config.php');
+    }
     #[State(state: State::SAVE_CONFIG)]
     public function saveConfig(string $pluginName, array $map): void
     {

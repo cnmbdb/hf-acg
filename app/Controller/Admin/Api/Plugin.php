@@ -132,12 +132,20 @@ class Plugin extends Manage
 
         if (isset($map['STATUS'])) {
             if ((int)$config['STATUS'] == 0 && $map['STATUS'] == 1) {
-                _plugin_start($id);
+                if ((string)$id === 'XiaohuTheme') {
+                    (new \App\Plugin\XiaohuTheme\Service\Suite())->activate();
+                } else {
+                    _plugin_start($id);
+                }
                 $this->persistPluginStatus((string)$id, 1);
                 ManageLog::log($this->getManage(), "启动了插件({$id})");
                 return $this->json(200, "插件已启动");
             } else if ((int)$config['STATUS'] == 1 && $map['STATUS'] == 0) {
-                _plugin_stop($id);
+                if ((string)$id === 'XiaohuTheme') {
+                    (new \App\Plugin\XiaohuTheme\Service\Suite())->deactivate();
+                } else {
+                    _plugin_stop($id);
+                }
                 $this->persistPluginStatus((string)$id, 0);
                 ManageLog::log($this->getManage(), "停止了插件({$id})");
                 return $this->json(200, "插件已停止");
