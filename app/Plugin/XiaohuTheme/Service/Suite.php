@@ -11,6 +11,22 @@ final class Suite
     private const THEMES = ['user_theme','user_mobile_theme'];
     private string $root;
     public function __construct(?string $root = null) { $this->root = rtrim($root ?? BASE_PATH, '/'); }
+    public function componentsEnabled(): bool
+    {
+        $path=$this->root.'/app/Plugin/XiaohuTheme/Config/Config.php';
+        if (!is_file($path)) return true;
+        $config=require $path;
+        // Existing installations do not have the switch yet; preserve their current behavior.
+        return (int)($config['components_enabled']??1)===1;
+    }
+    public function filterPluginList(array $plugins): array
+    {
+        if ($this->componentsEnabled()) return $plugins;
+        return array_values(array_filter($plugins,static function(array $plugin): bool {
+            $name=(string)($plugin['id']??$plugin['PLUGIN_NAME']??'');
+            return !in_array($name,self::COMPONENTS,true);
+        }));
+    }
     private function locked(callable $operation): void
     {
         $dir=$this->root.'/runtime/XiaohuTheme';
@@ -42,9 +58,9 @@ final class Suite
         }
         Registry::set('XiaohuTheme',true);
     }
-    public function activate(): void
+    public function activate(?bool $componentsEnabled = null): void
     {
-        $this->locked(function(): void {
+        $this->locked(function() use($componentsEnabled): void {
             $this->installFiles();
             $path=$this->root.'/runtime/XiaohuTheme/state.php';
             $state=is_file($path) ? require $path : [];
@@ -60,15 +76,10 @@ final class Suite
                     $state=['statuses'=>array_map(static fn($c)=>(int)($c['STATUS']??0),$before),'themes'=>$themes];
                     setConfig($state,$path,true); chmod($path,0600);
                 }
-                foreach (self::COMPONENTS as $name) {
-                    setConfig(['STATUS'=>1],$this->configPath($name));
-                    Registry::set($name,true);
-                }
-                // 上游 START 会同步远程商品。套件仅启用挂钩，完整同步由用户单独触发。
-                Plugin::runHookState('ContentCenter',\Kernel\Annotation\Plugin::START);
+                $this->applyComponentStates($componentsEnabled??$this->componentsEnabled());
                 Config::put('user_theme','Xiaohu');
                 Config::put('user_mobile_theme','0');
-                \App\Util\Plugin::log('XiaohuTheme','小虎主题及五个配套组件已启用，保留原配置，未触发上游同步');
+                \App\Util\Plugin::log('XiaohuTheme','小虎主题套件已启用，配套插件状态由套件开关控制，未触发上游同步');
             } catch (\Throwable $e) {
                 foreach ($before as $name=>$config) setConfig($config,$this->configPath($name),true);
                 foreach ($themes as $key=>$value) Config::put($key,$value);
@@ -80,14 +91,44 @@ final class Suite
             }
         });
     }
+    public function setComponentsEnabled(bool $enabled): void
+    {
+        $this->locked(function() use($enabled): void {
+            $this->installFiles();
+            $before=[];
+            foreach (self::COMPONENTS as $name) $before[$name]=require $this->configPath($name);
+            $hookPath=$this->root.'/runtime/plugin/hook';
+            $hooks=is_file($hookPath)?file_get_contents($hookPath):null;
+            try {
+                $this->applyComponentStates($enabled);
+            } catch (\Throwable $e) {
+                foreach ($before as $name=>$config) setConfig($config,$this->configPath($name),true);
+                if ($hooks!==null) file_put_contents($hookPath,$hooks,LOCK_EX);
+                elseif (is_file($hookPath)) unlink($hookPath);
+                throw new JSONException('配套插件开关更新失败，已恢复配置及挂钩：'.$e->getMessage());
+            }
+        });
+    }
+    private function applyComponentStates(bool $enabled): void
+    {
+        foreach (self::COMPONENTS as $name) {
+            setConfig(['STATUS'=>$enabled?1:0],$this->configPath($name));
+            Registry::set($name,$enabled);
+        }
+        if ($enabled) {
+            // ContentCenter only prepares local schema. Provider START hooks may sync remote products.
+            Plugin::runHookState('ContentCenter',\Kernel\Annotation\Plugin::START);
+        }
+    }
     public function deactivate(): void
     {
         $this->locked(function(): void {
             $path=$this->root.'/runtime/XiaohuTheme/state.php';
             if (!is_file($path)) return;
             $state=require $path;
+            $componentsEnabled=$this->componentsEnabled();
             foreach (self::COMPONENTS as $name) {
-                $status=(int)($state['statuses'][$name]??0);
+                $status=$componentsEnabled?(int)($state['statuses'][$name]??0):0;
                 setConfig(['STATUS'=>$status],$this->configPath($name));
                 Registry::set($name,$status===1);
             }

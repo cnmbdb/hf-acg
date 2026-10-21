@@ -10,6 +10,10 @@ final class Main
     #[\Kernel\Annotation\Hook(point: \App\Consts\Hook::CONTROLLER_CALL_BEFORE)]
     public function control(object $controller, string $action): void
     {
+        if ($controller instanceof \App\Controller\Admin\Api\Plugin && $action === 'getPlugins') {
+            $this->registerPluginListFilter();
+            return;
+        }
         if (!$controller instanceof \App\Controller\Admin\Api\Plugin || $action !== 'setConfig') return;
         if (($_GET['id'] ?? $_POST['id'] ?? '') !== 'XiaohuTheme') return;
         $status=$_POST['STATUS'] ?? null;
@@ -21,6 +25,26 @@ final class Main
         $suite=new Suite();
         if ($desired===1) $suite->activate(); else $suite->deactivate();
         setConfig(['STATUS'=>$desired],$file);
+    }
+    private function registerPluginListFilter(): void
+    {
+        $point=\App\Consts\Hook::CONTROLLER_CALL_AFTER;
+        $hooks=\Kernel\Util\Plugin::$container['hook'][$point]??[];
+        foreach ($hooks as $hook) {
+            if (($hook['pluginName']??'')==='XiaohuTheme' && ($hook['method']??'')==='filterPluginList') return;
+        }
+        \Kernel\Util\Plugin::$container['hook'][$point][]=[
+            'namespace'=>'\\'.self::class,
+            'method'=>'filterPluginList',
+            'pluginName'=>'XiaohuTheme',
+        ];
+    }
+    #[\Kernel\Annotation\Hook(point: \App\Consts\Hook::CONTROLLER_CALL_AFTER)]
+    public function filterPluginList(object $controller, string $action, mixed &$result): void
+    {
+        if (!$controller instanceof \App\Controller\Admin\Api\Plugin || $action !== 'getPlugins') return;
+        if (!is_array($result['data']['list']??null)) return;
+        $result['data']['list']=(new Suite())->filterPluginList($result['data']['list']);
     }
     #[State(state: State::INSTALL)]
     public function install(): void { (new Suite())->install(); }
@@ -45,10 +69,18 @@ final class Main
     #[State(state: State::SAVE_CONFIG)]
     public function saveConfig(string $pluginName, array $map): void
     {
-        if ($pluginName !== 'XiaohuTheme' || (int)($map['repair_components'] ?? 0) !== 1) return;
-        $suite = new Suite();
-        $suite->install();
+        if ($pluginName !== 'XiaohuTheme') return;
         $config = require BASE_PATH.'/app/Plugin/XiaohuTheme/Config/Config.php';
-        if ((int)($config['STATUS'] ?? 0) === 1) $suite->activate();
+        $repair=(int)($map['repair_components']??0)===1;
+        $switchChanged=array_key_exists('components_enabled',$map);
+        if (!$repair && !$switchChanged) return;
+        $componentsEnabled=(int)($map['components_enabled']??$config['components_enabled']??1)===1;
+        $suite=new Suite();
+        $suite->install();
+        if ((int)($config['STATUS']??0)===1) {
+            $suite->activate($componentsEnabled);
+        } elseif ($switchChanged) {
+            $suite->setComponentsEnabled($componentsEnabled);
+        }
     }
 }
