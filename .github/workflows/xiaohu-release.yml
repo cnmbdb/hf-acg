@@ -1,0 +1,48 @@
+name: Xiaohu theme releases
+
+on:
+  push:
+    tags:
+      - "xiaohu-v*"
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate tag and build update package
+        id: package
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#xiaohu-v}"
+          [[ "$tag" == "xiaohu-v$version" ]]
+          git fetch origin xiaohu
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/xiaohu
+          python scripts/build-xiaohu-release.py --version "$version" --output-dir "$RUNNER_TEMP/xiaohu-release"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="$RUNNER_TEMP/xiaohu-release/XiaohuTheme-${{ steps.package.outputs.version }}.zip"
+          manifest="$RUNNER_TEMP/xiaohu-release/xiaohu-update.json"
+          title="Xiaohu v${{ steps.package.outputs.version }}"
+          notes="小虎主题与配套插件更新包。后台在通用插件中检查并安装此 Release。"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "$archive" "$manifest" --clobber
+            gh release edit "${GITHUB_REF_NAME}" --title "$title" --notes "$notes"
+          else
+            gh release create "${GITHUB_REF_NAME}" "$archive" "$manifest" \
+              --title "$title" \
+              --notes "$notes"
+          fi
