@@ -1,0 +1,3 @@
+# Third-party editor helpers that can stall the tree-sitter worker.
+assets/static/codemirror/addon/fold/markdown-fold.js
+assets/common/js/editor/editor.js

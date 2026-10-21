@@ -1,0 +1,9 @@
+.env
+/backups/
+/runtime/
+/app/Plugin/*/runtime.log
+.gitnexus
+# Ignore local OS metadata, logs, and generated GitNexus data.
+.DS_Store
+*.log
+.gitnexus/

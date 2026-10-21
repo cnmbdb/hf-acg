@@ -1,0 +1,20 @@
+<!--begin::Toolbar (Material page header + tabs)-->
+<div class="toolbar md-page-header" id="kt_toolbar">
+    <!--begin::Container-->
+    <div id="kt_toolbar_container" class="container-fluid">
+        <!--begin::Title-->
+        <h1 class="md-page-title">#{$title}</h1>
+        <!--end::Title-->
+        <!--begin::Tabs (sibling-page nav)-->
+        #{if is_array($toolbar)}
+        <nav class="md-tabs">
+            #{foreach $toolbar as $bar}
+            <a href="#{$bar.url}" class="md-tab#{if getLocalRouter()==$bar.url} active#{/if}">#{$bar.name}</a>
+            #{/foreach}
+        </nav>
+        #{/if}
+        <!--end::Tabs-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Toolbar-->

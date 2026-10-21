@@ -1,0 +1,620 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controller\User\Api;
+
+
+use App\Consts\Hook;
+use App\Controller\Base\API\User;
+use App\Entity\Query\Get;
+use App\Interceptor\UserVisitor;
+use App\Interceptor\Waf;
+use App\Model\Card;
+use App\Model\Category;
+use App\Model\Commodity;
+use App\Model\Config;
+use App\Model\Order;
+use App\Model\Pay;
+use App\Model\UserCommodity;
+use App\Service\Query;
+use App\Service\Shared;
+use App\Service\Shop;
+use App\Service\Bind\Shop as ShopBind;
+use App\Util\Client;
+use App\Util\Throttle;
+use App\Util\Tree;
+use App\Util\ShopUrl;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Kernel\Annotation\Inject;
+use Kernel\Annotation\Interceptor;
+use Kernel\Exception\JSONException;
+use Kernel\Exception\RuntimeException;
+use Kernel\Util\Decimal;
+
+#[Interceptor([Waf::class, UserVisitor::class])]
+class Index extends User
+{
+    #[Inject]
+    private Shared $shared;
+
+    #[Inject]
+    private Query $query;
+
+    #[Inject]
+    private \App\Service\Order $order;
+
+    #[Inject]
+    private Shop $shop;
+
+
+    /**
+     * @return array
+     */
+    public function data(): array
+    {
+        $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
+        $category = Tree::generate($this->shop->getCategory($this->getUserGroup(), $source));
+        $category = $this->shop->normalizeCategoryTree($category);
+        hook(Hook::USER_API_INDEX_CATEGORY_LIST, $category);
+        return $this->json(200, "success", $category);
+    }
+
+    /**
+     * @return array
+     * @throws JSONException
+     * @throws RuntimeException
+     */
+    public function commodity(): array
+    {
+        $keywords = (string)$_GET['keywords'];
+        $limit = (int)$_GET['limit'];
+        $page = (int)$_GET['page'];
+        $categoryId = $_GET['categoryId'];
+        $subcategory = (string)($_GET['subcategory'] ?? '');
+        $source = ShopBind::normalizeSource($_GET['source'] ?? null) ?: 'fansgurus';
+        $sort = (string)($_GET['sort'] ?? 'recommend');
+        $inStock = (int)($_GET['inStock'] ?? 0) === 1;
+        if ($limit <= 0 && in_array($source, ['fansgurus', 'hstockplus'], true)) {
+            $limit = 100;
+            $page = max(1, $page);
+        }
+
+        $commodity = Commodity::query()
+            ->with(['owner' => function (Relation $relation) {
+                $relation->select(["id", "username", "avatar"]);
+            }, 'category' => function (Relation $relation) {
+                $relation->select(["id", "name", "icon"]);
+            }]);
+
+        if ($categoryId == 'recommend') {
+            $commodity = $commodity->where("recommend", 1);
+        } elseif ($source === 'hstockplus' && str_starts_with($subcategory, 'hspacc:') && is_numeric($categoryId)) {
+            $subcategoryIds = $this->shop->getHStockPlusAccountSubcategoryIds((int)$categoryId, rawurldecode(substr($subcategory, 7)));
+            $commodity = $subcategoryIds ? $commodity->whereIn("category_id", $subcategoryIds) : $commodity->whereRaw("1=0");
+        } elseif ($subcategory !== '' && is_numeric($subcategory)) {
+            $commodity = $commodity->where("category_id", (int)$subcategory);
+        } elseif ($categoryId != 0 && is_numeric($categoryId)) {
+            $commodity = $commodity->whereIn("category_id", $this->categoryAndDescendantIds((int)$categoryId, $source));
+        } elseif ($categoryId != 0) {
+            $commodity = $commodity->whereRaw("1=0");
+        }
+        ShopBind::applySourceFilter($commodity, $source);
+        if ($source !== 'default') {
+            $sourceCategoryIds = $this->shop->getSourceVisibleCategoryIds($source);
+            if ($sourceCategoryIds) {
+                $commodity = $commodity->whereIn('category_id', $sourceCategoryIds);
+            } elseif ($source) {
+                $commodity = $commodity->whereRaw("1=0");
+            }
+        }
+
+        if ($keywords != "") {
+            $commodity = $commodity->where('name', 'like', '%' . $keywords . '%');
+        }
+        if ($subcategory !== '' && !is_numeric($subcategory) && !str_starts_with($subcategory, 'hspacc:')) {
+            $commodity = $commodity->where('config', 'like', '%' . rawurldecode($subcategory) . '%');
+        }
+        if ($inStock) {
+            $commodity = $commodity->where(function (Builder $query): void {
+                $query->where('stock', '>', 0)
+                    ->orWhereHas('card', function (Builder $relation): void {
+                        $relation->where('status', 0);
+                    });
+            });
+        }
+
+        $bus = \App\Model\Business::get();
+        $userCommodityMap = []; //自定义名称的MAP
+
+        if ($bus) {
+            //商家
+            if ($bus->master_display == 0) {
+                $commodity = $commodity->where("owner", $bus->user_id);
+            } else {
+                //查出所有自己定义的商品
+                $userCommodity = UserCommodity::query()->where("user_id", $bus->user_id)->get();
+                //隐藏的分类ID
+                $hideCommodity = [];
+
+                foreach ($userCommodity as $userComm) {
+                    if ($userComm->status == 0) {
+                        $hideCommodity[] = $userComm->commodity_id;
+                    } else {
+                        $userCommodityMap[$userComm->commodity_id] = $userComm;
+                    }
+                }
+
+                $commodity = $commodity->whereNotIn("id", $hideCommodity)->whereRaw("(`owner`=0 or `owner`={$bus->user_id})");
+            }
+        } else {
+            //主站
+            if (Config::get("substation_display") == 1) {
+                $let = "(`owner`=0 or ";
+                //显示商家
+                $list = (array)json_decode(Config::get("substation_display_list"), true);
+                foreach ($list as $userId) {
+                    $let .= "`owner`={$userId} or ";
+                }
+                $let = trim(trim($let), "or") . ")";
+                $commodity = $commodity->whereRaw($let);
+            } else {
+                $commodity = $commodity->where("owner", 0);
+            }
+        }
+
+        $commodity = $commodity
+            ->where("status", 1)
+            ->select([
+                'id', 'name', 'cover',
+                'status', 'delivery_way', 'price',
+                'user_price',
+                'level_disable', 'level_price', 'hide', 'owner', 'inventory_hidden', "recommend", 'category_id', 'stock', 'shared_id', 'config'
+            ])
+            ->withCount(['order as order_sold' => function (Builder $relation) {
+                $relation->where("delivery_status", 1);
+            }]);
+        $commodity = match ($sort) {
+            'price_asc' => $commodity->orderBy('price', 'asc')->orderBy('sort', 'asc'),
+            'price_desc' => $commodity->orderBy('price', 'desc')->orderBy('sort', 'asc'),
+            'newest' => $commodity->orderBy('create_time', 'desc')->orderBy('id', 'desc'),
+            'stock_desc' => $commodity->orderBy('stock', 'desc')->orderBy('sort', 'asc'),
+            'sales_desc' => $commodity->orderBy('order_sold', 'desc')->orderBy('sort', 'asc'),
+            'rating_desc' => $commodity->orderBy('recommend', 'desc')->orderBy('order_sold', 'desc')->orderBy('sort', 'asc'),
+            default => $commodity->orderBy('recommend', 'desc')->orderBy('sort', 'asc'),
+        };
+        if ($limit == 0) {
+            $commodity = $commodity
+                ->get();
+            $total = count($commodity);
+            $data = $commodity->toArray();
+        } else {
+            $commodity = $commodity
+                ->paginate($limit, ["*"], "", $page);
+            $total = $commodity->total();
+            $data = $commodity->toArray()['data'];
+        }
+
+
+        $user = $this->getUser();
+        $userGroup = $this->getUserGroup();
+        //取得分类
+        $category = $this->shop->getCategory($userGroup, $source);
+        $cates = [];
+        foreach ($this->shop->getSourceVisibleCategoryIds($source) as $id) {
+            $cates[] = (string)$id;
+        }
+
+        //最终的商品数据遍历
+        foreach ($data as $key => $val) {
+            $parseGroupConfig = Commodity::parseGroupConfig($val['level_price'], $userGroup);
+            if (!in_array((string)$val['category_id'], $cates) || $val['hide'] == 1 && (!$parseGroupConfig || !isset($parseGroupConfig['show']) || $parseGroupConfig['show'] != 1)) {
+                //隐藏商品
+                unset($data[$key]);
+                continue;
+            }
+
+            if ($val['delivery_way'] == 0 && !$val['shared_id']) {
+                $data[$key]['stock'] = Card::query()->where("status", 0)->where("commodity_id", $val['id'])->count();
+            }
+
+            //如果登录后，则自动计算登录后的价格
+            if ($user) {
+                $tradeAmount = $this->order->valuation(commodity: $commodity[$key], group: $userGroup);
+                $data[$key]['price'] = $tradeAmount;
+                $data[$key]['user_price'] = $tradeAmount;
+            }
+
+            unset(
+                $data[$key]['level_price'],
+                $data[$key]['level_disable'],
+                $data[$key]['config']
+            );
+
+            if (!$val['cover']) {
+                $data[$key]['cover'] = "/favicon.ico";
+            }
+            $data[$key]['cover_fallback'] = $this->commodityCoverFallback($val);
+
+            //分站自定义名称和价格
+            if (isset($userCommodityMap[$val['id']])) {
+                $var = $userCommodityMap[$val['id']];
+
+                if ($var->premium > 0) {
+                    $data[$key]['price'] = (new Decimal($data[$key]['price'], 2))->mul($var->premium / 100)->add($data[$key]['price'])->getAmount();
+                    $data[$key]['user_price'] = (new Decimal($data[$key]['user_price'], 2))->mul($var->premium / 100)->add($data[$key]['user_price'])->getAmount();
+                }
+                if ($var->name) {
+                    $data[$key]['name'] = $var->name;
+                }
+            }
+
+            //隐藏库存
+            $data[$key]['stock_state'] = $this->shop->getStockState($data[$key]['stock']);
+            if ($val['inventory_hidden'] == 1) {
+                $data[$key]['stock'] = $this->shop->getHideStock($data[$key]['stock']);
+            }
+        }
+
+        $data = array_values($data);
+        if ($source === 'fansgurus') {
+            $categoryTree = Tree::generate($category);
+            $categoryTree = $this->shop->normalizeCategoryTree($categoryTree);
+            $categoryTree = ShopUrl::decorateCategoryTree($categoryTree, $source);
+            $categoryPaths = ShopUrl::categoryPaths($categoryTree);
+            foreach ($data as &$item) {
+                $item['url'] = ShopUrl::itemPath(
+                    $categoryPaths,
+                    (int)($item['category_id'] ?? 0),
+                    (int)($item['id'] ?? 0)
+                );
+            }
+            unset($item);
+        }
+        hook(Hook::USER_API_INDEX_COMMODITY_LIST, $data);
+        $json = $this->json(200, "success", $data);
+        $json['total'] = $total;
+        return $json;
+    }
+
+    private function commodityCoverFallback(array $commodity): string
+    {
+        $icon = (string)($commodity['category']['icon'] ?? '');
+        if ($icon !== '') {
+            return $icon;
+        }
+
+        return '/favicon.ico';
+    }
+
+    private function categoryAndDescendantIds(int $categoryId, ?string $source): array
+    {
+        if ($source === 'default') {
+            return $this->categoryAndDescendantIdsFromDatabase($categoryId);
+        }
+
+        $ids = [$categoryId];
+        $visibleIds = array_flip($this->shop->getSourceVisibleCategoryIds($source));
+        $categories = $this->shop->getCategory($this->getUserGroup(), $source);
+        $childrenByParent = [];
+
+        foreach ($categories as $category) {
+            if (!is_numeric($category['id'] ?? null)) {
+                continue;
+            }
+            $id = (int)$category['id'];
+            if (!isset($visibleIds[$id])) {
+                continue;
+            }
+            $pid = (int)($category['pid'] ?? 0);
+            $childrenByParent[$pid][] = $id;
+        }
+
+        $walk = static function (int $id) use (&$walk, &$ids, $childrenByParent): void {
+            foreach ($childrenByParent[$id] ?? [] as $childId) {
+                $ids[] = (int)$childId;
+                $walk((int)$childId);
+            }
+        };
+        $walk($categoryId);
+
+        return array_values(array_unique($ids));
+    }
+
+    private function categoryAndDescendantIdsFromDatabase(int $categoryId): array
+    {
+        $ids = [$categoryId];
+        $childrenByParent = [];
+        $categories = Category::query()
+            ->where('owner', 0)
+            ->get(['id', 'pid']);
+
+        foreach ($categories as $category) {
+            $pid = (int)($category->pid ?? 0);
+            if ($pid <= 0) {
+                continue;
+            }
+            $childrenByParent[$pid][] = (int)$category->id;
+        }
+
+        $walk = static function (int $id) use (&$walk, &$ids, $childrenByParent): void {
+            foreach ($childrenByParent[$id] ?? [] as $childId) {
+                $ids[] = (int)$childId;
+                $walk((int)$childId);
+            }
+        };
+        $walk($categoryId);
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @param int $commodityId
+     * @return array
+     */
+    public function commodityDetail(int $commodityId): array
+    {
+        $array = $this->shop->getItem($commodityId, $this->getUser(), $this->getUserGroup());
+        hook(Hook::USER_API_INDEX_COMMODITY_DETAIL_INFO, $array);
+
+        $array['stock_state'] = $this->shop->getStockState($array['stock']);
+        if ($array['inventory_hidden'] == 1) {
+            $array['stock'] = $this->shop->getHideStock($array['stock']);
+        }
+
+        return $this->json(200, 'success', $array);
+    }
+
+    /**
+     * @return array
+     * @throws JSONException
+     */
+    public function card(): array
+    {
+        $map = $this->request->post();
+        /**
+         * @var Commodity $commodity
+         */
+        $commodity = Commodity::with(['shared'])->find($map['item_id']);
+        $limit = $map['limit'] ?? 10;
+
+        if (!$commodity) {
+            throw new JSONException("商品不存在");
+        }
+
+        if ($commodity->status != 1) {
+            throw new JSONException("该商品暂未上架");
+        }
+        if ($commodity->draft_status != 1) {
+            throw new JSONException("该商品不支持预选");
+        }
+
+        if ($commodity->shared) {
+            $data = $this->shared->draftCard($commodity->shared, $commodity->shared_code, $map);
+            //加价算法
+            foreach ($data['list'] as &$item) {
+                if ($item['draft_premium'] > 0) {
+                    $item['draft_premium'] = $this->shared->AdjustmentAmount($commodity->shared_premium_type, $commodity->shared_premium, $item['draft_premium']);
+                }
+            }
+        } else {
+            $get = new Get(Card::class);
+            $get->setPaginate((int)$this->request->post("page"), (int)$limit);
+            $get->setWhere($map);
+            $get->setColumn('id', 'draft', 'draft_premium');
+
+            $data = $this->query->get($get, function (Builder $builder) use ($map) {
+                $builder = $builder->where("commodity_id", $map['item_id'])->where("status", 0);
+
+                if (!empty($map['race'])) {
+                    $builder = $builder->where("race", $map['race']);
+                }
+
+                if (!empty($map['sku']) && is_array($map['sku'])) {
+                    foreach ($map['sku'] as $k => $v) {
+                        $builder = $builder->where("sku->{$k}", $v);
+                    }
+                }
+
+                return $builder;
+            });
+        }
+
+        //分站处理
+        if (\App\Model\Business::state()) {
+            foreach ($data['list'] as &$item) {
+                if ($item['draft_premium'] > 0) {
+                    $item['draft_premium'] = $this->shop->getSubstationPrice($commodity, $item['draft_premium']);
+                }
+            }
+        }
+
+        if ($commodity->level_disable != 1) {
+            //折扣处理
+            foreach ($data['list'] as &$item) {
+                if ($item['draft_premium'] > 0) {
+                    $item['draft_premium'] = $this->order->getValuationPrice($commodity->id, $item['draft_premium'], $this->getUserGroup());
+                }
+            }
+        }
+
+        return $this->json(data: $data);
+    }
+
+
+    /**
+     * @return array
+     */
+    public
+    function valuation(): array
+    {
+        $price = $this->order->valuation(
+            commodity: (int)$this->request->post("item_id"),
+            num: (int)$this->request->post("num"),
+            race: (string)$this->request->post("race"),
+            sku: (array)$this->request->post("sku"),
+            cardId: (int)$this->request->post("card_id"),
+            coupon: (string)$this->request->post("coupon"),
+            group: $this->getUserGroup()
+        );
+        $price = $this->shop->getSubstationPrice((int)$this->request->post("item_id"), $price);
+        return $this->json(data: ["price" => $price]);
+    }
+
+
+    /**
+     * @return array
+     */
+    public
+    function stock(): array
+    {
+        $commodity = Commodity::with(['shared'])->find((int)$this->request->post("item_id"));
+
+        $_race = (string)$this->request->post("race");
+        $_skus = (array)$this->request->post("sku") ?: [];
+
+        $stock = $this->shop->getItemStock($commodity, $_race, $_skus);
+
+        $array = ["stock" => $stock];
+        $array['stock_state'] = $this->shop->getStockState($stock);
+        if ($commodity->inventory_hidden == 1) {
+            $array['stock'] = $this->shop->getHideStock($stock);
+        }
+        return $this->json(data: $array);
+    }
+
+
+    /**
+     * @return array
+     */
+    public
+    function pay(): array
+    {
+
+        $equipment = 2;
+
+        if (Client::isMobile()) {
+            $equipment = 1;
+        }
+
+        if (Client::isWeChat()) {
+            $equipment = 3;
+        }
+
+        $let = "(`equipment`=0 or `equipment`={$equipment})";
+
+        if (!$this->getUser()) {
+            $let .= " and id!=1";
+        }
+
+        $pay = Pay::query()->orderBy("sort", "asc")->where("commodity", 1)->whereRaw($let)->get(['id', 'name', 'icon', 'handle'])->toArray();
+
+        hook(Hook::USER_API_INDEX_PAY_LIST, $pay);
+        return $this->json(200, 'success', $pay);
+    }
+
+
+    /**
+     * @param string $keywords
+     * @return array
+     * @throws JSONException
+     */
+    public function query(string $keywords): array
+    {
+        $keywords = trim($keywords);
+
+        if ($keywords == "-") {
+            throw new JSONException("无数据");
+        }
+
+        //限流：挡住按订单号/联系方式批量枚举订单卡密（本接口免登录）
+        if (Throttle::tooMany("query:ip:" . Client::getAddress(), 30, 600)) {
+            throw new JSONException("请求过于频繁，请稍后再试");
+        }
+
+        $get = new Get(Order::class);
+        $get->setPaginate((int)$this->request->post("page"), (int)$this->request->post("limit"));
+        $get->setColumn('id', 'trade_no', 'sku', 'secret', 'user_id', 'password', 'amount', 'pay_id', 'commodity_id', 'create_time', 'pay_time', 'delivery_status', 'status', 'card_num', 'contact', "race");
+
+        $data = $this->query->get($get, function (Builder $builder) use ($keywords) {
+
+            $builder = $builder->with(['pay' => function (Relation $relation) {
+                $relation->select(['id', 'name', 'icon']);
+            }, 'commodity' => function (Relation $relation) {
+                $relation->select(['id', 'name', 'cover', 'password_status', 'leave_message']);
+            }]);
+
+            if (preg_match('/^\d{18}$/', $keywords)) {
+                $builder = $builder->where("trade_no", $keywords);
+            } else {
+                $builder = $builder->where("contact", $keywords);
+            }
+            return $builder;
+        });
+
+        foreach ($data['list'] as &$item) {
+            if ($item['status'] != 1) {
+                unset($item['commodity']['leave_message']);
+                unset($item['secret']);
+            }
+
+            if (!empty($item['password'])) {
+                $item['password'] = true;
+                unset($item['secret']);
+            }
+        }
+
+        hook(Hook::USER_API_INDEX_QUERY_LIST, $data);
+        return $this->json(data: $data);
+    }
+
+    /**
+     * @param string $tradeNo
+     * @param string $password
+     * @return array
+     * @throws JSONException
+     */
+    public function secret(string $tradeNo, string $password): array
+    {
+        $tradeNo = trim($tradeNo);
+        $ip = Client::getAddress();
+
+        //限流：挡住卡密查询密码爆破 / 订单号枚举（本接口免登录，曾被单次刷 1 万+）
+        if (Throttle::tooMany("secret:ip:{$ip}", 40, 600)
+            || Throttle::tooMany("secret:no:{$tradeNo}:{$ip}", 8, 600)) {
+            throw new JSONException("请求过于频繁，请稍后再试");
+        }
+
+        $order = Order::with(['commodity'])->where("trade_no", $tradeNo)->first();
+
+        if (!$order) {
+            throw new JSONException("未查询到相关信息");
+        }
+
+        if (!empty($order->password)) {
+            //定时安全比较，避免按响应时间逐字符猜测查询密码
+            if (!hash_equals((string)$order->password, (string)$password)) {
+                throw new JSONException("密码错误");
+            }
+        }
+
+        if ($order->status != 1) {
+            throw new JSONException("订单还未支付");
+        }
+
+        //验证通过，重置该订单的失败计数，避免正常用户多次查看被误伤
+        Throttle::clear("secret:no:{$tradeNo}:{$ip}");
+
+        $widget = (array)json_decode((string)$order->widget, true);
+        if (empty($widget)) {
+            $widget = null;
+        }
+
+        hook(Hook::USER_API_INDEX_QUERY_SECRET, $order);
+        return $this->json(data: [
+            'secret' => $order->secret,
+            'widget' => $widget,
+            'leave_message' => $order?->commodity?->leave_message
+        ]);
+    }
+}

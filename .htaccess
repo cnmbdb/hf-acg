@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+ RewriteEngine on
+ RewriteBase /
+ RewriteRule ^blog/([a-z0-9]+(?:-[a-z0-9]+)*)/?$ index.php?s=/plugin/ContentCenter/index/article.$1 [QSA,L]
+ RewriteRule ^blog/?$ index.php?s=/plugin/ContentCenter/index/blog [QSA,L]
+ RewriteRule ^2$ index.php?s=/plugin/HStockPlus/index/index [QSA,L]
+ RewriteRule ^3$ index.php?s=/user/index/three [QSA,L]
+ RewriteCond %{REQUEST_FILENAME} !-d
+ RewriteCond %{REQUEST_FILENAME} !-f
+ RewriteRule ^(.*)$ index.php?s=/$1 [QSA,PT,L]
+</IfModule>

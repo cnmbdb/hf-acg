@@ -1,0 +1,190 @@
+#{include file="./Header.html"}
+#{item_var($item)}
+<main class="xh-shell xh-item-page">
+    <nav class="xh-item-breadcrumb" aria-label="面包屑导航">
+        <a href="/"><i class="fa-duotone fa-regular fa-house"></i>首页</a>
+        <i class="fa-duotone fa-regular fa-angle-right"></i>
+        <span>商品详情</span>
+    </nav>
+    <div class="xh-item-layout">
+      <div class="xh-item-left-column">
+        <div class="xh-panel xh-product-card">
+          <div class="xh-item-main">
+            <div class="xh-item-cover-wrap">
+                <img src="#{$item.cover}" alt="#{$item.name}" class="xh-item-cover" data-fallback="#{$item.cover_fallback}" onerror="this.onerror=null;this.src=this.dataset.fallback||'/favicon.ico';this.classList.add('is-fallback');">
+            </div>
+
+            <div class="xh-item-info">
+                <h1>#{$item.name}</h1>
+                <div class="xh-item-tags">
+                    #{if $item.seckill_status == 1}
+                        <span class="xh-status xh-status-blue snap-up" style="display: none;"></span>
+                    #{/if}
+                    <span class="xh-status xh-status-success">#{if $item.delivery_way == 0}自动发货#{else}在线发货#{/if}</span>
+                    <span class="xh-status xh-status-success item-stock">库存 #{$item.stock}</span>
+                    <button class="xh-status xh-status-blue shared-button" type="button">
+                        <i class="fa-duotone fa-regular fa-share-from-square"></i>
+                        <span data-i18n="share">分享</span>
+                    </button>
+                </div>
+
+                <div class="abacus xh-item-price">
+                    <div class="price" data-base-price="#{$item.price}">
+                        <span class="unit">¥</span>#{$item.price}
+                    </div>
+                </div>
+
+                #{if !empty($setting.item_purchase_notice)}
+                    <section class="xh-item-notice" aria-label="购买提醒">
+                        <h2><i class="fa-duotone fa-regular fa-circle-exclamation"></i>购买提醒</h2>
+                        <div class="xh-item-notice-content">#{$setting.item_purchase_notice}</div>
+                    </section>
+                #{/if}
+            </div>
+          </div>
+        </div>
+
+        <section class="xh-panel xh-detail-card">
+            <header>
+                <h2 data-i18n="itemDetail">宝贝详情</h2>
+            </header>
+            <div class="xh-detail-grid">
+                <div class="xh-detail-content">
+                    #{$item.description}
+                </div>
+            </div>
+        </section>
+      </div>
+
+        <aside class="xh-panel xh-purchase-card">
+            <h2>商品购买</h2>
+            <form class="vstack xh-buy-form">
+                #{if !empty($item.config.category)}
+                    <div class="xh-form-block">
+                        <label>宝贝类型</label>
+                        <div class="sku-list xh-choice-list">
+                            #{foreach $item.config.category as $race => $price}
+                                <a class="switch-race sku #{if $price@first}is-primary#{/if}"
+                                   data-sku="#{$race}"
+                                   data-price="#{$price}"
+                                   href="javascript:void(0);">#{$race}<span class="badge-money">¥#{$price}</span></a>
+                            #{/foreach}
+                        </div>
+                    </div>
+                #{/if}
+
+                #{if !empty($item.config.sku)}
+                    #{foreach $item.config.sku as $name => $sku}
+                        <div class="xh-form-block">
+                            <label>#{$name}</label>
+                            <div class="sku-list xh-choice-list">
+                                #{foreach $sku as $key => $price}
+                                    <a class="switch-sku sku #{if $price@first}is-primary#{/if}"
+                                       data-sku="#{$name}"
+                                       data-value="#{$key}" data-price="#{$price}"
+                                       href="javascript:void(0);">#{$key}#{if $price > 0}<span class="badge-money">+¥#{$price}</span>#{/if}</a>
+                                #{/foreach}
+                            </div>
+                        </div>
+                    #{/foreach}
+                #{/if}
+
+                #{if $item.draft_status == 1}
+                    <div class="xh-form-block">
+                        <input type="hidden" name="card_id">
+                        <label>自选账号</label>
+                        <button type="button" class="optional-card">未自选,将随机发货</button>
+                    </div>
+                #{/if}
+
+                #{if !$user}
+                    <div class="xh-form-block">
+                        <label>#{contact_type_msg($item.contact_type)}</label>
+                        <input type="text" name="contact" placeholder="请输入您的#{contact_type_msg($item.contact_type)}">
+                    </div>
+                #{/if}
+
+                #{if $isFansGurusItem}
+                    <div class="xh-form-block xh-target-link-block">
+                        <div class="xh-target-link-card">
+                            <div class="xh-target-link-head">
+                                <span class="xh-target-link-title">
+                                    <strong>目标链接</strong>
+                                </span>
+                            </div>
+                            <div class="xh-link-input">
+                                <input type="url" name="target_link" required autocomplete="url"
+                                       placeholder="粘贴链接到这里">
+                            </div>
+                        </div>
+                    </div>
+                #{/if}
+
+                #{if $item.coupon == 1}
+                    <div class="xh-form-block">
+                        <label data-i18n="coupon">优惠券</label>
+                        <input type="text" name="coupon" placeholder="优惠券代码，没有则不填">
+                    </div>
+                #{/if}
+
+                #{widget_render($item.widget)}
+
+                #{if $item.password_status == 1}
+                    <div class="xh-form-block">
+                        <label>查询密码</label>
+                        <input type="password" name="password" placeholder="设置查询订单的密码">
+                    </div>
+                #{/if}
+
+                    <div class="xh-form-block">
+                        <label data-i18n="quantity">购买数量</label>
+                        <div class="input-group qty-group xh-qty-group">
+                            <button type="button" class="change-num-sub">-</button>
+                            <input type="number" name="num" value="#{if $item.minimum > 0}#{$item.minimum}#{else}1#{/if}">
+                            <button type="button" class="change-num-add">+</button>
+                        </div>
+                        <div class="xh-price-estimate" aria-live="polite">
+                            <span>预估价格</span>
+                            <strong><i>¥</i><span class="xh-estimate-value">--</span></strong>
+                        </div>
+                    </div>
+
+                #{if $item.trade_captcha == 1}
+                    <div class="xh-form-block">
+                        <label data-i18n="captcha">人机验证</label>
+                        <div class="input-group xh-captcha-group">
+                            <input type="text" class="captcha-input" placeholder="图形验证码" name="captcha">
+                            <img class="captcha-img" src="/user/captcha/image?action=trade" alt="图形验证码">
+                        </div>
+                    </div>
+                #{/if}
+
+                <div class="xh-payment-section">
+                    <h3>支付方式</h3>
+                    <div class="cash-pay xh-pay-card" style="display: none;">
+                        <div class="pay-list"></div>
+                    </div>
+                    <button class="xh-submit-order" type="button" disabled>
+                        <i class="fa-duotone fa-regular fa-cart-shopping"></i>
+                        立即购买
+                    </button>
+                    <div class="xh-purchase-assurance">
+                        <span><i class="fa-duotone fa-regular fa-shield-check"></i>交易安全保障</span>
+                        <span>自动发货</span>
+                        <span>售后无忧</span>
+                    </div>
+                </div>
+            </form>
+        </aside>
+    </div>
+
+    <section class="xh-item-assurance" aria-label="服务保障">
+        <span><i class="fa-duotone fa-regular fa-clock"></i>7×24小时自动发货</span>
+        <span><i class="fa-duotone fa-regular fa-users"></i>专业团队运营</span>
+        <span><i class="fa-duotone fa-regular fa-shield-check"></i>品质保障</span>
+        <span><i class="fa-duotone fa-regular fa-heart"></i>售后无忧</span>
+    </section>
+</main>
+#{ready("#{$static}/assets/index.js?xh=20260708-2")}
+#{ready("/assets/user/controller/index/item.js?xh=20260712-3")}
+#{include file="./Footer.html"}

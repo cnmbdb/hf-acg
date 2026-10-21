@@ -1,0 +1,147 @@
+#{include file=$themeHeader}
+<main class="xh-shell cc-blog" data-cc-blog data-hero-interval="#{$blogSettings.hero_interval|escape:'html'}" data-ticker-duration="#{$blogSettings.ticker_duration|escape:'html'}" data-animation-enabled="#{if $blogSettings.animation_enabled}1#{else}0#{/if}">
+    #{if $blogSettings.hero_enabled}
+    <section class="cc-panel cc-hero" aria-label="幻灯片大图轮播">
+        <div class="cc-hero-stage" data-hero-stage>
+            #{foreach $heroSlides as $slide}
+            <article class="cc-hero-slide#{if $slide@first} is-active#{/if}" data-hero-slide aria-hidden="#{if $slide@first}false#{else}true#{/if}">
+                <img src="#{$slide.cover|escape:'html'}" alt="#{$slide.title|escape:'html'}" loading="#{if $slide@first}eager#{else}lazy#{/if}">
+                <div class="cc-hero-shade"></div>
+                <div class="cc-hero-content">
+                    <span class="cc-badge cc-badge-inverse">#{$blogSettings.hero_kicker|escape:'html'}</span>
+                    <h2>#{$slide.title|escape:'html'}</h2>
+                    <p>#{$slide.excerpt|escape:'html'}</p>
+                    <a class="cc-button cc-button-inverse" href="#{$slide.url|escape:'html'}">
+                        <span>阅读文章</span>
+                        <i class="fa-duotone fa-regular fa-arrow-up-right-from-square"></i>
+                    </a>
+                </div>
+            </article>
+            #{/foreach}
+            #{if $heroSlides}
+            <div class="cc-hero-controls" aria-label="轮播控制">
+                <button class="cc-icon-button" type="button" data-hero-prev aria-label="上一张"><i class="fa-duotone fa-regular fa-arrow-left"></i></button>
+                <div class="cc-hero-dots">
+                    #{foreach $heroSlides as $slide}
+                    <button type="button" class="cc-hero-dot#{if $slide@first} is-active#{/if}" data-hero-dot="#{$slide@index|escape:'html'}" aria-label="查看第 #{$slide@iteration|escape:'html'} 张"></button>
+                    #{/foreach}
+                </div>
+                <button class="cc-icon-button" type="button" data-hero-next aria-label="下一张"><i class="fa-duotone fa-regular fa-arrow-right"></i></button>
+            </div>
+            #{/if}
+        </div>
+    </section>
+    #{/if}
+
+    #{if $blogSettings.ticker_enabled}
+    <section class="cc-ticker" aria-label="从右向左文章轮播">
+        <header class="cc-section-head">
+            <div>
+                <span class="cc-eyebrow">Fresh notes</span>
+                <h2>#{$blogSettings.ticker_title|escape:'html'}</h2>
+            </div>
+            <span class="cc-section-meta">持续向左滚动 · 悬停暂停</span>
+        </header>
+        <div class="cc-ticker-viewport" data-ticker-viewport>
+            <div class="cc-ticker-track" data-ticker-track>
+                #{foreach $tickerArticles as $article}
+                <a class="cc-mini-card" href="#{$article.url|escape:'html'}">
+                    <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
+                    <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
+                    <i class="fa-duotone fa-regular fa-arrow-up-right"></i>
+                </a>
+                #{/foreach}
+                #{foreach $tickerArticles as $article}
+                <a class="cc-mini-card" href="#{$article.url|escape:'html'}" aria-hidden="true" tabindex="-1">
+                    <img src="#{$article.cover|escape:'html'}" alt="" loading="lazy">
+                    <span class="cc-mini-card-body"><strong>#{$article.title|escape:'html'}</strong><small>#{$article.published_date|escape:'html'}</small></span>
+                    <i class="fa-duotone fa-regular fa-arrow-up-right"></i>
+                </a>
+                #{/foreach}
+            </div>
+        </div>
+    </section>
+    #{/if}
+
+    #{if $blogSettings.category_enabled}
+    <section class="cc-categories" aria-label="文章分类">
+        <header class="cc-section-head">
+            <div>
+                <span class="cc-eyebrow">Topics</span>
+                <h2>#{$blogSettings.category_title|escape:'html'}</h2>
+            </div>
+            <span class="cc-section-meta">点击分类，下方文章即时筛选</span>
+        </header>
+        <div class="cc-toggle-group" role="group" aria-label="文章分类筛选">
+            <button class="cc-toggle is-active" type="button" data-category="all" aria-pressed="true"><span>全部</span><small>#{$articleCount}</small></button>
+            #{foreach $categories as $category}
+            <button class="cc-toggle" type="button" data-category="#{$category|escape:'html'}" aria-pressed="false"><span>#{$category|escape:'html'}</span><i class="fa-duotone fa-regular fa-arrow-down"></i></button>
+            #{/foreach}
+        </div>
+    </section>
+    #{/if}
+
+    #{if $blogSettings.list_enabled}
+    <section class="cc-articles" aria-label="综合默认文章列表">
+        <header class="cc-section-head cc-article-list-head">
+            <div>
+                <span class="cc-eyebrow">All stories</span>
+                <h2>#{$blogSettings.list_title|escape:'html'}</h2>
+            </div>
+            <span class="cc-section-meta">
+                <span data-page-summary>第 #{$articleRangeStart}-#{$articleRangeEnd} 篇，共 <strong>#{$totalArticleCount}</strong> 篇</span>
+                <span data-filter-summary hidden>本页筛选出 <strong data-visible-count>#{$articleCount}</strong> 篇</span>
+            </span>
+        </header>
+        <div class="cc-article-grid" data-article-grid>
+            #{foreach $articles as $article}
+            <article class="cc-article-card" data-article-card>
+                <a class="cc-article-media" href="#{$article.url|escape:'html'}">
+                    <img src="#{$article.cover|escape:'html'}" alt="#{$article.title|escape:'html'}" loading="lazy">
+                </a>
+                <div class="cc-article-body">
+                    <div class="cc-article-tags">
+                        #{foreach $article.display_tags as $tag}<span class="cc-badge" data-article-tag>#{$tag|escape:'html'}</span>#{/foreach}
+                    </div>
+                    <h3><a href="#{$article.url|escape:'html'}">#{$article.title|escape:'html'}</a></h3>
+                    <p>#{$article.excerpt|escape:'html'}</p>
+                    <footer>
+                        <time datetime="#{$article.published_date|escape:'html'}">#{$article.published_date|escape:'html'}</time>
+                        <a class="cc-article-link" href="#{$article.url|escape:'html'}">阅读全文 <i class="fa-duotone fa-regular fa-arrow-right"></i></a>
+                    </footer>
+                </div>
+            </article>
+            #{/foreach}
+        </div>
+        #{if !$articles}<div class="cc-empty">暂无已发布文章</div>#{/if}
+        #{if $totalPages > 1}
+        <nav class="cc-list-pagination" aria-label="文章列表分页">
+            #{if $currentPage > 1}
+            <a class="cc-page-control" href="/blog?page=#{$previousPage|escape:'html'}" rel="prev"><i class="fa-duotone fa-regular fa-arrow-left"></i><span>上一页</span></a>
+            #{else}
+            <span class="cc-page-control is-disabled" aria-disabled="true"><i class="fa-duotone fa-regular fa-arrow-left"></i><span>上一页</span></span>
+            #{/if}
+            <div class="cc-page-numbers">
+                #{foreach $paginationItems as $item}
+                    #{if $item.type == 'page'}
+                        #{if $item.current}
+                        <span class="cc-page-number is-current" aria-current="page">#{$item.page|escape:'html'}</span>
+                        #{else}
+                        <a class="cc-page-number" href="/blog?page=#{$item.page|escape:'html'}">#{$item.page|escape:'html'}</a>
+                        #{/if}
+                    #{else}
+                    <span class="cc-page-ellipsis" aria-hidden="true">…</span>
+                    #{/if}
+                #{/foreach}
+            </div>
+            #{if $currentPage < $totalPages}
+            <a class="cc-page-control" href="/blog?page=#{$nextPage|escape:'html'}" rel="next"><span>下一页</span><i class="fa-duotone fa-regular fa-arrow-right"></i></a>
+            #{else}
+            <span class="cc-page-control is-disabled" aria-disabled="true"><span>下一页</span><i class="fa-duotone fa-regular fa-arrow-right"></i></span>
+            #{/if}
+        </nav>
+        #{/if}
+    </section>
+    #{/if}
+</main>
+#{include file=$themeFooter}

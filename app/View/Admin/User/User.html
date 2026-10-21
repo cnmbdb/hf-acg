@@ -1,0 +1,62 @@
+#{include file="../Header.html"}
+<style>
+    .layui-popup .layui-layer-content {
+        position: relative !important;
+        overflow: auto !important;
+    }
+</style>
+<!--start::HOOK-->
+#{hook(\App\Consts\Hook::ADMIN_VIEW_USER_HEADER)}
+<!--end::HOOK-->
+<!--begin::Content-->
+<div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+    <!--begin::Toolbar-->
+    #{include file="../Toolbar.html"}
+    <!--end::Toolbar-->
+    <!--begin::Post-->
+    <div class="post d-flex flex-column-fluid" id="kt_post">
+        <!--begin::Container-->
+        <div id="kt_content_container" class="container-fluid">
+            <!--begin::Row-->
+            <div class="row g-4">
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="primary" icon="fa-users" label="总用户" value=$userCount}
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="success" icon="fa-shop" label="商家" value=$businessCount}
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="primary" icon="fa-wallet" label="当前余额" value=$balance}
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="success" icon="fa-money-bill-wave" label="总充值" value=$recharge}
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="warning" icon="fa-coins" label="当前硬币" value=$coin}
+                #{include file="../Component/StatCard.html" col="col-6 col-sm-4 col-xl-2" accent="success" icon="fa-coins" label="总获得硬币" value=$totalCoin}
+            </div>
+            <!--end::Row-->
+
+            <!--begin::Tables Widget 9-->
+            <div class="card mb-5 mb-xl-8">
+                <!--begin::Header-->
+                <div class="card-header">
+                    <div class="card-toolbar">
+                        <button class="btn btn-sm btn-light-primary handle me-3"><i class="fa-duotone fa-regular fa-user-pen"></i>修改会员等级
+                        </button>
+                        <button class="btn btn-sm btn-light-danger btn-app-del me-3"><i class="fa-duotone fa-regular fa-trash-can"></i> 移除选中用户 </button>
+                        <!--start::HOOK-->
+                        #{hook(\App\Consts\Hook::ADMIN_VIEW_USER_TOOLBAR)}
+                        <!--end::HOOK-->
+                    </div>
+                </div>
+                <!--end::Header-->
+                <div class="card-body py-3">
+                    <table id="user-table"></table>
+                </div>
+            </div>
+
+            <!--end::Tables Widget 9-->
+        </div>
+        <!--end::Container-->
+    </div>
+    <!--end::Post-->
+</div>
+<!--end::Content-->
+
+#{ready("/assets/admin/controller/user/index.js")}
+<!--start::HOOK-->
+#{hook(\App\Consts\Hook::ADMIN_VIEW_USER_FOOTER)}
+<!--end::HOOK-->
+#{include file="../Footer.html"}
