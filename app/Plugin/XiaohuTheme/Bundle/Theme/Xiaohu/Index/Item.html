@@ -37,7 +37,7 @@
                 #{if !empty($setting.item_purchase_notice)}
                     <section class="xh-item-notice" aria-label="购买提醒">
                         <h2><i class="fa-duotone fa-regular fa-circle-exclamation"></i>购买提醒</h2>
-                        <div class="xh-item-notice-content">#{$setting.item_purchase_notice}</div>
+                        <div class="xh-item-notice-content">#{\App\Plugin\XiaohuGuard\Service\ThemeBootstrap::renderPurchaseNotice($setting.item_purchase_notice)}</div>
                     </section>
                 #{/if}
             </div>
@@ -168,11 +168,6 @@
                         <i class="fa-duotone fa-regular fa-cart-shopping"></i>
                         立即购买
                     </button>
-                    <div class="xh-purchase-assurance">
-                        <span><i class="fa-duotone fa-regular fa-shield-check"></i>交易安全保障</span>
-                        <span>自动发货</span>
-                        <span>售后无忧</span>
-                    </div>
                 </div>
             </form>
         </aside>

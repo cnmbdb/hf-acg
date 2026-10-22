@@ -12,7 +12,7 @@
     "/assets/common/css/bootstrap.min.css",
     "/assets/common/css/_.css",
     "/assets/user/css/index.css",
-    "#{$static}/assets/index.css?xh=20261022-4"
+    "#{$static}/assets/index.css?xh=20261023-5"
     ],
     [
     "/assets/common/css/font.min.css",
@@ -24,9 +24,10 @@
     "/assets/common/css/bootstrap.min.css",
     "/assets/common/css/toastr.min.css",
     "/assets/user/css/index.css",
-    "#{$static}/assets/index.css?xh=20261022-4"
+    "#{$static}/assets/index.css?xh=20261023-5"
     ])}
     #{js("/assets/common/js/ready.js")}
+    <script src="#{$static}/assets/gsap.min.js"></script>
     <style>
         .xh-category-group .xh-subcategory > .xh-subcategory-icon {
             display: inline-flex !important;
@@ -425,6 +426,23 @@
         var mobileToggle = document.querySelector("[data-mobile-menu-toggle]");
         var toolsMenu = document.querySelector("[data-tools-menu]");
         var toolsToggle = document.querySelector("[data-tools-toggle]");
+
+        if (mobileMenu && window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            var menuPanel = mobileMenu.querySelector(".xh-mobile-menu-panel");
+            var menuBackdrop = mobileMenu.querySelector(".xh-mobile-menu-backdrop");
+            window.gsap.set(menuPanel, {opacity: 0, y: 24});
+            window.gsap.set(menuBackdrop, {opacity: 0});
+            menuPanel.style.transition = "none";
+            menuBackdrop.style.transition = "none";
+            new MutationObserver(function () {
+                var opening = mobileMenu.classList.contains("is-open");
+                window.gsap.to(menuPanel, {opacity: opening ? 1 : 0, y: opening ? 0 : 24, duration: opening ? .38 : .22, ease: "power3.out", overwrite: true});
+                window.gsap.to(menuBackdrop, {opacity: opening ? 1 : 0, duration: .22, overwrite: true});
+                if (opening) {
+                    window.gsap.fromTo(menuPanel.querySelectorAll(".xh-mobile-link"), {opacity: 0, y: 8}, {opacity: 1, y: 0, duration: .28, stagger: .025, ease: "power2.out", overwrite: true});
+                }
+            }).observe(mobileMenu, {attributes: true, attributeFilter: ["class"]});
+        }
 
         function closeMobileMenu() {
             if (!mobileMenu) return;

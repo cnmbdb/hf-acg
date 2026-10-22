@@ -14,6 +14,33 @@ final class ThemeBootstrap
     private static bool $booted = false;
 
     /**
+     * Render the purchase reminder as safe, allow-listed rich text.
+     * Older saved theme settings may contain HTML entities instead of tags.
+     */
+    public static function renderPurchaseNotice(string $html): string
+    {
+        $decoded = $html;
+        for ($i = 0; $i < 3; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        $config = \HTMLPurifier_Config::createDefault();
+        $config->set('HTML.Allowed', 'a[href|target|rel],p,br,ul,ol,li,strong,b,em,i,u,span');
+        $config->set('URI.AllowedSchemes', [
+            'http' => true,
+            'https' => true,
+            'mailto' => true,
+            'tel' => true,
+        ]);
+
+        return trim((new \HTMLPurifier($config))->purify($decoded));
+    }
+
+    /**
      * Theme files are discovered even when the plugin hook cache was cleared by
      * an official update. This tiny bridge re-registers the companion plugin in
      * the same web context and restores the overlay when Xiaohu is active.
