@@ -781,6 +781,7 @@ body.xh-page a {
 }
 
 .xh-table {
+    --xh-row-inset: 24px;
     margin: 30px 32px 34px;
     border: 1px solid var(--xh-line);
     border-radius: 20px;
@@ -795,6 +796,18 @@ body.xh-page a {
     min-height: 104px;
     padding: 18px 18px;
     border-bottom: 1px solid var(--xh-line);
+}
+
+/* Keep legacy card-grid rules from shrinking the table body. */
+.xh-table > .xh-product-list {
+    display: block;
+    width: 100%;
+}
+
+.xh-product-list > .xh-product-row {
+    width: 100%;
+    margin: 0;
+    padding-inline: var(--xh-row-inset) !important;
 }
 
 .xh-table-row:last-child {
@@ -907,6 +920,35 @@ body.xh-page a {
     padding: 34px;
     color: var(--xh-muted);
     font-weight: 800;
+}
+
+@media (min-width: 981px) {
+    .xh-table-header > div {
+        text-align: center;
+    }
+
+    .xh-table > .xh-table-header {
+        padding-inline: var(--xh-row-inset);
+    }
+
+    .xh-table-header > div:first-child {
+        text-align: left;
+    }
+
+    .xh-product-main {
+        justify-self: start;
+        max-width: 100%;
+    }
+
+    .xh-product-row > div:nth-child(2),
+    .xh-product-row > div:nth-child(3) {
+        justify-self: center;
+        text-align: center;
+    }
+
+    .xh-product-row > .xh-buy {
+        justify-self: end;
+    }
 }
 
 @media (min-width: 981px) {
@@ -2063,6 +2105,10 @@ body.xh-page a {
 }
 
 @media (max-width: 1280px) {
+    .xh-table {
+        --xh-row-inset: 20px;
+    }
+
     .xh-table-row {
         grid-template-columns: minmax(170px, 1fr) 96px 72px 88px;
         gap: 8px;
