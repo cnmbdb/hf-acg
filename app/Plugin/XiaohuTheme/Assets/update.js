@@ -14,16 +14,39 @@
         styled = true;
         const style = document.createElement('style');
         style.textContent = '.xiaohu-release-update{margin-left:6px;padding:4px 9px;border:1px solid #4d9eff;border-radius:6px;background:rgba(43,126,220,.13);color:#56a5ff;cursor:pointer;font-size:12px;white-space:nowrap}.xiaohu-release-update:hover{background:rgba(43,126,220,.24)}.xiaohu-release-update[disabled]{opacity:.6;cursor:wait}';
+        style.textContent += '.xiaohu-release-update{position:relative;overflow:visible}.xiaohu-release-update.xh-update-available::after{content:"";position:absolute;right:-4px;top:-4px;width:8px;height:8px;border:2px solid #fff;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 #22c55e66;pointer-events:none;animation:xh-update-pulse 2s ease-in-out infinite}@keyframes xh-update-pulse{0%,100%{box-shadow:0 0 0 0 #22c55e55,0 0 4px #22c55e88}50%{box-shadow:0 0 0 5px #22c55e00,0 0 9px #22c55ecc}}@media(prefers-reduced-motion:reduce){.xiaohu-release-update.xh-update-available::after{animation:none}}';
         document.head.appendChild(style);
+    };
+    let automaticCheck;
+    let latestState;
+    const renderAvailability = button => {
+        if (!latestState) return;
+        const available = latestState.has_update === true;
+        button.classList.toggle('xh-update-available', available);
+        button.dataset.version = available ? latestState.latest : '';
+        button.dataset.notes = available ? (latestState.notes || '') : '';
+        button.title = available ? '发现新版本 v' + latestState.latest : '当前已是最新版本';
+        button.setAttribute('aria-label', available ? '检查更新，有新版本 v' + latestState.latest : '检查更新');
+    };
+    const fetchRelease = async () => {
+        const response = await fetch(api + 'check', {credentials:'same-origin',headers:{'Accept':'application/json'}});
+        const result = await response.json();
+        if (!response.ok || result.code !== 200) throw new Error(result.msg || '检查更新失败');
+        latestState = result.data || {};
+        return latestState;
+    };
+    const autoCheck = () => {
+        if (automaticCheck) return;
+        automaticCheck = fetchRelease().then(() => {
+            document.querySelectorAll('.xiaohu-release-update').forEach(renderAvailability);
+        }).catch(() => {});
     };
     const check = async button => {
         button.disabled = true;
         button.textContent = '检查中…';
         try {
-            const response = await fetch(api + 'check', {credentials:'same-origin',headers:{'Accept':'application/json'}});
-            const result = await response.json();
-            if (!response.ok || result.code !== 200) throw new Error(result.msg || '检查更新失败');
-            const data = result.data || {};
+            const data = await fetchRelease();
+            renderAvailability(button);
             if (!data.has_update) {
                 button.textContent = '检查更新';
                 button.dataset.version = '';
@@ -77,10 +100,20 @@
         button.textContent = '检查更新';
         button.addEventListener('click', () => button.dataset.version ? apply(button) : check(button));
         cell.appendChild(button);
+        renderAvailability(button);
+        autoCheck();
     };
     const observer = new MutationObserver(addButton);
     observer.observe(document.body, {childList:true,subtree:true});
     addButton();
-    document.addEventListener('pjax:complete', addButton);
-    document.addEventListener('pjax:end', addButton);
+    let navigationTimer;
+    const onNavigation = () => {
+        clearTimeout(navigationTimer);
+        navigationTimer = setTimeout(() => {
+            automaticCheck = null;
+            if (location.pathname === '/admin/plugin/index') { addButton(); autoCheck(); }
+        }, 100);
+    };
+    document.addEventListener('pjax:complete', onNavigation);
+    document.addEventListener('pjax:end', onNavigation);
 })();
