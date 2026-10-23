@@ -13,7 +13,7 @@
         if (styled) return;
         styled = true;
         const style = document.createElement('style');
-        style.textContent = '.xiaohu-release-update{margin-left:6px;padding:4px 9px;border:1px solid #4d9eff;border-radius:6px;background:rgba(43,126,220,.13);color:#56a5ff;cursor:pointer;font-size:12px;white-space:nowrap}.xiaohu-release-update:hover{background:rgba(43,126,220,.24)}.xiaohu-release-update[disabled]{opacity:.6;cursor:wait}';
+        style.textContent = '.xiaohu-release-update{margin-left:6px;padding:4px 9px;border:1px solid #4d9eff;border-radius:6px;background:transparent;color:#56a5ff;cursor:pointer;font-size:12px;white-space:nowrap}.xiaohu-release-update:hover{background:transparent}.xiaohu-release-update[disabled]{opacity:.6;cursor:wait}';
         style.textContent += '.xiaohu-release-update{position:relative;overflow:visible}.xiaohu-release-update.xh-update-available::after{content:"";position:absolute;right:-4px;top:-4px;width:8px;height:8px;border:2px solid #fff;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 #22c55e66;pointer-events:none;animation:xh-update-pulse 2s ease-in-out infinite}@keyframes xh-update-pulse{0%,100%{box-shadow:0 0 0 0 #22c55e55,0 0 4px #22c55e88}50%{box-shadow:0 0 0 5px #22c55e00,0 0 9px #22c55ecc}}@media(prefers-reduced-motion:reduce){.xiaohu-release-update.xh-update-available::after{animation:none}}';
         document.head.appendChild(style);
     };
