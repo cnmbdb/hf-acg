@@ -74,6 +74,7 @@ final class Suite
     }
     public function activate(): void
     {
+        (new License($this->root))->assertAllowed();
         $this->locked(function(): void {
             $this->installFiles();
             $path=$this->root.'/runtime/XiaohuTheme/state.php';
@@ -105,8 +106,17 @@ final class Suite
             }
         });
     }
-    public function setComponentStates(array $states): void
+    public function setComponentStates(array $states, ?string $licenseCode = null): void
     {
+        foreach ($states as $name => $enabled) {
+            if (!in_array($name, self::COMPONENTS, true) || !$enabled) continue;
+            $path = $this->configPath($name);
+            $current = is_file($path) ? (array) require $path : [];
+            if ((int)($current['STATUS'] ?? 0) !== 1) {
+                (new License($this->root))->assertAllowed($licenseCode);
+                break;
+            }
+        }
         $this->locked(function() use($states): void {
             $this->installFiles();
             $desired=$this->resolveComponentStates();

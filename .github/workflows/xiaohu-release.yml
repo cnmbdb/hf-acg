@@ -19,7 +19,7 @@ jobs:
       - name: Test suite lifecycle and individual component switches
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/workspace" -w /workspace php:8.3-cli sh -c \
-            'php tests/xiaohu_theme_suite.php && php -l app/Plugin/XiaohuTheme/Service/Suite.php && php -l app/Plugin/XiaohuTheme/Hook/Main.php && php -l app/Plugin/XiaohuTheme/Config/Submit.php && php -l app/Plugin/XiaohuTheme/Config/Config.php'
+            'php tests/xiaohu_theme_suite.php && php tests/xiaohu_license.php && php -l app/Plugin/XiaohuTheme/Service/Suite.php && php -l app/Plugin/XiaohuTheme/Hook/Main.php && php -l app/Plugin/XiaohuTheme/Config/Submit.php && php -l app/Plugin/XiaohuTheme/Config/Config.php'
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"

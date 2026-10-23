@@ -83,3 +83,7 @@
 @keyframes xh-backdrop-enter { from { background: #0000; } to { background: #0008; } }
 @keyframes xh-backdrop-leave { from { background: #0008; } to { background: #0000; } }
 @media (prefers-reduced-motion: reduce) { .xh-settings::backdrop { animation: none !important; } }
+
+.xh-settings-license-row { display: flex; align-items: stretch; gap: 8px; }
+.xh-settings-license-row .xh-settings-input-wrap { flex: 1; min-width: 0; }
+.xh-settings-license-row [data-license-verify] { flex-shrink: 0; white-space: nowrap; }

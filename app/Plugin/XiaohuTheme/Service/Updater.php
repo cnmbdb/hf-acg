@@ -16,6 +16,7 @@ final class Updater
     }
     public function apply(string $expectedVersion): array
     {
+        (new License($this->root))->assertAllowed();
         if (!preg_match('/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/D',$expectedVersion)) throw new JSONException('更新版本号无效');
         $state=$this->root.'/runtime/XiaohuTheme';
         if (!is_dir($state) && !mkdir($state,0700,true)) throw new JSONException('无法创建更新状态目录');

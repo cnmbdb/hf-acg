@@ -6,7 +6,7 @@ namespace Kernel\Annotation { class Plugin { const START=1; } }
 namespace Kernel\Plugin { final class Hook { public static array $names=[]; public static function inst(){return new self;} public function add($n){self::$names[$n]=1;} public function del($n){unset(self::$names[$n]);} } }
 namespace Kernel\Util { class Plugin { public static bool $fail=false; public static array $states=[]; public static function runHookState(...$args){self::$states[]=$args;if(self::$fail)throw new \RuntimeException('simulated schema failure');} } }
 namespace App\Util { class Plugin { public static function log(...$args): void {} } }
-namespace App\Plugin\XiaohuTheme\Service { class Registry { public static array $enabled=[]; public static function set(string $name,bool $enabled): void {self::$enabled[$name]=$enabled;} } }
+namespace App\Plugin\XiaohuTheme\Service { class License { public static bool $allowed=true; public function __construct(?string $root=null) {} public function assertAllowed(?string $key=null): void {if(!self::$allowed)throw new \Kernel\Exception\JSONException('license denied');} } class Registry { public static array $enabled=[]; public static function set(string $name,bool $enabled): void {self::$enabled[$name]=$enabled;} } }
 namespace {
 function setConfig(array $data,string $file,bool $reset=false):void { $old=(!$reset&&is_file($file))?require $file:[];file_put_contents($file,'<?php return '.var_export(array_replace($old,$data),true).';'); }
 require dirname(__DIR__).'/app/Plugin/XiaohuTheme/Service/Suite.php';
@@ -58,5 +58,11 @@ setConfig(['fans_gurus_enabled'=>0],$configPath);$suite2->setComponentStates($su
 check(count($suite2->filterPluginList($rows))===2,'disabling FansGurus hides only its row');
 foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';$expected=$name==='HStockPlus'?1:0;check((int)$c['STATUS']===$expected&&\App\Plugin\XiaohuTheme\Service\Registry::$enabled[$name]===($expected===1),'independent switch state remains correct for '.$name);}
 $suite2->deactivate();foreach(Suite::COMPONENTS as $name){$c=require $root2.'/app/Plugin/'.$name.'/Config/Config.php';check((int)$c['STATUS']===0,'stopping suite restores the pre-suite status for '.$name);}
+\App\Plugin\XiaohuTheme\Service\License::$allowed=false;
+try {$suite2->activate(); throw new RuntimeException('unlicensed start accepted');} catch (\Kernel\Exception\JSONException $e) {check(Config::$values['user_theme']==='Original','unlicensed start leaves current theme unchanged');}
+try {$suite2->setComponentStates(['ContentCenter'=>true]); throw new RuntimeException('unlicensed enable accepted');} catch (\Kernel\Exception\JSONException $e) {check(true,'unlicensed component enable denied');}
+$suite2->setComponentStates(array_fill_keys(Suite::COMPONENTS,false));
+$suite2->deactivate();
+check(true,'unlicensed users can disable components and stop suite');
 echo "ALL TESTS PASSED\n";
 }

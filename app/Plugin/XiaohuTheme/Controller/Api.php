@@ -12,6 +12,12 @@ use Kernel\Exception\JSONException;
 #[Interceptor([ManageSession::class,Owner::class],Interceptor::TYPE_API)]
 final class Api extends Manage
 {
+    public function license(Request $request): array
+    {
+        $key = $request->post('license_code');
+        $state = (new \App\Plugin\XiaohuTheme\Service\License())->verify(is_string($key) ? $key : null);
+        return $this->json(200, $state['message'], $state);
+    }
     public function check(): array
     {
         return $this->json(200,'检查完成',(new Updater())->check());

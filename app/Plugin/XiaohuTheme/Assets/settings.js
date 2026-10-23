@@ -32,10 +32,35 @@
             const dialog = document.createElement('dialog');
             dialog.className = 'xh-settings';
             dialog.setAttribute('aria-label','小虎主题套件配置');
-            dialog.innerHTML = `<form class="xh-settings-form"><header class="xh-settings-head"><button class="xh-settings-close" type="button" aria-label="关闭配置">×</button></header><div class="xh-settings-body"><details class="xh-settings-card"><summary class="xh-settings-summary"><span aria-hidden="true">▦</span><div><strong>配套子插件</strong></div><span class="xh-settings-chip" data-component-count></span></summary>${components.map(([key,title,desc,icon]) => `<label class="xh-settings-component"><span aria-hidden="true">${icon}</span><div><strong>${title}</strong><small>${desc}</small></div><input class="xh-settings-toggle" type="checkbox" role="switch" name="${key}" aria-label="${title}" ${checked(key)?'checked':''}></label>`).join('')}<div class="xh-settings-component"><p>打开并保存后启用插件；关闭并保存后停用，并从通用插件列表隐藏。</p></div></details><section class="xh-settings-card xh-settings-license"><div class="xh-settings-card-title"><label class="xh-settings-field" for="xh-license-code">授权码</label><span class="xh-settings-chip" data-license-state>待接入远程校验</span></div><div class="xh-settings-input-wrap"><input id="xh-license-code" class="xh-settings-code" name="license_code" type="password" placeholder="填写你的主题授权码" autocomplete="off" spellcheck="false" maxlength="512"><button type="button" class="xh-settings-reveal" aria-label="显示授权码" aria-pressed="false">显示</button></div></section><details class="xh-settings-card"><summary class="xh-settings-summary"><span aria-hidden="true">⚙</span><div><strong>维护工具</strong></div></summary><label class="xh-settings-component"><div><strong>修复套件组件</strong></div><input class="xh-settings-toggle" name="repair_components" type="checkbox" role="switch" aria-label="修复套件组件" ${Number(config.repair_components || 0) === 1 ? 'checked' : ''}></label></details></div><footer class="xh-settings-footer"><span class="xh-settings-feedback" role="status" aria-live="polite"></span><button type="button" class="xh-settings-button" data-cancel>取消</button><button type="submit" class="xh-settings-button xh-settings-primary">保存设置</button></footer></form>`;
+            dialog.innerHTML = `<form class="xh-settings-form"><header class="xh-settings-head"><button class="xh-settings-close" type="button" aria-label="关闭配置">×</button></header><div class="xh-settings-body"><details class="xh-settings-card"><summary class="xh-settings-summary"><span aria-hidden="true">▦</span><div><strong>配套子插件</strong></div><span class="xh-settings-chip" data-component-count></span></summary>${components.map(([key,title,desc,icon]) => `<label class="xh-settings-component"><span aria-hidden="true">${icon}</span><div><strong>${title}</strong><small>${desc}</small></div><input class="xh-settings-toggle" type="checkbox" role="switch" name="${key}" aria-label="${title}" ${checked(key)?'checked':''}></label>`).join('')}<div class="xh-settings-component"><p>打开并保存后启用插件；关闭并保存后停用，并从通用插件列表隐藏。</p></div></details><section class="xh-settings-card xh-settings-license"><div class="xh-settings-card-title"><div style="display:flex;align-items:center;gap:12px"><label class="xh-settings-field" for="xh-license-code">授权码</label><a href="https://tes.txsw.top" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#2563eb;text-decoration:none">获取授权码 ↗</a></div><span class="xh-settings-chip" data-license-state>未验证</span></div><div class="xh-settings-license-row"><div class="xh-settings-input-wrap"><input id="xh-license-code" class="xh-settings-code" name="license_code" type="password" placeholder="填写你的主题授权码" autocomplete="off" spellcheck="false" maxlength="512"><button type="button" class="xh-settings-reveal" aria-label="显示授权码" aria-pressed="false">显示</button></div><button type="button" class="xh-settings-button" data-license-verify>验证授权</button></div></section><details class="xh-settings-card"><summary class="xh-settings-summary"><span aria-hidden="true">⚙</span><div><strong>维护工具</strong></div></summary><label class="xh-settings-component"><div><strong>修复套件组件</strong></div><input class="xh-settings-toggle" name="repair_components" type="checkbox" role="switch" aria-label="修复套件组件" ${Number(config.repair_components || 0) === 1 ? 'checked' : ''}></label></details></div><footer class="xh-settings-footer"><span class="xh-settings-feedback" role="status" aria-live="polite"></span><button type="button" class="xh-settings-button" data-cancel>取消</button><button type="submit" class="xh-settings-button xh-settings-primary">保存设置</button></footer></form>`;
             document.body.appendChild(dialog);
             const code = dialog.querySelector('[name="license_code"]');
             code.value = String(config.license_code || '');
+            let verificationSequence = 0;
+            const verifyLicense = async () => {
+                const sequence = ++verificationSequence;
+                const key = code.value.trim();
+                const isCurrent = () => sequence === verificationSequence && dialog.isConnected && code.value.trim() === key;
+                const badge = dialog.querySelector('[data-license-state]');
+                const button = dialog.querySelector('[data-license-verify]');
+                button.disabled = true; badge.textContent = '验证中…';
+                try {
+                    const result = await request('/plugin/XiaohuTheme/api/license', {license_code:key});
+                    if (!isCurrent()) return;
+                    const state = result.data || {};
+                    badge.textContent = state.valid ? (state.expiresAt ? '已验证 · '+new Date(state.expiresAt).toLocaleDateString() : '已验证') : (state.message || '未验证');
+                    badge.title = state.message || '';
+                } catch(error) { if (isCurrent()) badge.textContent = error.message; }
+                finally { if (isCurrent()) button.disabled = false; }
+            };
+            code.addEventListener('input', () => {
+                verificationSequence++;
+                const badge = dialog.querySelector('[data-license-state]');
+                badge.textContent = '未验证';
+                badge.title = '';
+                dialog.querySelector('[data-license-verify]').disabled = false;
+            });
+            dialog.querySelector('[data-license-verify]').addEventListener('click', verifyLicense);
             const updateCount = () => { dialog.querySelector('[data-component-count]').textContent = components.filter(([key])=>dialog.querySelector(`[name="${key}"]`).checked).length+' / 5 已开启'; };
             updateCount();
             dialog.querySelectorAll('.xh-settings-toggle').forEach(input=>input.addEventListener('change',updateCount));
@@ -55,12 +80,13 @@
                 try {
                     await request('/admin/api/plugin/setConfig?id=XiaohuTheme',data);
                     feedback.className='xh-settings-feedback xh-settings-success';feedback.textContent='已保存，插件设置已生效';
-                    dialog.querySelector('[data-license-state]').textContent=data.license_code?'已保存 · 待校验':'待接入远程校验';
+                    await verifyLicense();
                     if(window.jQuery && typeof window.jQuery('#plugin-table').bootstrapTable==='function') window.jQuery('#plugin-table').bootstrapTable('refresh',{silent:true});
                 } catch(error) {feedback.className='xh-settings-feedback xh-settings-error';feedback.textContent=error.message;}
                 finally {save.disabled=false;save.textContent='保存设置';}
             });
             dialog.showModal();
+            if (code.value.trim()) void verifyLicense();
         } catch(error) {
             if(window.message && typeof window.message.error==='function') window.message.error(error.message);else window.alert(error.message);
         } finally {loading=false;trigger.disabled=false;}

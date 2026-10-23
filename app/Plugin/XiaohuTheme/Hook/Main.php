@@ -76,6 +76,6 @@ final class Main
         if (!$repair && !$switchChanged) return;
         $suite=new Suite();
         $suite->install();
-        if ($switchChanged) $suite->setComponentStates($suite->resolveComponentStates(array_replace($config,$map)));
+        if ($switchChanged) $suite->setComponentStates($suite->resolveComponentStates(array_replace($config,$map)), (string)($map['license_code']??$config['license_code']??''));
     }
 }
